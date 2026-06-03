@@ -1,46 +1,63 @@
+"use client"
+
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ShoppingCart, TreePine } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { ShoppingCart, TreePine, Menu, X } from "lucide-react"
+import { useState } from "react"
+import { useCartStore } from "@/store/cart-store"
+import { CartSheet } from "@/components/cart/CartSheet"
 
 export function Header() {
-  return (
-    <header className="border-b bg-white/95 backdrop-blur-sm sticky top-0 z-50" style={{ borderColor: '#A89F91' }}>
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <Link href="/" className="flex items-center gap-2 text-2xl font-bold tracking-tight" style={{ color: '#4A3F2F' }}>
-          <TreePine className="h-7 w-7" style={{ color: '#6B7D5C' }} />
-          <span>
-            Beeyond<span style={{ color: '#6B7D5C' }}> Trees</span>
-          </span>
-        </Link>
-        
-        <nav className="hidden md:flex items-center gap-8">
-          <Link href="/products" className="text-sm font-medium hover:text-[#6B7D5C] transition-colors" style={{ color: '#4A3F2F' }}>
-            Shop All
-          </Link>
-          <Link href="/categories" className="text-sm font-medium hover:text-[#6B7D5C] transition-colors" style={{ color: '#4A3F2F' }}>
-            Categories
-          </Link>
-          <Link href="/about" className="text-sm font-medium hover:text-[#6B7D5C] transition-colors" style={{ color: '#4A3F2F' }}>
-            Our Mission
-          </Link>
-          <Link href="/blog" className="text-sm font-medium hover:text-[#6B7D5C] transition-colors" style={{ color: '#4A3F2F' }}>
-            Blog
-          </Link>
-        </nav>
+  const [menuOpen, setMenuOpen] = useState(false)
+  const { getItemCount, setIsOpen } = useCartStore()
+  const itemCount = getItemCount()
 
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" className="hover:text-[#6B7D5C]" style={{ color: '#4A3F2F' }}>
-            <ShoppingCart className="h-5 w-5" />
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="border-[#6B7D5C] text-[#6B7D5C] hover:bg-[#6B7D5C] hover:text-white transition-colors"
-          >
-            Sign In
-          </Button>
+  return (
+    <>
+      <header className="border-b bg-white/95 backdrop-blur-sm sticky top-0 z-50" style={{ borderColor: '#A89F91' }}>
+        <div className="container mx-auto flex h-14 items-center justify-between px-4">
+          <Link href="/" className="flex items-center gap-2 text-xl font-bold tracking-tight" style={{ color: '#4A3F2F' }}>
+            <TreePine className="h-6 w-6" style={{ color: '#6B7D5C' }} />
+            <span className="hidden sm:inline">Beeyond<span style={{ color: '#6B7D5C' }}> Trees</span></span>
+          </Link>
+          
+          <nav className="hidden md:flex items-center gap-6">
+            <Link href="/products" className="text-sm font-medium hover:text-[#6B7D5C] transition-colors" style={{ color: '#4A3F2F' }}>Shop All</Link>
+            <Link href="/products?category=Furniture" className="text-sm font-medium hover:text-[#6B7D5C] transition-colors" style={{ color: '#4A3F2F' }}>Furniture</Link>
+            <Link href="/products?category=Home+%26+Living" className="text-sm font-medium hover:text-[#6B7D5C] transition-colors" style={{ color: '#4A3F2F' }}>Home & Living</Link>
+            <Link href="/products?category=Pottery" className="text-sm font-medium hover:text-[#6B7D5C] transition-colors" style={{ color: '#4A3F2F' }}>Pottery</Link>
+          </nav>
+
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" className="relative hover:text-[#6B7D5C]" style={{ color: '#4A3F2F' }} onClick={() => setIsOpen(true)}>
+              <ShoppingCart className="h-5 w-5" />
+              {itemCount > 0 && (
+                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-[#8C6A4A] text-white border-0 text-xs">
+                  {itemCount}
+                </Badge>
+              )}
+            </Button>
+            
+            <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMenuOpen(!menuOpen)}>
+              {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
+          </div>
         </div>
-      </div>
-    </header>
+
+        {menuOpen && (
+          <div className="md:hidden border-t" style={{ borderColor: '#A89F91', backgroundColor: 'white' }}>
+            <nav className="flex flex-col p-4 gap-3">
+              <Link href="/products" className="text-sm font-medium py-2" style={{ color: '#4A3F2F' }} onClick={() => setMenuOpen(false)}>Shop All</Link>
+              <Link href="/products?category=Furniture" className="text-sm font-medium py-2" style={{ color: '#4A3F2F' }} onClick={() => setMenuOpen(false)}>Furniture</Link>
+              <Link href="/products?category=Home+%26+Living" className="text-sm font-medium py-2" style={{ color: '#4A3F2F' }} onClick={() => setMenuOpen(false)}>Home & Living</Link>
+              <Link href="/products?category=Pottery" className="text-sm font-medium py-2" style={{ color: '#4A3F2F' }} onClick={() => setMenuOpen(false)}>Pottery</Link>
+              <Link href="/products?category=Ornamental+%26+Curios" className="text-sm font-medium py-2" style={{ color: '#4A3F2F' }} onClick={() => setMenuOpen(false)}>Ornamental & Curios</Link>
+            </nav>
+          </div>
+        )}
+      </header>
+      <CartSheet />
+    </>
   )
 }
