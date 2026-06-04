@@ -15,6 +15,12 @@ interface Product {
   wholesalePrice?: number; distributorPrice?: number
 }
 
+const tierLimits: Record<string, { min: number; max: number; label: string }> = {
+  retail: { min: 1, max: 11, label: 'Retail' },
+  wholesale: { min: 12, max: 36, label: 'Wholesale' },
+  distributor: { min: 37, max: Infinity, label: 'Dist.' },
+}
+
 export function ProductCard({ product }: { product: Product }) {
   const addItem = useCartStore((state) => state.addItem)
   const [selectedTier, setSelectedTier] = useState<"retail" | "wholesale" | "distributor">("retail")
@@ -26,7 +32,9 @@ export function ProductCard({ product }: { product: Product }) {
   }
   
   const currentPrice = prices[selectedTier]
+  const limit = tierLimits[selectedTier]
   const hasImages = product.images && product.images.length > 0
+  const canPurchase = product.inventory >= limit.min
 
   const handleAddToCart = () => {
     addItem({
@@ -35,7 +43,8 @@ export function ProductCard({ product }: { product: Product }) {
       price: currentPrice,
       image: product.images?.[0] || "",
       pricingTier: selectedTier,
-      maxQuantity: product.inventory,
+      maxQuantity: Math.min(limit.max, product.inventory),
+      minQuantity: limit.min,
     })
   }
 
@@ -44,9 +53,9 @@ export function ProductCard({ product }: { product: Product }) {
       <Link href={`/products/${product.slug}`}>
         <div className="relative h-48 bg-gradient-to-br from-[#E6D3A3] to-[#6B7D5C] flex items-center justify-center overflow-hidden">
           {hasImages ? (
-            <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+            <img src={product.images[0]} alt={product.name} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />
           ) : (
-            <Leaf className="h-16 w-16 text-white/50 group-hover:scale-125 transition-transform duration-500" />
+            <Leaf className="h-16 w-16 text-white/50" />
           )}
           {product.inventory <= 5 && product.inventory > 0 && (
             <Badge className="absolute top-2 left-2 bg-[#E6A817] text-white border-0 text-xs">Only {product.inventory} left</Badge>
@@ -64,20 +73,33 @@ export function ProductCard({ product }: { product: Product }) {
 
         {/* Pricing Tiers */}
         <div className="flex gap-1 mb-2 mt-1">
-          {(["retail", "wholesale", "distributor"] as const).map((tier) => (
-            <button
-              key={tier}
-              onClick={(e) => { e.preventDefault(); setSelectedTier(tier); }}
-              className={`text-xs px-2 py-1 rounded font-medium transition-colors ${
-                selectedTier === tier
-                  ? 'bg-[#6B7D5C] text-white'
-                  : 'bg-[#F5F1E8] text-[#A89F91] hover:bg-[#E6D3A3]'
-              }`}
-            >
-              {tier === 'retail' ? 'Retail' : tier === 'wholesale' ? 'Wholesale' : 'Dist.'}
-            </button>
-          ))}
+          {(["retail", "wholesale", "distributor"] as const).map((tier) => {
+            const t = tierLimits[tier]
+            const available = product.inventory >= t.min
+            return (
+              <button
+                key={tier}
+                onClick={(e) => { e.preventDefault(); if (available) setSelectedTier(tier); }}
+                disabled={!available}
+                className={`text-xs px-2 py-1 rounded font-medium transition-colors ${
+                  !available
+                    ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                    : selectedTier === tier
+                    ? 'bg-[#6B7D5C] text-white'
+                    : 'bg-[#F5F1E8] text-[#A89F91] hover:bg-[#E6D3A3]'
+                }`}
+                title={!available ? `Requires at least ${t.min} units (${product.inventory} available)` : `${t.min}-${t.max === Infinity ? 'unlimited' : t.max} units`}
+              >
+                {t.label}
+              </button>
+            )
+          })}
         </div>
+
+        {/* Tier Info */}
+        <p className="text-xs text-[#A89F91] mb-1">
+          {limit.min}-{limit.max === Infinity ? 'unlimited' : limit.max} units
+        </p>
 
         {/* Price */}
         <div className="flex items-center justify-between mb-2">
@@ -91,10 +113,14 @@ export function ProductCard({ product }: { product: Product }) {
         <Button
           size="sm"
           className="w-full bg-[#6B7D5C] hover:bg-[#5A6B4D] text-white"
-          disabled={product.inventory === 0}
+          disabled={!canPurchase}
           onClick={(e) => { e.preventDefault(); handleAddToCart(); }}
         >
-          <ShoppingCart className="h-4 w-4 mr-1" /> Add to Cart - {selectedTier === 'retail' ? 'Retail' : selectedTier === 'wholesale' ? 'Wholesale' : 'Distributor'}
+          <ShoppingCart className="h-4 w-4 mr-1" />
+          {!canPurchase
+            ? `Need ${limit.min}+ units`
+            : `Add (${limit.label})`
+          }
         </Button>
       </CardContent>
     </Card>
