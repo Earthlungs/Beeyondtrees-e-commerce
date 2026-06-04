@@ -8,15 +8,17 @@ export default function ProductsPage() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#F5F1E8' }}>
       <Header />
-      <main className="container mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold mb-2" style={{ color: '#4A3F2F' }}>Our Products</h1>
-        <p className="text-lg mb-8" style={{ color: '#A89F91' }}>Natural products that go beeyond expectations</p>
+      <main className="px-4 py-6" style={{ maxWidth: '100%' }}>
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold" style={{ color: '#4A3F2F' }}>Our Products</h1>
+          <p className="text-base" style={{ color: '#A89F91' }}>Natural products that go beeyond expectations</p>
+        </div>
         
-        <div className="flex gap-8">
-          <aside className="w-64 hidden lg:block">
+        <div className="flex gap-6">
+          <aside className="w-56 flex-shrink-0 hidden lg:block">
             <ProductFilters />
           </aside>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <Suspense fallback={<ProductGridSkeleton />}>
               <ProductGrid />
             </Suspense>
@@ -29,8 +31,8 @@ export default function ProductsPage() {
 
 function ProductGridSkeleton() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {[...Array(6)].map((_, i) => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {[...Array(8)].map((_, i) => (
         <div key={i} className="bg-white rounded-xl p-4">
           <Skeleton className="h-48 w-full rounded-lg mb-4" />
           <Skeleton className="h-4 w-3/4 mb-2" />

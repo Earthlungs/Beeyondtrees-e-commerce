@@ -6,6 +6,12 @@ import { useCartStore } from "@/store/cart-store"
 import { ShoppingCart, Trash2, Plus, Minus, Leaf } from "lucide-react"
 import Link from "next/link"
 
+const tierMinimums: Record<string, number> = {
+  retail: 1,
+  wholesale: 12,
+  distributor: 37,
+}
+
 export function CartSheet() {
   const { items, isOpen, setIsOpen, removeItem, updateQuantity, getTotal, clearCart } = useCartStore()
 
@@ -29,42 +35,65 @@ export function CartSheet() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 80px)' }}>
             <div style={{ flex: 1, overflowY: 'auto', paddingRight: '8px' }}>
-              {items.map((item) => (
-                <div key={item.id} style={{ display: 'flex', gap: '12px', padding: '12px 0', borderBottom: '1px solid #A89F91' }}>
-                  <div style={{ width: '60px', height: '60px', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#F5F1E8', flexShrink: 0 }}>
-                    {item.image ? (
-                      <img src={item.image} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                    ) : (
-                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Leaf size={20} style={{ color: '#6B7D5C' }} />
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <p style={{ fontWeight: '500', fontSize: '14px', color: '#4A3F2F' }}>{item.name}</p>
-                      <button onClick={() => removeItem(item.id)} style={{ color: '#8C6A4A', background: 'none', border: 'none', cursor: 'pointer' }}>
-                        <Trash2 size={14} />
-                      </button>
+              {items.map((item) => {
+                const minQty = tierMinimums[item.pricingTier] || 1
+                return (
+                  <div key={item.id} style={{ display: 'flex', gap: '12px', padding: '12px 0', borderBottom: '1px solid #A89F91' }}>
+                    <div style={{ width: '60px', height: '60px', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#F5F1E8', flexShrink: 0 }}>
+                      {item.image ? (
+                        <img src={item.image} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                      ) : (
+                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Leaf size={20} style={{ color: '#6B7D5C' }} />
+                        </div>
+                      )}
                     </div>
-                    <p style={{ fontSize: '12px', color: '#6B7D5C', textTransform: 'uppercase' }}>{item.pricingTier}</p>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <button onClick={() => updateQuantity(item.id, item.quantity - 1)} disabled={item.quantity <= 1}
-                          style={{ width: '24px', height: '24px', borderRadius: '4px', border: '1px solid #A89F91', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <Minus size={12} />
-                        </button>
-                        <span style={{ fontSize: '14px', fontWeight: '500' }}>{item.quantity}</span>
-                        <button onClick={() => updateQuantity(item.id, item.quantity + 1)} disabled={item.quantity >= item.maxQuantity}
-                          style={{ width: '24px', height: '24px', borderRadius: '4px', border: '1px solid #A89F91', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <Plus size={12} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <p style={{ fontWeight: '500', fontSize: '14px', color: '#4A3F2F' }}>{item.name}</p>
+                        <button onClick={() => removeItem(item.id)} style={{ color: '#8C6A4A', background: 'none', border: 'none', cursor: 'pointer' }}>
+                          <Trash2 size={14} />
                         </button>
                       </div>
-                      <span style={{ fontWeight: 'bold', color: '#4A3F2F' }}>KSh {(item.price * item.quantity).toLocaleString()}</span>
+                      <p style={{ fontSize: '11px', color: '#6B7D5C', textTransform: 'uppercase' }}>
+                        {item.pricingTier} (min {minQty} units)
+                      </p>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <button 
+                            onClick={() => updateQuantity(item.id, Math.max(minQty, item.quantity - 1))} 
+                            disabled={item.quantity <= minQty}
+                            style={{ 
+                              width: '24px', height: '24px', borderRadius: '4px', 
+                              border: '1px solid #A89F91', background: item.quantity <= minQty ? '#f5f5f5' : 'white', 
+                              cursor: item.quantity <= minQty ? 'not-allowed' : 'pointer', 
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              opacity: item.quantity <= minQty ? 0.5 : 1
+                            }}
+                          >
+                            <Minus size={12} />
+                          </button>
+                          <span style={{ fontSize: '14px', fontWeight: '500', minWidth: '20px', textAlign: 'center' }}>{item.quantity}</span>
+                          <button 
+                            onClick={() => updateQuantity(item.id, item.quantity + 1)} 
+                            disabled={item.quantity >= item.maxQuantity}
+                            style={{ 
+                              width: '24px', height: '24px', borderRadius: '4px', 
+                              border: '1px solid #A89F91', background: item.quantity >= item.maxQuantity ? '#f5f5f5' : 'white', 
+                              cursor: item.quantity >= item.maxQuantity ? 'not-allowed' : 'pointer', 
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              opacity: item.quantity >= item.maxQuantity ? 0.5 : 1
+                            }}
+                          >
+                            <Plus size={12} />
+                          </button>
+                        </div>
+                        <span style={{ fontWeight: 'bold', color: '#4A3F2F' }}>KSh {(item.price * item.quantity).toLocaleString()}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
             <div style={{ borderTop: '2px solid #A89F91', paddingTop: '16px', marginTop: '16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
