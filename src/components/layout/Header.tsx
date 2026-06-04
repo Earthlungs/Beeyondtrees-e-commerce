@@ -4,14 +4,20 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ShoppingCart, TreePine, Menu, X } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useCartStore } from "@/store/cart-store"
 import { CartSheet } from "@/components/cart/CartSheet"
 
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const { getItemCount, setIsOpen } = useCartStore()
-  const itemCount = getItemCount()
+  
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const itemCount = mounted ? getItemCount() : 0
 
   return (
     <>
