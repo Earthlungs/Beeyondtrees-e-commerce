@@ -8,19 +8,26 @@ export interface CartItem {
   image: string
   pricingTier: "retail" | "wholesale" | "distributor"
   maxQuantity: number
+  minQuantity?: number
 }
 
 interface CartStore {
   items: CartItem[]
   isOpen: boolean
   setIsOpen: (open: boolean) => void
-  addItem: (item: Omit<CartItem, 'quantity'>) => void
+  addItem: (item: Omit<CartItem, 'quantity'> & { minQuantity?: number }) => void
   removeItem: (id: string) => void
   updateQuantity: (id: string, quantity: number) => void
   updatePricingTier: (id: string, tier: "retail" | "wholesale" | "distributor") => void
   clearCart: () => void
   getTotal: () => number
   getItemCount: () => number
+}
+
+const tierDefaults: Record<string, number> = {
+  retail: 1,
+  wholesale: 12,
+  distributor: 37,
 }
 
 export const useCartStore = create<CartStore>((set, get) => ({
@@ -32,6 +39,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
   addItem: (item) => {
     set((state) => {
       const existing = state.items.find((i) => i.id === item.id && i.pricingTier === item.pricingTier)
+      const minQty = item.minQuantity || tierDefaults[item.pricingTier] || 1
       if (existing) {
         return {
           items: state.items.map((i) =>
@@ -41,7 +49,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
           ),
         }
       }
-      return { items: [...state.items, { ...item, quantity: 1 }] }
+      return { items: [...state.items, { ...item, quantity: minQty }] }
     })
   },
   
@@ -51,7 +59,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
   
   updateQuantity: (id, quantity) => {
     set((state) => ({
-      items: state.items.map((i) => (i.id === id ? { ...i, quantity: Math.min(quantity, i.maxQuantity) } : i)),
+      items: state.items.map((i) => (i.id === id ? { ...i, quantity: Math.max(i.minQuantity || 1, Math.min(quantity, i.maxQuantity)) } : i)),
     }))
   },
   
