@@ -1,9 +1,8 @@
 "use client"
 
-import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { Search, SlidersHorizontal } from "lucide-react"
+import { Search, SlidersHorizontal, X } from "lucide-react"
 
 const categories = ["All", "Furniture", "Home & Living", "Pottery", "Ornamental & Curios"]
 const priceRanges = [
@@ -14,10 +13,16 @@ const priceRanges = [
   { label: "Above KSh 15,000", min: 15000, max: Infinity },
 ]
 
-export function ProductFilters() {
-  const [selectedCategory, setSelectedCategory] = useState("All")
-  const [selectedPrice, setSelectedPrice] = useState<string | null>(null)
+interface ProductFiltersProps {
+  selectedCategory: string
+  onCategoryChange: (category: string) => void
+  selectedPrice: string | null
+  onPriceChange: (price: string | null) => void
+  searchTerm: string
+  onSearchChange: (term: string) => void
+}
 
+export function ProductFilters({ selectedCategory, onCategoryChange, selectedPrice, onPriceChange, searchTerm, onSearchChange }: ProductFiltersProps) {
   return (
     <div className="space-y-6">
       <div>
@@ -26,37 +31,77 @@ export function ProductFilters() {
         </h3>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#A89F91]" />
-          <Input placeholder="Search products..." className="pl-10 border-[#A89F91] focus:border-[#6B7D5C]" />
+          <Input 
+            placeholder="Search products..." 
+            className="pl-10 border-[#A89F91] focus:border-[#6B7D5C]" 
+            value={searchTerm}
+            onChange={e => onSearchChange(e.target.value)}
+          />
+          {searchTerm && (
+            <button onClick={() => onSearchChange('')} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#A89F91' }}>
+              <X size={14} />
+            </button>
+          )}
         </div>
       </div>
+
       <Separator className="bg-[#A89F91]" />
+
       <div>
         <h4 className="font-medium text-[#4A3F2F] mb-2">Category</h4>
-        <div className="space-y-2">
+        <div className="space-y-1">
           {categories.map((cat) => (
-            <button key={cat} onClick={() => setSelectedCategory(cat)}
+            <button 
+              key={cat} 
+              onClick={() => onCategoryChange(cat)}
               className={`block w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                selectedCategory === cat ? "bg-[#6B7D5C] text-white" : "text-[#A89F91] hover:bg-[#E6D3A3] hover:text-[#4A3F2F]"
+                selectedCategory === cat 
+                  ? "bg-[#6B7D5C] text-white" 
+                  : "text-[#A89F91] hover:bg-[#E6D3A3] hover:text-[#4A3F2F]"
               }`}
-            >{cat}</button>
+            >
+              {cat}
+              {selectedCategory === cat && cat !== "All" && (
+                <span style={{ float: 'right', fontSize: '11px', opacity: 0.7 }}>✓</span>
+              )}
+            </button>
           ))}
         </div>
       </div>
+
       <Separator className="bg-[#A89F91]" />
+
       <div>
         <h4 className="font-medium text-[#4A3F2F] mb-2">Price Range</h4>
-        <div className="space-y-2">
+        <div className="space-y-1">
           {priceRanges.map((range) => (
-            <label key={range.label}
+            <label 
+              key={range.label}
               className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors ${
-                selectedPrice === range.label ? "bg-[#6B7D5C] text-white" : "text-[#A89F91] hover:bg-[#E6D3A3] hover:text-[#4A3F2F]"
+                selectedPrice === range.label 
+                  ? "bg-[#6B7D5C] text-white" 
+                  : "text-[#A89F91] hover:bg-[#E6D3A3] hover:text-[#4A3F2F]"
               }`}
             >
-              <input type="radio" name="price" className="hidden" checked={selectedPrice === range.label} onChange={() => setSelectedPrice(range.label)} />
+              <input 
+                type="radio" 
+                name="price" 
+                className="hidden" 
+                checked={selectedPrice === range.label} 
+                onChange={() => onPriceChange(selectedPrice === range.label ? null : range.label)} 
+              />
               {range.label}
             </label>
           ))}
         </div>
+        {selectedPrice && (
+          <button 
+            onClick={() => onPriceChange(null)}
+            style={{ marginTop: '8px', fontSize: '12px', color: '#8C6A4A', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+          >
+            Clear price filter
+          </button>
+        )}
       </div>
     </div>
   )
