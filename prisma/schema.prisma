@@ -4,6 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -31,29 +32,27 @@ model Product {
   isFeatured       Boolean     @default(false)
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
-  
   orderItems       OrderItem[]
 }
 
 model Order {
-  id              String      @id @default(cuid())
-  customerName    String
-  customerPhone   String
-  customerEmail   String?
-  county          String
-  town            String
-  landmark        String?
-  deliveryInstructions String? @db.Text
-  total           Float
-  status          String      @default("pending")
-  paymentRef      String?
-  paymentStatus   String?
-  transactionRef  String?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  
-  items           OrderItem[]
-  dispatch        Dispatch?
+  id                   String      @id @default(cuid())
+  customerName         String
+  customerPhone        String
+  customerEmail        String?
+  county               String
+  town                 String
+  landmark             String?
+  deliveryInstructions String?     @db.Text
+  total                Float
+  status               String      @default("pending")
+  paymentRef           String?
+  paymentStatus        String?
+  transactionRef       String?
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+  items                OrderItem[]
+  dispatch             Dispatch?
 }
 
 model OrderItem {
@@ -65,21 +64,19 @@ model OrderItem {
   quantity    Int
   pricingTier String
   subtotal    Float
-  
-  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id])
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product     Product @relation(fields: [productId], references: [id])
 }
 
 model Dispatch {
-  id                 String   @id @default(cuid())
-  orderId            String   @unique
-  riderName          String
-  riderPhone         String
-  motorbikePlate     String
-  riderIdNo          String
-  dispatchedAt       DateTime @default(now())
-  estimatedDelivery  DateTime?
-  createdAt          DateTime @default(now())
-  
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  id                String   @id @default(cuid())
+  orderId           String   @unique
+  riderName         String
+  riderPhone        String
+  motorbikePlate    String
+  riderIdNo         String
+  dispatchedAt      DateTime @default(now())
+  estimatedDelivery DateTime?
+  createdAt         DateTime @default(now())
+  order             Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
