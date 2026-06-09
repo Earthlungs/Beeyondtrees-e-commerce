@@ -26,10 +26,10 @@ export function ProductGrid({ category }: ProductGridProps) {
     return (
       <div style={{ textAlign: 'center', padding: '80px 24px', color: '#A89F91' }}>
         <p style={{ fontSize: '18px', marginBottom: '8px' }}>
-          {category ? `No products in ${category}` : 'No products yet'}
+          {category ? `No products in ${category}` : 'Our products will be displayed here'}
         </p>
         <p style={{ fontSize: '14px' }}>
-          {category ? 'Try a different category.' : 'Products added in admin panel will appear here.'}
+          {category ? 'Try a different category.' : 'Check back soon for new arrivals.'}
         </p>
       </div>
     )

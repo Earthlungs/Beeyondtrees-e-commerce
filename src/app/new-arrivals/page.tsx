@@ -82,8 +82,8 @@ export default function NewArrivalsPage() {
         ) : (
           <div style={{ textAlign: 'center', padding: '64px', color: '#A89F91' }}>
             <TreePine size={48} style={{ marginBottom: '16px', opacity: 0.3 }} />
-            <p style={{ fontSize: '16px' }}>No new arrivals yet.</p>
-            <p style={{ fontSize: '14px', marginTop: '8px' }}>Check back soon or add products in the admin panel.</p>
+            <p style={{ fontSize: '16px' }}>Our products will be displayed here</p>
+            <p style={{ fontSize: '14px', marginTop: '8px' }}>Check back soon for new arrivals.</p>
           </div>
         )}
       </section>

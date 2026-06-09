@@ -91,8 +91,8 @@ export default function Home() {
         ) : (
           <div style={{ textAlign: 'center', padding: '48px', color: '#9CA3AF' }}>
             <TreePine size={48} style={{ margin: '0 auto 16px', opacity: 0.3 }} />
-            <p style={{ fontSize: '16px', marginBottom: '8px' }}>No products yet</p>
-            <p style={{ fontSize: '14px' }}>Add products in the admin panel to display them here.</p>
+            <p style={{ fontSize: '16px', marginBottom: '8px' }}>Our products will be displayed here</p>
+            <p style={{ fontSize: '14px' }}>Check back soon for new arrivals.</p>
           </div>
         )}
 
