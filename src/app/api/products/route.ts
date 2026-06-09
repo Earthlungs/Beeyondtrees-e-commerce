@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { PrismaClient } from '@prisma/client'
-import { PrismaPg } from '@prisma/adapter-pg'
-import { Pool } from 'pg'
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL })
-const adapter = new PrismaPg(pool)
-const prisma = new PrismaClient({ adapter })
+const prisma = new PrismaClient({
+  datasources: { db: { url: process.env.DATABASE_URL! } }
+})
 
 export async function GET() {
   try {
@@ -28,9 +26,8 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const data = await request.json()
-    const { id, ...updateData } = data
-    const product = await prisma.product.update({ where: { id }, data: updateData })
+    const { id, ...data } = await request.json()
+    const product = await prisma.product.update({ where: { id }, data })
     return NextResponse.json(product)
   } catch (error) {
     return NextResponse.json({ error: 'Failed to update product' }, { status: 500 })
