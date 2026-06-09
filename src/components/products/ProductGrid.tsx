@@ -1,38 +1,43 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { ProductCard } from "@/components/shared/ProductCard"
 
-export function ProductGrid() {
-  const [products, setProducts] = useState<any[]>([])
-  const [mounted, setMounted] = useState(false)
+interface ProductGridProps {
+  category?: string
+}
 
-  useEffect(() => {
-    setMounted(true)
+export function ProductGrid({ category }: ProductGridProps) {
+  let products: any[] = []
+  if (typeof window !== 'undefined') {
     try {
       const stored = localStorage.getItem('beeyond-trees-products')
-      if (stored) {
-        setProducts(JSON.parse(stored))
-      }
-    } catch {}
-  }, [])
-
-  if (!mounted) {
-    return null
+      products = stored ? JSON.parse(stored) : []
+    } catch {
+      products = []
+    }
   }
 
-  if (products.length === 0) {
+  // Filter by category if provided
+  const filteredProducts = category && category !== "All" 
+    ? products.filter((p: any) => p.category === category)
+    : products
+
+  if (filteredProducts.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '80px 24px', color: '#A89F91' }}>
-        <p style={{ fontSize: '18px', marginBottom: '8px' }}>No products yet</p>
-        <p style={{ fontSize: '14px' }}>Products added in admin panel will appear here.</p>
+        <p style={{ fontSize: '18px', marginBottom: '8px' }}>
+          {category ? `No products in ${category}` : 'No products yet'}
+        </p>
+        <p style={{ fontSize: '14px' }}>
+          {category ? 'Try a different category.' : 'Products added in admin panel will appear here.'}
+        </p>
       </div>
     )
   }
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      {products.map((product: any) => (
+      {filteredProducts.map((product: any) => (
         <ProductCard key={product.id} product={{
           id: product.id,
           name: product.name,

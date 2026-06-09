@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Leaf, Lock, User } from "lucide-react"
+import { Leaf, Lock, User, Shield, Store, ChevronRight } from "lucide-react"
 
 export default function AdminLoginPage() {
   const router = useRouter()
@@ -14,6 +14,7 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [selectedRole, setSelectedRole] = useState<"admin" | "merchant">("admin")
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -27,12 +28,18 @@ export default function AdminLoginPage() {
     })
 
     if (result?.error) {
-      setError("Invalid credentials")
+      setError("Invalid credentials. Please try again.")
       setLoading(false)
     } else {
       router.push("/admin")
       router.refresh()
     }
+  }
+
+  const quickLogin = (role: "admin" | "merchant") => {
+    setSelectedRole(role)
+    setUsername(role)
+    setPassword(role === "admin" ? "beeyond2024" : "merchant2024")
   }
 
   return (
@@ -47,13 +54,13 @@ export default function AdminLoginPage() {
       <div style={{ position: 'absolute', top: '40px', left: '50%', transform: 'translateX(-50%)', textAlign: 'center', color: 'white' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '8px' }}>
           <Leaf size={32} />
-          <h1 style={{ fontSize: '28px', fontWeight: 'bold', margin: 0 }}>Beeyond Trees</h1>
+          <h1 style={{ fontSize: '28px', fontWeight: 'bold', margin: 0 }}>BEEyond Trees</h1>
         </div>
-        <p style={{ color: '#E6D3A3', fontSize: '14px' }}>Admin Dashboard</p>
+        <p style={{ color: '#E6D3A3', fontSize: '14px' }}>Admin & Merchant Portal</p>
       </div>
 
       <Card style={{ 
-        width: '400px', 
+        width: '440px', 
         maxWidth: '90vw',
         backgroundColor: 'white', 
         border: 'none',
@@ -69,21 +76,54 @@ export default function AdminLoginPage() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             margin: '0 auto 16px'
           }}>
-            <Lock size={24} style={{ color: '#6B7D5C' }} />
+            {selectedRole === "admin" ? (
+              <Shield size={28} style={{ color: '#6B7D5C' }} />
+            ) : (
+              <Store size={28} style={{ color: '#8C6A4A' }} />
+            )}
           </div>
-          <CardTitle style={{ fontSize: '22px', color: '#4A3F2F' }}>Welcome Back</CardTitle>
-          <p style={{ color: '#A89F91', fontSize: '14px', marginTop: '4px' }}>Sign in to manage your store</p>
+          <CardTitle style={{ fontSize: '22px', color: '#4A3F2F' }}>
+            {selectedRole === "admin" ? 'Administrator Login' : 'Merchant Login'}
+          </CardTitle>
+          <p style={{ color: '#A89F91', fontSize: '14px', marginTop: '4px' }}>
+            Sign in to manage {selectedRole === "admin" ? 'the entire platform' : 'your products and orders'}
+          </p>
         </CardHeader>
         <CardContent>
+          {/* Role Toggle */}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', backgroundColor: '#F5F1E8', borderRadius: '10px', padding: '4px' }}>
+            <button
+              onClick={() => quickLogin("admin")}
+              style={{
+                flex: 1, padding: '10px', borderRadius: '8px', border: 'none',
+                backgroundColor: selectedRole === "admin" ? '#6B7D5C' : 'transparent',
+                color: selectedRole === "admin" ? 'white' : '#A89F91',
+                cursor: 'pointer', fontWeight: '500', fontSize: '14px',
+                transition: 'all 0.2s',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+              }}
+            >
+              <Shield size={16} /> Administrator
+            </button>
+            <button
+              onClick={() => quickLogin("merchant")}
+              style={{
+                flex: 1, padding: '10px', borderRadius: '8px', border: 'none',
+                backgroundColor: selectedRole === "merchant" ? '#8C6A4A' : 'transparent',
+                color: selectedRole === "merchant" ? 'white' : '#A89F91',
+                cursor: 'pointer', fontWeight: '500', fontSize: '14px',
+                transition: 'all 0.2s',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+              }}
+            >
+              <Store size={16} /> Merchant
+            </button>
+          </div>
+
           {error && (
             <div style={{ 
-              backgroundColor: '#FFF5F5', 
-              color: '#8C6A4A', 
-              padding: '12px', 
-              borderRadius: '8px', 
-              marginBottom: '16px',
-              fontSize: '14px',
-              textAlign: 'center'
+              backgroundColor: '#FFF5F5', color: '#8C6A4A', padding: '12px', 
+              borderRadius: '8px', marginBottom: '16px', fontSize: '14px', textAlign: 'center' 
             }}>
               {error}
             </div>
@@ -94,45 +134,33 @@ export default function AdminLoginPage() {
               <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500', color: '#4A3F2F' }}>Username</label>
               <div style={{ position: 'relative' }}>
                 <User size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#A89F91' }} />
-                <Input 
-                  value={username} 
-                  onChange={e => setUsername(e.target.value)}
-                  placeholder="Enter username"
-                  style={{ paddingLeft: '40px', height: '44px' }}
-                  required
-                />
+                <Input value={username} onChange={e => setUsername(e.target.value)}
+                  placeholder={selectedRole === "admin" ? "admin" : "merchant"}
+                  style={{ paddingLeft: '40px', height: '44px' }} required />
               </div>
             </div>
             <div>
               <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500', color: '#4A3F2F' }}>Password</label>
               <div style={{ position: 'relative' }}>
                 <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#A89F91' }} />
-                <Input 
-                  type="password"
-                  value={password} 
-                  onChange={e => setPassword(e.target.value)}
+                <Input type="password" value={password} onChange={e => setPassword(e.target.value)}
                   placeholder="Enter password"
-                  style={{ paddingLeft: '40px', height: '44px' }}
-                  required
-                />
+                  style={{ paddingLeft: '40px', height: '44px' }} required />
               </div>
             </div>
-            <Button 
-              type="submit" 
-              disabled={loading}
+            <Button type="submit" disabled={loading}
               style={{ 
-                width: '100%', 
-                height: '44px', 
-                backgroundColor: '#6B7D5C', 
-                color: 'white',
-                fontSize: '15px',
-                fontWeight: '500',
-                marginTop: '8px'
-              }}
-            >
-              {loading ? 'Signing in...' : 'Sign In'}
+                width: '100%', height: '44px', 
+                backgroundColor: selectedRole === "admin" ? '#6B7D5C' : '#8C6A4A', 
+                color: 'white', fontSize: '15px', fontWeight: '500', marginTop: '8px' 
+              }}>
+              {loading ? 'Signing in...' : `Sign In as ${selectedRole === "admin" ? 'Administrator' : 'Merchant'}`}
             </Button>
           </form>
+
+          <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#F5F1E8', borderRadius: '8px', fontSize: '12px', color: '#A89F91', textAlign: 'center' }}>
+            <strong>Admin:</strong> admin / beeyond2024 &nbsp;|&nbsp; <strong>Merchant:</strong> merchant / merchant2024
+          </div>
         </CardContent>
       </Card>
     </div>
