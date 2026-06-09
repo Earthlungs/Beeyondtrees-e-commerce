@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import { PrismaClient } from '@prisma/client'
-import { PrismaPg } from '@prisma/adapter-pg'
-import { Pool } from 'pg'
 import bcrypt from "bcryptjs"
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL })
-const adapter = new PrismaPg(pool)
-const prisma = new PrismaClient({ adapter })
+const prisma = new PrismaClient({
+  datasources: { db: { url: process.env.DATABASE_URL! } }
+})
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,7 +21,7 @@ export async function POST(request: NextRequest) {
     })
     
     return NextResponse.json({ success: true })
-  } catch (error) {
-    return NextResponse.json({ success: false, error: "Registration failed" }, { status: 500 })
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message || "Registration failed" }, { status: 500 })
   }
 }
