@@ -1,5 +1,7 @@
 import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
+import { prisma } from "@/lib/db"
+import bcrypt from "bcryptjs"
 
 const handler = NextAuth({
   providers: [
@@ -10,19 +12,38 @@ const handler = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (credentials?.username === "admin" && credentials?.password === "beeyond2024") {
-          return { id: "admin", name: "Administrator", email: "admin@beeyondtrees.com" }
+        if (!credentials?.username || !credentials?.password) return null
+        
+        const user = await prisma.user.findUnique({
+          where: { username: credentials.username },
+        })
+        
+        if (!user) return null
+        
+        const isValid = await bcrypt.compare(credentials.password, user.password)
+        if (!isValid) return null
+        
+        return {
+          id: user.id,
+          name: user.name,
+          email: `${user.username}@beeyondtrees.com`,
+          role: user.role,
         }
-        if (credentials?.username === "merchant" && credentials?.password === "merchant2024") {
-          return { id: "merchant", name: "Merchant", email: "merchant@beeyondtrees.com" }
-        }
-        return null
       }
     })
   ],
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) token.role = (user as any).role
+      return token
+    },
+    async session({ session, token }) {
+      if (session.user) (session.user as any).role = token.role
+      return session
+    }
+  },
   pages: { signIn: "/admin/login" },
   session: { strategy: "jwt" },
-  secret: "beeyond-trees-secret-2024",
 })
 
 export { handler as GET, handler as POST }
