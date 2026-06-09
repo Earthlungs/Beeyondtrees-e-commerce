@@ -6,29 +6,80 @@ datasource db {
   provider = "postgresql"
 }
 
-model Product {
-  id             String   @id @default(cuid())
-  name           String
-  slug           String   @unique
-  description    String   @db.Text
-  price          Decimal  @db.Decimal(10, 2)
-  compareAtPrice Decimal? @db.Decimal(10, 2)
-  images         Json
-  categoryId     String
-  category       Category @relation(fields: [categoryId], references: [id])
-  inventory      Int      @default(0)
-  isFeatured     Boolean  @default(false)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  
-  @@index([categoryId])
-  @@index([slug])
-  @@index([price])
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  name      String
+  role      String   @default("merchant")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-model Category {
-  id       String    @id @default(cuid())
-  name     String
-  slug     String    @unique
-  products Product[]
+model Product {
+  id               String      @id @default(cuid())
+  name             String
+  description      String      @db.Text
+  category         String
+  retailPrice      Float
+  wholesalePrice   Float
+  distributorPrice Float
+  stock            Int         @default(0)
+  images           Json        @default("[]")
+  isOnOffer        Boolean     @default(false)
+  offerPrice       Float?
+  isFeatured       Boolean     @default(false)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  
+  orderItems       OrderItem[]
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  customerName    String
+  customerPhone   String
+  customerEmail   String?
+  county          String
+  town            String
+  landmark        String?
+  deliveryInstructions String? @db.Text
+  total           Float
+  status          String      @default("pending")
+  paymentRef      String?
+  paymentStatus   String?
+  transactionRef  String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  items           OrderItem[]
+  dispatch        Dispatch?
+}
+
+model OrderItem {
+  id          String  @id @default(cuid())
+  orderId     String
+  productId   String
+  productName String
+  price       Float
+  quantity    Int
+  pricingTier String
+  subtotal    Float
+  
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model Dispatch {
+  id                 String   @id @default(cuid())
+  orderId            String   @unique
+  riderName          String
+  riderPhone         String
+  motorbikePlate     String
+  riderIdNo          String
+  dispatchedAt       DateTime @default(now())
+  estimatedDelivery  DateTime?
+  createdAt          DateTime @default(now())
+  
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
