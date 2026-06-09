@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { ProductCard } from "@/components/shared/ProductCard"
 
 interface ProductGridProps {
@@ -7,30 +8,36 @@ interface ProductGridProps {
 }
 
 export function ProductGrid({ category }: ProductGridProps) {
-  let products: any[] = []
-  if (typeof window !== 'undefined') {
-    try {
-      const stored = localStorage.getItem('beeyond-trees-products')
-      products = stored ? JSON.parse(stored) : []
-    } catch {
-      products = []
-    }
-  }
+  const [products, setProducts] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
-  // Filter by category if provided
-  const filteredProducts = category && category !== "All" 
+  useEffect(() => {
+    fetch('/api/products')
+      .then(res => res.json())
+      .then(data => {
+        setProducts(Array.isArray(data) ? data : [])
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [])
+
+  const filteredProducts = category && category !== "All"
     ? products.filter((p: any) => p.category === category)
     : products
+
+  if (loading) {
+    return (
+      <div style={{ textAlign: 'center', padding: '48px', color: '#A89F91' }}>
+        Loading products...
+      </div>
+    )
+  }
 
   if (filteredProducts.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '80px 24px', color: '#A89F91' }}>
-        <p style={{ fontSize: '18px', marginBottom: '8px' }}>
-          {category ? `No products in ${category}` : 'Our products will be displayed here'}
-        </p>
-        <p style={{ fontSize: '14px' }}>
-          {category ? 'Try a different category.' : 'Check back soon for new arrivals.'}
-        </p>
+        <p style={{ fontSize: '18px', marginBottom: '8px' }}>Our products will be displayed here</p>
+        <p style={{ fontSize: '14px' }}>Check back soon for new arrivals.</p>
       </div>
     )
   }
@@ -48,7 +55,7 @@ export function ProductGrid({ category }: ProductGridProps) {
           images: product.images,
           category: product.category,
           inventory: product.stock,
-          isFeatured: false,
+          isFeatured: product.isFeatured || false,
           wholesalePrice: product.wholesalePrice,
           distributorPrice: product.distributorPrice,
         }} />
