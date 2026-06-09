@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { PrismaClient } from '@prisma/client'
 import bcrypt from "bcryptjs"
 
-const prisma = new PrismaClient({
-  datasources: { db: { url: process.env.DATABASE_URL! } }
-})
+const prisma = new PrismaClient()
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,7 +12,7 @@ export async function POST(request: NextRequest) {
     const isValid = await bcrypt.compare(password, user.password)
     if (!isValid) return NextResponse.json({ success: false, error: "Invalid credentials" }, { status: 401 })
     return NextResponse.json({ success: true, user: { id: user.id, name: user.name, role: user.role } })
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+  } catch (e: any) {
+    return NextResponse.json({ success: false, error: e.message }, { status: 500 })
   }
 }
