@@ -101,7 +101,7 @@ export default function Home() {
             <div><h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '12px' }}>BEEyond Trees</h3><p style={{ fontSize: '14px', color: '#E6D3A3', lineHeight: 1.6 }}>Sustainable natural products from Kenya.</p></div>
             <div><h4 style={{ fontWeight: '600', marginBottom: '12px' }}>Quick Links</h4><div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '14px' }}><Link href="/" style={{ color: '#E6D3A3', textDecoration: 'none' }}>Home</Link><Link href="/about" style={{ color: '#E6D3A3', textDecoration: 'none' }}>About</Link><Link href="/contact" style={{ color: '#E6D3A3', textDecoration: 'none' }}>Contact</Link></div></div>
             <div><h4 style={{ fontWeight: '600', marginBottom: '12px' }}>Contact</h4><div style={{ fontSize: '14px', color: '#E6D3A3' }}><p>Nairobi, Kenya</p><p>+254 718 681 684</p></div></div>
-            <div><h4 style={{ fontWeight: '600', marginBottom: '12px' }}>Portal</h4><Link href="/admin/login" style={{ color: '#E6D3A3', textDecoration: 'none', fontSize: '14px' }}>Access our portal</Link></div>
+            <div><h4 style={{ fontWeight: '600', marginBottom: '12px' }}>Portal</h4><Link href="/portal" style={{ color: '#E6D3A3', textDecoration: 'none', fontSize: '14px' }}>Portal Sign In</Link></div>
           </div>
           <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '24px', fontSize: '13px', color: '#E6D3A3' }}>Powered By Earthlungs</div>
         </div>
