@@ -9,14 +9,38 @@ export default function FAQsPage() {
   const [openIndex, setOpenIndex] = useState<number | null>(null)
 
   const faqs = [
-    { q: "What are the pricing tiers?", a: "We offer three pricing tiers: Retail (1-11 units) for individual customers, Wholesale (12-36 units) for bulk buyers, and Distributor (37+ units) for large-scale distributors. Each tier has its own pricing to ensure fair value across all levels." },
-    { q: "How does Paystack payment work?", a: "Paystack is our secure payment partner. When you place an order, you'll be redirected to a secure Paystack payment page where you can pay using M-Pesa, Airtel Money, or bank cards. Your payment is processed instantly and securely." },
-    { q: "What is the delivery time?", a: "Delivery times vary by location. Within Nairobi, delivery typically takes 1-2 business days. For other counties, expect 3-5 business days. You'll receive tracking information once your order is dispatched." },
-    { q: "How does BEEyond Trees support communities?", a: "Every purchase directly supports forest-adjacent communities through our partnership with EarthLungs Reforestation Foundation. Revenue is reinvested into tree planting, community training, and sustainable livelihood programs." },
-    { q: "Can I return or exchange products?", a: "Yes, we accept returns within 7 days of delivery for unused products in original packaging. Contact our support team at beeyondtrees@earthlungs.org to initiate a return." },
-    { q: "Do you ship internationally?", a: "Currently, we ship within Kenya and select East African countries. For international inquiries, please contact us directly." },
-    { q: "How can I become a distributor?", a: "Visit our Careers page or contact us directly. We're always looking for partners who share our mission of sustainable community development." },
-    { q: "Where do your products come from?", a: "All our products are sourced from forest-adjacent communities we work with. From honey to mushrooms to handcrafted items, each product has a direct impact story behind it." },
+    { 
+      q: "What are the pricing tiers?", 
+      a: "We offer three pricing tiers:\n\nRetail: 1-11 units\nWholesale: 12-36 units\nDistributor: 37+ units\n\nEach tier has its own pricing to ensure fair value for all purchase levels." 
+    },
+    { 
+      q: "How does Paystack payment work?", 
+      a: "During checkout, you'll be redirected to Paystack's secure payment page. Choose your preferred payment method (card, bank transfer, or mobile money) to complete payment. Your order is confirmed once payment is successful." 
+    },
+    { 
+      q: "Delivery time?", 
+      a: "1-2 days Nairobi, 2-3 days outside Nairobi. Delivery times may vary for remote locations. You'll receive tracking information once your order is dispatched." 
+    },
+    { 
+      q: "How does BEEyond Trees support communities?", 
+      a: "Every purchase directly supports forest-adjacent communities through our partnership with EarthLungs Reforestation Foundation. Revenue is reinvested into tree planting, community training, and sustainable livelihood programs across Kenya." 
+    },
+    { 
+      q: "Can I return or exchange products?", 
+      a: "Yes, we accept returns within 7 days of delivery for unused products in original packaging. Contact our support team at beeyondtrees@earthlungs.org to initiate a return." 
+    },
+    { 
+      q: "Do you ship internationally?", 
+      a: "Currently, we ship within Kenya and select East African countries. For international inquiries, please contact us directly." 
+    },
+    { 
+      q: "How can I become a distributor?", 
+      a: "Contact us directly through our contact page or email. We're always looking for distribution partners who share our mission of sustainable community development." 
+    },
+    { 
+      q: "Where do your products come from?", 
+      a: "All our products are sourced from forest-adjacent communities we work with across Kenya. From honey to mushrooms to handcrafted items, each product supports local livelihoods and reforestation efforts." 
+    },
   ]
 
   return (
@@ -32,13 +56,13 @@ export default function FAQsPage() {
       <section style={{ maxWidth: '800px', margin: '0 auto', padding: '48px 16px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {faqs.map((faq, i) => (
-            <Card key={i} style={{ borderColor: '#A89F91', cursor: 'pointer' }} onClick={() => setOpenIndex(openIndex === i ? null : i)}>
+            <Card key={i} style={{ borderColor: '#A89F91', cursor: 'pointer', transition: 'box-shadow 0.2s' }} onClick={() => setOpenIndex(openIndex === i ? null : i)}>
               <CardContent style={{ padding: '18px 20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
-                  <div>
+                  <div style={{ flex: 1 }}>
                     <h3 style={{ fontWeight: '600', color: '#4A3F2F', fontSize: '15px', marginBottom: openIndex === i ? '12px' : '0' }}>{faq.q}</h3>
                     {openIndex === i && (
-                      <p style={{ color: '#A89F91', fontSize: '14px', lineHeight: 1.7 }}>{faq.a}</p>
+                      <p style={{ color: '#A89F91', fontSize: '14px', lineHeight: 1.8, whiteSpace: 'pre-line' }}>{faq.a}</p>
                     )}
                   </div>
                   <div style={{ flexShrink: 0, color: '#6B7D5C', marginTop: '2px' }}>
