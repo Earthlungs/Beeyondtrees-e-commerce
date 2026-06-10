@@ -2,7 +2,10 @@ import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
   images: {
-    unoptimized: true,
+    unmanaged: true,
+  },
+  env: {
+    DATABASE_URL: process.env.DATABASE_URL,
   },
 }
 
