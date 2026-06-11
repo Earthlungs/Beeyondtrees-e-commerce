@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json(products, {
     headers: since
       ? { 'Cache-Control': 'no-store' }
-      : { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=300' },
+      : { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=600' },
   })
 }
 

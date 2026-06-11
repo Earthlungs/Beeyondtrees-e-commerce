@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import Link from "next/link"
 import { Search, ChevronLeft, ChevronRight, TreePine, Users, Globe, Leaf, Sprout, Mail, Phone, MapPin, Send, Lightbulb, TrendingUp } from "lucide-react"
 
@@ -14,10 +15,14 @@ export default function Home() {
   const [maxPrice, setMaxPrice] = useState(100000)
   const products = useProductStore((state) => state.products)
   const loadProducts = useProductStore((state) => state.loadProducts)
+  const [doneFirstLoad, setDoneFirstLoad] = useState(false)
 
   useEffect(() => {
-    loadProducts()
+    loadProducts().finally(() => setDoneFirstLoad(true))
   }, [loadProducts])
+
+  // Show skeletons while the first load is in flight (cached visits skip this).
+  const showSkeleton = products.length === 0 && !doneFirstLoad
 
   return (
     <div style={{ backgroundColor: 'white' }}>
@@ -51,7 +56,20 @@ export default function Home() {
 
       <section style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 16px 48px' }}>
         <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#6B7D5C', marginBottom: '24px' }}>Our Collection</h2>
-        {products.length > 0 ? (
+        {showSkeleton ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '16px' }}>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Card key={i} style={{ border: '1px solid #E5E7EB', borderRadius: '12px', overflow: 'hidden' }}>
+                <Skeleton className="h-[180px] w-full rounded-none" />
+                <CardContent style={{ padding: '14px' }}>
+                  <Skeleton className="h-4 w-4/5 mb-2" />
+                  <Skeleton className="h-5 w-1/2 mb-2" />
+                  <Skeleton className="h-3 w-1/3" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : products.length > 0 ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '16px' }}>
             {products.map(product => (
               <Link key={product.id} href={`/products/${product.name.toLowerCase().replace(/\s+/g, "-")}`} style={{ textDecoration: 'none' }}>

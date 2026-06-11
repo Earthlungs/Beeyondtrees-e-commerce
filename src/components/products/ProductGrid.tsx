@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { ProductCard } from "@/components/shared/ProductCard"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useProductStore } from "@/store/product-store"
 
 interface ProductGridProps {
@@ -10,21 +11,27 @@ interface ProductGridProps {
 
 export function ProductGrid({ category }: ProductGridProps) {
   const products = useProductStore((state) => state.products)
-  const loading = useProductStore((state) => state.loading)
   const loadProducts = useProductStore((state) => state.loadProducts)
+  const [doneFirstLoad, setDoneFirstLoad] = useState(false)
 
   useEffect(() => {
-    loadProducts()
+    loadProducts().finally(() => setDoneFirstLoad(true))
   }, [loadProducts])
 
   const filteredProducts = category && category !== "All"
     ? products.filter((p) => p.category === category)
     : products
 
-  if (loading) {
+  if (products.length === 0 && !doneFirstLoad) {
     return (
-      <div style={{ textAlign: 'center', padding: '48px', color: '#A89F91' }}>
-        Loading products...
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {[...Array(8)].map((_, i) => (
+          <div key={i} className="bg-white rounded-xl p-4">
+            <Skeleton className="h-48 w-full rounded-lg mb-4" />
+            <Skeleton className="h-4 w-3/4 mb-2" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+        ))}
       </div>
     )
   }
