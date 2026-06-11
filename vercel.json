@@ -1,5 +1,5 @@
 {
-  "buildCommand": "DATABASE_URL=\"postgresql://postgres:Atancha%40123@db.leanjhbaglnrxzosbsrk.supabase.co:5432/postgres\" prisma generate && next build",
+  "buildCommand": "npm run vercel-build",
   "installCommand": "npm install --legacy-peer-deps",
   "framework": "nextjs"
 }
