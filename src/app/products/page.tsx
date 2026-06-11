@@ -1,8 +1,9 @@
 "use client"
 
 import { useState, useEffect, useMemo, Suspense } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import { motion, AnimatePresence } from "motion/react"
+import { ChevronLeft } from "lucide-react"
 import { Header } from "@/components/layout/Header"
 import { ScrollProgress } from "@/components/motion/ScrollProgress"
 import { ProductGrid } from "@/components/products/ProductGrid"
@@ -17,7 +18,6 @@ type Sort = "featured" | "price-asc" | "price-desc"
 
 function ProductsContent() {
   const searchParams = useSearchParams()
-  const router = useRouter()
   const urlCategory = searchParams.get("category") || "All"
 
   const products = useProductStore((s) => s.products)
@@ -42,7 +42,10 @@ function ProductsContent() {
   const handleCategoryChange = (category: string) => {
     setSelectedCategory(category)
     setShowFilters(false)
-    router.push(category === "All" ? "/products" : `/products?category=${encodeURIComponent(category)}`)
+    // Apply instantly (filtering is client-side); just keep the URL shareable
+    // without a navigation/reload.
+    const url = category === "All" ? "/products" : `/products?category=${encodeURIComponent(category)}`
+    window.history.replaceState(null, "", url)
   }
 
   const filtered = useMemo(() => {
@@ -60,6 +63,17 @@ function ProductsContent() {
   }, [products, selectedCategory, selectedPrice, searchTerm, sort])
 
   const showSkeleton = products.length === 0 && !doneFirstLoad
+
+  // Pagination
+  const PAGE_SIZE = 12
+  const [page, setPage] = useState(1)
+  useEffect(() => { setPage(1) }, [selectedCategory, selectedPrice, searchTerm, sort])
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const goTo = (n: number) => {
+    setPage(Math.min(Math.max(1, n), totalPages))
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" })
+  }
 
   return (
     <div style={{ backgroundColor: "#F5F1E8", minHeight: "100vh" }}>
@@ -118,7 +132,29 @@ function ProductsContent() {
           </aside>
 
           <div style={{ flex: 1, minWidth: 0 }}>
-            <ProductGrid products={filtered} showSkeleton={showSkeleton} />
+            <ProductGrid products={pageItems} showSkeleton={showSkeleton} />
+
+            {!showSkeleton && totalPages > 1 && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 44, flexWrap: "wrap" }}>
+                <PageBtn onClick={() => goTo(page - 1)} disabled={page === 1} arrow="left" />
+                {Array.from({ length: totalPages }).map((_, i) => {
+                  const n = i + 1
+                  // condense: show first, last, current ±1
+                  if (totalPages > 7 && n !== 1 && n !== totalPages && Math.abs(n - page) > 1) {
+                    if (n === 2 || n === totalPages - 1) return <span key={n} style={{ color: "#A89F91", padding: "0 4px" }}>…</span>
+                    return null
+                  }
+                  const active = n === page
+                  return (
+                    <button key={n} onClick={() => goTo(n)}
+                      style={{ minWidth: 40, height: 40, borderRadius: 11, border: active ? "none" : "1px solid #D4C9B8", background: active ? SAGE : "white", color: active ? "white" : DARK, fontWeight: 600, fontSize: 14, cursor: "pointer" }}>
+                      {n}
+                    </button>
+                  )
+                })}
+                <PageBtn onClick={() => goTo(page + 1)} disabled={page === totalPages} arrow="right" />
+              </div>
+            )}
           </div>
         </div>
       </main>
@@ -147,6 +183,15 @@ function ProductsContent() {
         )}
       </AnimatePresence>
     </div>
+  )
+}
+
+function PageBtn({ onClick, disabled, arrow }: { onClick: () => void; disabled: boolean; arrow: "left" | "right" }) {
+  return (
+    <button onClick={onClick} disabled={disabled} aria-label={arrow === "left" ? "Previous page" : "Next page"}
+      style={{ width: 40, height: 40, borderRadius: 11, border: "1px solid #D4C9B8", background: "white", color: disabled ? "#C2B7A3" : "#4A3F2F", cursor: disabled ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: disabled ? 0.5 : 1 }}>
+      <ChevronLeft size={18} style={{ transform: arrow === "right" ? "scaleX(-1)" : "none" }} />
+    </button>
   )
 }
 

@@ -12,6 +12,7 @@ import Link from "next/link"
 import {
   ArrowRight, TreePine, Users, Globe, Sprout, Leaf, ShoppingBag,
   ChevronDown, MapPin, Phone, Mail, ArrowUpRight,
+  Hexagon, Trees, Milk, Palette, Truck, Package,
 } from "lucide-react"
 
 const SAGE = "#6B7D5C"
@@ -42,7 +43,7 @@ export default function Home() {
   const contentY = useTransform(scrollYProgress, [0, 1], ["0%", "60%"])
   const contentOpacity = useTransform(scrollYProgress, [0, 0.7], [1, 0])
 
-  const headline = ["Beyond", "planting.", "Toward", "thriving."]
+  const headline = ["BEEyond", "Trees"]
 
   const handleAdd = (p: typeof products[number]) => {
     addItem({
@@ -77,16 +78,16 @@ export default function Home() {
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.1 }}
             style={{ textTransform: "uppercase", letterSpacing: "0.32em", fontSize: 12.5, fontWeight: 600, color: SAND, marginBottom: 22 }}
           >
-            EarthLungs Reforestation · Kenya
+            EarthLungs Reforestation Foundation
           </motion.p>
 
-          <h1 className="font-display" style={{ fontSize: "clamp(44px, 8vw, 92px)", fontWeight: 600, lineHeight: 1.02, margin: 0 }}>
+          <h1 className="font-display" style={{ fontSize: "clamp(48px, 9vw, 104px)", fontWeight: 600, lineHeight: 1.0, margin: 0 }}>
             {headline.map((word, i) => (
               <span key={i} style={{ display: "inline-block", overflow: "hidden", verticalAlign: "top" }}>
                 <motion.span
-                  style={{ display: "inline-block", marginRight: "0.28em", fontStyle: i % 2 ? "italic" : "normal", color: i % 2 ? SAND : "white" }}
+                  style={{ display: "inline-block", marginRight: "0.24em", color: i === 0 ? "white" : SAND }}
                   initial={{ y: "110%" }} animate={{ y: 0 }}
-                  transition={{ duration: 0.9, delay: 0.25 + i * 0.1, ease: [0.22, 1, 0.36, 1] }}
+                  transition={{ duration: 0.9, delay: 0.25 + i * 0.12, ease: [0.22, 1, 0.36, 1] }}
                 >
                   {word}
                 </motion.span>
@@ -96,9 +97,9 @@ export default function Home() {
 
           <motion.p
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.7 }}
-            style={{ fontSize: "clamp(15px, 2vw, 19px)", lineHeight: 1.7, maxWidth: 600, margin: "26px auto 0", opacity: 0.92 }}
+            style={{ fontSize: "clamp(16px, 2.1vw, 21px)", lineHeight: 1.6, maxWidth: 620, margin: "28px auto 0", opacity: 0.95, fontWeight: 500 }}
           >
-            Naturally crafted goods that sustain forest-adjacent communities — every purchase grows a livelihood and a canopy.
+            Sustaining Forest Adjacent Communities beyond tree planting and growing.
           </motion.p>
 
           <motion.div
@@ -120,20 +121,22 @@ export default function Home() {
           </motion.div>
         </motion.div>
 
-        <motion.div className="byt-bob" style={{ position: "absolute", bottom: 26, left: "50%", x: "-50%", color: "white", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}
+        <motion.div style={{ position: "absolute", bottom: 26, left: 0, right: 0, display: "flex", justifyContent: "center", color: "white" }}
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2 }}>
-          <span style={{ fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", opacity: 0.85 }}>Scroll</span>
-          <ChevronDown size={20} />
+          <div className="byt-bob" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+            <span style={{ fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", opacity: 0.85 }}>Scroll</span>
+            <ChevronDown size={20} />
+          </div>
         </motion.div>
       </section>
 
       {/* ───────── STATS STRIP ───────── */}
       <RevealGroup style={{ maxWidth: 1180, margin: "0 auto", padding: "44px 24px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 24 }}>
         {[
-          { n: "120K+", l: "Trees growing" },
           { n: "40+", l: "Communities" },
+          { n: "10,000+", l: "Livelihoods supported" },
+          { n: "5", l: "Nature-based enterprises" },
           { n: "100%", l: "Natural goods" },
-          { n: "1:1", l: "Buy one, plant one" },
         ].map((s) => (
           <RevealItem key={s.l} style={{ textAlign: "center" }}>
             <div className="font-display" style={{ fontSize: "clamp(30px,4vw,44px)", fontWeight: 600, color: SAGE, lineHeight: 1 }}>{s.n}</div>
@@ -268,14 +271,79 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ───────── CORE COMPONENTS ───────── */}
+      <section style={{ maxWidth: 1180, margin: "0 auto", padding: "92px 20px 40px" }}>
+        <Reveal style={{ textAlign: "center", marginBottom: 46, maxWidth: 760, marginInline: "auto" }}>
+          <p style={{ textTransform: "uppercase", letterSpacing: "0.28em", fontSize: 12, fontWeight: 600, color: SAGE, marginBottom: 12 }}>What we do</p>
+          <h2 className="font-display" style={{ fontSize: "clamp(28px,4.5vw,46px)", fontWeight: 600, color: DARK, marginBottom: 16 }}>Core components of BEEyond Trees</h2>
+          <p style={{ fontSize: 16, lineHeight: 1.75, color: "#6b6353" }}>
+            Nature-based enterprises that deliver long-term economic benefits to forest-adjacent communities, while ensuring ecological stewardship of restored landscapes.
+          </p>
+        </Reveal>
+        <RevealGroup style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 20 }} stagger={0.08}>
+          {[
+            { icon: Hexagon, t: "Apiculture (Beekeeping)", d: "Modern hives on farmlands adjacent to mangrove and terrestrial restoration sites. Women and youth trained in sustainable honey and wax production." },
+            { icon: Sprout, t: "Fungi-Culture (Mushrooms)", d: "Recycled coconut coir and agro-waste from restoration sites turned into mushrooms and income-generating value chains." },
+            { icon: Trees, t: "Bamboo Value Chain", d: "Fast-growing bamboo for furniture, construction and carbon — with local workshops for baskets, lampshades, trays and mats." },
+            { icon: Milk, t: "Dairy Goat Farming", d: "High-yielding, disease-resistant breeds piloted in Mombasa. Goat manure enriches agroforestry soils and household nutrition." },
+            { icon: Palette, t: "Handicraft & Weaving", d: "Natural fibres — coconut husk, banana and bamboo — woven into ropes, mats and artisanal goods by women's groups." },
+            { icon: Users, t: "People-first Impact", d: "Economic empowerment, gender inclusion and circular-economy models — built to scale across EarthLungs' territories." },
+          ].map((c) => (
+            <RevealItem key={c.t}>
+              <div style={{ background: "white", border: "1px solid #E7E1D4", borderRadius: 20, padding: "30px 26px", height: "100%" }}>
+                <div style={{ width: 52, height: 52, borderRadius: 15, background: "#EFE9DC", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 18 }}>
+                  <c.icon size={24} style={{ color: SAGE }} />
+                </div>
+                <h3 style={{ fontSize: 18, fontWeight: 700, color: DARK, marginBottom: 9 }}>{c.t}</h3>
+                <p style={{ fontSize: 14.5, lineHeight: 1.7, color: "#6b6353", margin: 0 }}>{c.d}</p>
+              </div>
+            </RevealItem>
+          ))}
+        </RevealGroup>
+      </section>
+
+      {/* ───────── DELIVERY (animated lorry) ───────── */}
+      <section style={{ background: "#EFE9DC", overflow: "hidden", padding: "76px 20px" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+          <Reveal style={{ textAlign: "center", marginBottom: 30 }}>
+            <p style={{ textTransform: "uppercase", letterSpacing: "0.28em", fontSize: 12, fontWeight: 600, color: SAGE, marginBottom: 12 }}>Logistics</p>
+            <h2 className="font-display" style={{ fontSize: "clamp(26px,4vw,42px)", fontWeight: 600, color: DARK, margin: 0 }}>Delivered across Kenya</h2>
+            <p style={{ color: "#8a8170", fontSize: 16, marginTop: 12 }}>From our community hubs to your door — county to county.</p>
+          </Reveal>
+
+          <div style={{ position: "relative", height: 130, marginTop: 20 }}>
+            {/* road */}
+            <div style={{ position: "absolute", left: 0, right: 0, bottom: 26, height: 3, background: "repeating-linear-gradient(90deg, #C2B7A3 0 24px, transparent 24px 44px)" }} />
+            {/* goods being loaded */}
+            {[0, 1, 2].map((i) => (
+              <motion.div key={i} style={{ position: "absolute", bottom: 32, left: 70 + i * 30, color: "#8C6A4A" }}
+                initial={{ opacity: 1, y: 0 }}
+                whileInView={{ opacity: [1, 1, 0], y: [0, 0, -10] }}
+                viewport={{ once: true, amount: 0.5 }}
+                transition={{ duration: 3.6, times: [0, 0.42 + i * 0.03, 0.56 + i * 0.03] }}>
+                <Package size={22} />
+              </motion.div>
+            ))}
+            {/* lorry: drives in → loads → speeds off */}
+            <motion.div style={{ position: "absolute", bottom: 18, left: 0, display: "flex", alignItems: "flex-end", gap: 0 }}
+              initial={{ x: -240 }}
+              whileInView={{ x: [-240, 130, 130, 1500] }}
+              viewport={{ once: true, amount: 0.5 }}
+              transition={{ duration: 3.6, times: [0, 0.36, 0.62, 1], ease: "easeInOut" }}>
+              <Truck size={68} strokeWidth={1.6} style={{ color: SAGE }} />
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
       {/* ───────── CTA BAND ───────── */}
       <section style={{ position: "relative", overflow: "hidden", background: `linear-gradient(135deg, ${SAGE} 0%, #4A5A3F 60%, #2D3626 100%)`, color: "white", padding: "84px 20px", textAlign: "center" }}>
         <Leaf size={120} style={{ position: "absolute", top: -20, right: -10, opacity: 0.06 }} />
         <Leaf size={120} style={{ position: "absolute", bottom: -30, left: -20, opacity: 0.06, transform: "rotate(180deg)" }} />
         <Reveal style={{ maxWidth: 640, margin: "0 auto", position: "relative" }}>
-          <h2 className="font-display" style={{ fontSize: "clamp(28px,4.5vw,46px)", fontWeight: 600, marginBottom: 16 }}>Shop with purpose</h2>
-          <p style={{ fontSize: 17, opacity: 0.9, lineHeight: 1.7, marginBottom: 30 }}>
-            Discover goods that grow forests and futures. Free your impact, naturally.
+          <h2 className="font-display" style={{ fontSize: "clamp(28px,4.5vw,46px)", fontWeight: 600, marginBottom: 16 }}>More than an initiative — a movement</h2>
+          <p style={{ fontSize: 17, opacity: 0.92, lineHeight: 1.7, marginBottom: 30 }}>
+            BEEyond Trees empowers communities to become custodians of the forests they helped restore — a future built on sustainable livelihoods, circular economies and people-first conservation.
           </p>
           <Link href="/products" style={{ textDecoration: "none" }}>
             <motion.span whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
