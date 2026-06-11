@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useProductStore } from "@/store/product-store"
 import { Header } from "@/components/layout/Header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,14 +12,12 @@ import { Search, ChevronLeft, ChevronRight, TreePine, Users, Globe, Leaf, Sprout
 
 export default function Home() {
   const [maxPrice, setMaxPrice] = useState(100000)
-  const [products, setProducts] = useState<any[]>([])
+  const products = useProductStore((state) => state.products)
+  const loadProducts = useProductStore((state) => state.loadProducts)
 
   useEffect(() => {
-    fetch('/api/products')
-      .then(res => res.json())
-      .then(data => setProducts(Array.isArray(data) ? data : []))
-      .catch(() => {})
-  }, [])
+    loadProducts()
+  }, [loadProducts])
 
   return (
     <div style={{ backgroundColor: 'white' }}>

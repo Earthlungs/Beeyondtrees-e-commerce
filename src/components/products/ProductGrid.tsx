@@ -1,28 +1,24 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { ProductCard } from "@/components/shared/ProductCard"
+import { useProductStore } from "@/store/product-store"
 
 interface ProductGridProps {
   category?: string
 }
 
 export function ProductGrid({ category }: ProductGridProps) {
-  const [products, setProducts] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const products = useProductStore((state) => state.products)
+  const loading = useProductStore((state) => state.loading)
+  const loadProducts = useProductStore((state) => state.loadProducts)
 
   useEffect(() => {
-    fetch('/api/products')
-      .then(res => res.json())
-      .then(data => {
-        setProducts(Array.isArray(data) ? data : [])
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
-  }, [])
+    loadProducts()
+  }, [loadProducts])
 
   const filteredProducts = category && category !== "All"
-    ? products.filter((p: any) => p.category === category)
+    ? products.filter((p) => p.category === category)
     : products
 
   if (loading) {
@@ -44,7 +40,7 @@ export function ProductGrid({ category }: ProductGridProps) {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      {filteredProducts.map((product: any) => (
+      {filteredProducts.map((product) => (
         <ProductCard key={product.id} product={{
           id: product.id,
           name: product.name,
