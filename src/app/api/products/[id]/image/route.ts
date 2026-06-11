@@ -26,7 +26,7 @@ export async function GET(
       status: 308,
       headers: {
         Location: image,
-        "Cache-Control": "public, max-age=31536000, immutable",
+        "Cache-Control": "public, max-age=31536000, s-maxage=31536000, immutable",
       },
     })
   }
