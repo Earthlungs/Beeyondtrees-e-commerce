@@ -1,129 +1,78 @@
 "use client"
 
-import { useState } from "react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { ShoppingCart, Leaf } from "lucide-react"
+import { motion } from "motion/react"
 import Link from "next/link"
+import { ShoppingBag, TreePine } from "lucide-react"
+import { Product, slugify } from "@/store/product-store"
 import { useCartStore } from "@/store/cart-store"
 
-interface Product {
-  id: string; name: string; slug: string; description: string
-  price: number; compareAtPrice: number | null; images?: string[]
-  category: string; inventory: number; isFeatured: boolean
-  wholesalePrice?: number; distributorPrice?: number
-}
+const SAGE = "#6B7D5C"
+const DARK = "#4A3F2F"
 
-const tierLimits: Record<string, { min: number; max: number; label: string }> = {
-  retail: { min: 1, max: 11, label: 'Retail' },
-  wholesale: { min: 12, max: 36, label: 'Wholesale' },
-  distributor: { min: 37, max: Infinity, label: 'Dist.' },
-}
-
+// Premium catalog card — image lazy-loads from the per-product image endpoint,
+// retail quick-add; full pricing tiers live on the detail page.
 export function ProductCard({ product }: { product: Product }) {
-  const addItem = useCartStore((state) => state.addItem)
-  const [selectedTier, setSelectedTier] = useState<"retail" | "wholesale" | "distributor">("retail")
-  const [imgError, setImgError] = useState(false)
-  const imageUrl = `/api/products/${product.id}/image`
+  const addItem = useCartStore((s) => s.addItem)
+  const slug = slugify(product.name)
+  const out = product.stock === 0
 
-  const prices = {
-    retail: product.price,
-    wholesale: product.wholesalePrice || product.price,
-    distributor: product.distributorPrice || product.price,
-  }
-
-  const currentPrice = prices[selectedTier]
-  const limit = tierLimits[selectedTier]
-  const canPurchase = product.inventory >= limit.min
-
-  const handleAddToCart = () => {
+  const add = () =>
     addItem({
-      id: `${product.id}-${selectedTier}`,
+      id: `${product.id}-retail`,
       name: product.name,
-      price: currentPrice,
-      image: imageUrl,
-      pricingTier: selectedTier,
-      maxQuantity: Math.min(limit.max, product.inventory),
-      minQuantity: limit.min,
+      price: product.retailPrice,
+      image: `/api/products/${product.id}/image`,
+      pricingTier: "retail",
+      maxQuantity: product.stock,
+      minQuantity: 1,
     })
-  }
 
   return (
-    <Card className="group overflow-hidden border-[#A89F91] hover:border-[#6B7D5C] hover:shadow-lg transition-all duration-300">
-      <Link href={`/products/${product.slug}`}>
-        <div className="relative h-48 bg-gradient-to-br from-[#E6D3A3] to-[#6B7D5C] flex items-center justify-center overflow-hidden">
-          {!imgError ? (
-            <img src={imageUrl} alt={product.name} loading="lazy" onError={() => setImgError(true)} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />
-          ) : (
-            <Leaf className="h-16 w-16 text-white/50" />
+    <div className="byt-card" style={{ borderRadius: 18, overflow: "hidden", backgroundColor: "white", border: "1px solid #E7E1D4", height: "100%", display: "flex", flexDirection: "column" }}>
+      <Link href={`/products/${slug}`} style={{ textDecoration: "none", display: "block" }}>
+        <div style={{ position: "relative", aspectRatio: "1", backgroundColor: "#F3EFE6", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <TreePine size={42} style={{ color: SAGE, opacity: 0.22, position: "absolute" }} />
+          <img
+            className="byt-zoom"
+            src={`/api/products/${product.id}/image`}
+            alt={product.name}
+            loading="lazy"
+            onError={(e) => { e.currentTarget.style.display = "none" }}
+            style={{ width: "100%", height: "100%", objectFit: "cover", position: "relative" }}
+          />
+          {product.isOnOffer && (
+            <span style={{ position: "absolute", top: 12, right: 12, background: "#8C6A4A", color: "white", fontSize: 11, fontWeight: 700, padding: "5px 10px", borderRadius: 999 }}>Offer</span>
           )}
-          {product.inventory <= 5 && product.inventory > 0 && (
-            <Badge className="absolute top-2 left-2 bg-[#E6A817] text-white border-0 text-xs">Only {product.inventory} left</Badge>
-          )}
-          {product.inventory === 0 && (
-            <Badge className="absolute top-2 left-2 bg-[#8C6A4A] text-white border-0 text-xs">Out of Stock</Badge>
-          )}
+          {out ? (
+            <span style={{ position: "absolute", top: 12, left: 12, background: "rgba(140,106,74,0.95)", color: "white", fontSize: 11, fontWeight: 700, padding: "5px 10px", borderRadius: 999 }}>Sold out</span>
+          ) : product.stock <= 5 ? (
+            <span style={{ position: "absolute", top: 12, left: 12, background: "rgba(230,168,23,0.95)", color: "white", fontSize: 11, fontWeight: 700, padding: "5px 10px", borderRadius: 999 }}>Only {product.stock} left</span>
+          ) : null}
         </div>
       </Link>
-      <CardContent className="p-3">
-        <span className="text-xs font-medium text-[#6B7D5C] uppercase tracking-wider">{product.category}</span>
-        <Link href={`/products/${product.slug}`}>
-          <h3 className="font-semibold text-[#4A3F2F] text-sm mb-1 hover:text-[#6B7D5C] transition-colors line-clamp-2">{product.name}</h3>
+
+      <div style={{ padding: "16px 16px 18px", display: "flex", flexDirection: "column", flex: 1 }}>
+        <p style={{ textTransform: "uppercase", letterSpacing: "0.12em", fontSize: 10.5, color: "#A89F91", fontWeight: 600, marginBottom: 6 }}>{product.category}</p>
+        <Link href={`/products/${slug}`} style={{ textDecoration: "none" }}>
+          <h3 style={{ fontWeight: 600, color: DARK, fontSize: 15.5, lineHeight: 1.3, margin: "0 0 12px", minHeight: 40 }}>{product.name}</h3>
         </Link>
-
-        {/* Pricing Tiers */}
-        <div className="flex gap-1 mb-2 mt-1">
-          {(["retail", "wholesale", "distributor"] as const).map((tier) => {
-            const t = tierLimits[tier]
-            const available = product.inventory >= t.min
-            return (
-              <button
-                key={tier}
-                onClick={(e) => { e.preventDefault(); if (available) setSelectedTier(tier); }}
-                disabled={!available}
-                className={`text-xs px-2 py-1 rounded font-medium transition-colors ${
-                  !available
-                    ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
-                    : selectedTier === tier
-                    ? 'bg-[#6B7D5C] text-white'
-                    : 'bg-[#F5F1E8] text-[#A89F91] hover:bg-[#E6D3A3]'
-                }`}
-                title={!available ? `Requires at least ${t.min} units (${product.inventory} available)` : `${t.min}-${t.max === Infinity ? 'unlimited' : t.max} units`}
-              >
-                {t.label}
-              </button>
-            )
-          })}
+        <div style={{ marginTop: "auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+          <div>
+            <span className="font-display" style={{ fontSize: 19, fontWeight: 600, color: DARK }}>KSh {product.retailPrice?.toLocaleString()}</span>
+            <span style={{ display: "block", fontSize: 11, color: "#A89F91" }}>retail · tiers inside</span>
+          </div>
+          <motion.button
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.9 }}
+            disabled={out}
+            onClick={add}
+            aria-label="Add to cart"
+            style={{ width: 42, height: 42, borderRadius: 12, border: "none", backgroundColor: out ? "#E7E1D4" : SAGE, color: "white", cursor: out ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+          >
+            <ShoppingBag size={18} />
+          </motion.button>
         </div>
-
-        {/* Tier Info */}
-        <p className="text-xs text-[#A89F91] mb-1">
-          {limit.min}-{limit.max === Infinity ? 'unlimited' : limit.max} units
-        </p>
-
-        {/* Price */}
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-lg font-bold text-[#4A3F2F]">KSh {currentPrice.toLocaleString()}</span>
-          <span className={`text-xs font-medium ${product.inventory > 10 ? 'text-[#6B7D5C]' : product.inventory > 0 ? 'text-[#E6A817]' : 'text-[#8C6A4A]'}`}>
-            {product.inventory} in stock
-          </span>
-        </div>
-
-        {/* Add to Cart */}
-        <Button
-          size="sm"
-          className="w-full bg-[#6B7D5C] hover:bg-[#5A6B4D] text-white"
-          disabled={!canPurchase}
-          onClick={(e) => { e.preventDefault(); handleAddToCart(); }}
-        >
-          <ShoppingCart className="h-4 w-4 mr-1" />
-          {!canPurchase
-            ? `Need ${limit.min}+ units`
-            : `Add (${limit.label})`
-          }
-        </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
