@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Trash2, Edit, X, Upload, AlertTriangle, Package, Image } from "lucide-react"
 import { useProductStore, Product } from "@/store/product-store"
+import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary"
 
 export default function AdminProductsPage() {
   const { products, addProduct, updateProduct, deleteProduct, loadProducts } = useProductStore()
@@ -14,6 +15,7 @@ export default function AdminProductsPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [imageUrls, setImageUrls] = useState<string[]>([])
   const [newImageUrl, setNewImageUrl] = useState("")
+  const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [form, setForm] = useState({
@@ -29,20 +31,19 @@ export default function AdminProductsPage() {
     setImageUrls([]); setNewImageUrl(""); setEditingId(null); setShowForm(false)
   }
 
-  const convertToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(reader.result as string)
-      reader.readAsDataURL(file)
-    })
-  }
-
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
-    if (files) {
-      for (let i = 0; i < files.length; i++) {
-        const base64 = await convertToBase64(files[i])
-        setImageUrls(prev => [...prev, base64])
+    if (files && files.length) {
+      setUploading(true)
+      try {
+        for (let i = 0; i < files.length; i++) {
+          const url = await uploadToCloudinary(files[i])
+          setImageUrls(prev => [...prev, url])
+        }
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "Image upload failed")
+      } finally {
+        setUploading(false)
       }
     }
     if (fileInputRef.current) fileInputRef.current.value = ""
@@ -67,7 +68,7 @@ export default function AdminProductsPage() {
     resetForm()
   }
 
-  const handleEdit = (product: Product) => {
+  const handleEdit = async (product: Product) => {
     setEditingId(product.id)
     setForm({
       name: product.name, description: product.description, category: product.category,
@@ -75,8 +76,17 @@ export default function AdminProductsPage() {
       distributorPrice: product.distributorPrice.toString(), stock: product.stock.toString(),
       isOnOffer: product.isOnOffer, offerPrice: product.offerPrice?.toString() || "",
     })
-    setImageUrls(product.images)
+    setImageUrls(product.images ?? [])
     setShowForm(true)
+    // The catalog list omits images; fetch the full record so saving an edit
+    // doesn't wipe existing images.
+    try {
+      const res = await fetch(`/api/products/${product.id}`)
+      const full = await res.json()
+      if (Array.isArray(full.images)) setImageUrls(full.images)
+    } catch {
+      /* keep whatever we have */
+    }
   }
 
   const lowStockProducts = products.filter(p => p.stock <= 5 && p.stock > 0)
@@ -155,10 +165,13 @@ export default function AdminProductsPage() {
                 <label style={{ fontSize: '12px', fontWeight: '500', color: '#4A3F2F', marginBottom: '6px', display: 'block' }}>Images</label>
                 <input ref={fileInputRef} type="file" multiple accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} id="product-images" />
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
-                  <label htmlFor="product-images" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px', backgroundColor: '#E6D3A3', color: '#4A3F2F', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}><Upload size={14} /> Upload</label>
+                  <label htmlFor="product-images" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px', backgroundColor: uploading ? '#C9BE9A' : '#E6D3A3', color: '#4A3F2F', borderRadius: '6px', cursor: uploading ? 'wait' : 'pointer', fontSize: '13px', fontWeight: '500', pointerEvents: uploading ? 'none' : 'auto' }}><Upload size={14} /> {uploading ? 'Uploading…' : 'Upload'}</label>
                   <Input value={newImageUrl} onChange={e => setNewImageUrl(e.target.value)} placeholder="Image URL" style={{ flex: 1 }} />
                   <Button variant="outline" onClick={addImageUrl} style={{ borderColor: '#6B7D5C', color: '#6B7D5C', fontSize: '13px' }}>Add URL</Button>
                 </div>
+                {!cloudinaryConfigured && (
+                  <p style={{ fontSize: '12px', color: '#8C6A4A', marginBottom: '8px' }}>Image uploads need Cloudinary configured (NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME / _UPLOAD_PRESET). You can still paste an image URL.</p>
+                )}
                 {imageUrls.length > 0 && (
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     {imageUrls.map((url, i) => (
@@ -172,7 +185,7 @@ export default function AdminProductsPage() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
-              <Button onClick={handleSave} style={{ backgroundColor: '#6B7D5C', color: 'white' }} disabled={!form.name || !form.retailPrice || !form.stock}>{editingId ? 'Update' : 'Save'}</Button>
+              <Button onClick={handleSave} style={{ backgroundColor: '#6B7D5C', color: 'white' }} disabled={!form.name || !form.retailPrice || !form.stock || uploading}>{editingId ? 'Update' : 'Save'}</Button>
               <Button variant="outline" onClick={resetForm}>Cancel</Button>
             </div>
           </CardContent>

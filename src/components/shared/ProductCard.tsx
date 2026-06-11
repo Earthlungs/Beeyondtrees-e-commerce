@@ -10,7 +10,7 @@ import { useCartStore } from "@/store/cart-store"
 
 interface Product {
   id: string; name: string; slug: string; description: string
-  price: number; compareAtPrice: number | null; images: string[]
+  price: number; compareAtPrice: number | null; images?: string[]
   category: string; inventory: number; isFeatured: boolean
   wholesalePrice?: number; distributorPrice?: number
 }
@@ -24,16 +24,17 @@ const tierLimits: Record<string, { min: number; max: number; label: string }> = 
 export function ProductCard({ product }: { product: Product }) {
   const addItem = useCartStore((state) => state.addItem)
   const [selectedTier, setSelectedTier] = useState<"retail" | "wholesale" | "distributor">("retail")
-  
+  const [imgError, setImgError] = useState(false)
+  const imageUrl = `/api/products/${product.id}/image`
+
   const prices = {
     retail: product.price,
     wholesale: product.wholesalePrice || product.price,
     distributor: product.distributorPrice || product.price,
   }
-  
+
   const currentPrice = prices[selectedTier]
   const limit = tierLimits[selectedTier]
-  const hasImages = product.images && product.images.length > 0
   const canPurchase = product.inventory >= limit.min
 
   const handleAddToCart = () => {
@@ -41,7 +42,7 @@ export function ProductCard({ product }: { product: Product }) {
       id: `${product.id}-${selectedTier}`,
       name: product.name,
       price: currentPrice,
-      image: product.images?.[0] || "",
+      image: imageUrl,
       pricingTier: selectedTier,
       maxQuantity: Math.min(limit.max, product.inventory),
       minQuantity: limit.min,
@@ -52,8 +53,8 @@ export function ProductCard({ product }: { product: Product }) {
     <Card className="group overflow-hidden border-[#A89F91] hover:border-[#6B7D5C] hover:shadow-lg transition-all duration-300">
       <Link href={`/products/${product.slug}`}>
         <div className="relative h-48 bg-gradient-to-br from-[#E6D3A3] to-[#6B7D5C] flex items-center justify-center overflow-hidden">
-          {hasImages ? (
-            <img src={product.images[0]} alt={product.name} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />
+          {!imgError ? (
+            <img src={imageUrl} alt={product.name} loading="lazy" onError={() => setImgError(true)} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />
           ) : (
             <Leaf className="h-16 w-16 text-white/50" />
           )}

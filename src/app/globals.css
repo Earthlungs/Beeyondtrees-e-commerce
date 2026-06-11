@@ -1,17 +1,66 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
 
 :root {
   --background: #F5F1E8;
   --foreground: #4A3F2F;
+  --card: #FFFFFF;
+  --card-foreground: #4A3F2F;
+  --popover: #FFFFFF;
+  --popover-foreground: #4A3F2F;
   --primary: #6B7D5C;
   --primary-foreground: #FFFFFF;
   --secondary: #E6D3A3;
   --secondary-foreground: #4A3F2F;
-  --muted: #A89F91;
+  --muted: #F0EBE0;
+  --muted-foreground: #A89F91;
   --accent: #8C6A4A;
-  --border: #A89F91;
+  --accent-foreground: #FFFFFF;
+  --destructive: #B45309;
+  --destructive-foreground: #FFFFFF;
+  --border: #D4C9B8;
+  --input: #D4C9B8;
   --ring: #6B7D5C;
+  --radius: 0.625rem;
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { background-color: var(--background); color: var(--foreground); }
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-feature-settings: "rlig" 1, "calt" 1;
+  -webkit-font-smoothing: antialiased;
+}

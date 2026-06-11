@@ -11,25 +11,32 @@ import {
   BarChart3, Activity, UserPlus
 } from "lucide-react"
 import Link from "next/link"
+import { useProductStore } from "@/store/product-store"
 
 export default function AdminDashboard() {
   const { data: session } = useSession()
   const role = (session?.user as any)?.role || "merchant"
+  const products = useProductStore((s) => s.products)
+  const loadProducts = useProductStore((s) => s.loadProducts)
   const [stats, setStats] = useState({
     products: 0, orders: 0, pending: 0, delivered: 0, revenue: 0, customers: 0
   })
   const [recentOrders, setRecentOrders] = useState<any[]>([])
   const [lowStock, setLowStock] = useState<any[]>([])
 
+  useEffect(() => { loadProducts() }, [loadProducts])
+
   useEffect(() => {
-    const products = JSON.parse(localStorage.getItem('beeyond-trees-products') || '[]')
-    const orders = JSON.parse(localStorage.getItem('beeyond-trees-orders') || '[]')
-    
-    const pending = orders.filter((o: any) => o.status === 'pending').length
-    const delivered = orders.filter((o: any) => o.status === 'delivered').length
-    const revenue = orders.reduce((s: number, o: any) => s + o.total, 0)
-    const uniqueCustomers = new Set(orders.map((o: any) => o.customer?.phone)).size
-    
+    // Orders aren't backed by a store yet; read defensively (guard against a
+    // non-array, e.g. legacy/corrupt localStorage) so the dashboard can't crash.
+    const raw = JSON.parse(localStorage.getItem('beeyond-trees-orders') || '[]')
+    const orders: any[] = Array.isArray(raw) ? raw : []
+
+    const pending = orders.filter((o) => o.status === 'pending').length
+    const delivered = orders.filter((o) => o.status === 'delivered').length
+    const revenue = orders.reduce((s: number, o) => s + (o.total || 0), 0)
+    const uniqueCustomers = new Set(orders.map((o) => o.customer?.phone)).size
+
     setStats({
       products: products.length,
       orders: orders.length,
@@ -40,8 +47,8 @@ export default function AdminDashboard() {
     })
 
     setRecentOrders(orders.slice(-5).reverse())
-    setLowStock(products.filter((p: any) => p.stock <= 5))
-  }, [])
+    setLowStock(products.filter((p) => p.stock <= 5))
+  }, [products])
 
   return (
     <div>

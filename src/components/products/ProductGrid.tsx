@@ -1,43 +1,53 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { ProductCard } from "@/components/shared/ProductCard"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useProductStore } from "@/store/product-store"
 
 interface ProductGridProps {
   category?: string
 }
 
 export function ProductGrid({ category }: ProductGridProps) {
-  let products: any[] = []
-  if (typeof window !== 'undefined') {
-    try {
-      const stored = localStorage.getItem('beeyond-trees-products')
-      products = stored ? JSON.parse(stored) : []
-    } catch {
-      products = []
-    }
-  }
+  const products = useProductStore((state) => state.products)
+  const loadProducts = useProductStore((state) => state.loadProducts)
+  const [doneFirstLoad, setDoneFirstLoad] = useState(false)
 
-  // Filter by category if provided
-  const filteredProducts = category && category !== "All" 
-    ? products.filter((p: any) => p.category === category)
+  useEffect(() => {
+    loadProducts().finally(() => setDoneFirstLoad(true))
+  }, [loadProducts])
+
+  const filteredProducts = category && category !== "All"
+    ? products.filter((p) => p.category === category)
     : products
+
+  if (products.length === 0 && !doneFirstLoad) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {[...Array(8)].map((_, i) => (
+          <div key={i} className="bg-white rounded-xl p-4">
+            <Skeleton className="h-48 w-full rounded-lg mb-4" />
+            <Skeleton className="h-4 w-3/4 mb-2" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+        ))}
+      </div>
+    )
+  }
 
   if (filteredProducts.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '80px 24px', color: '#A89F91' }}>
-        <p style={{ fontSize: '18px', marginBottom: '8px' }}>
-          {category ? `No products in ${category}` : 'No products yet'}
-        </p>
-        <p style={{ fontSize: '14px' }}>
-          {category ? 'Try a different category.' : 'Products added in admin panel will appear here.'}
-        </p>
+        <p style={{ fontSize: '18px', marginBottom: '8px' }}>Our products will be displayed here</p>
+        <p style={{ fontSize: '14px' }}>Check back soon for new arrivals.</p>
       </div>
     )
   }
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      {filteredProducts.map((product: any) => (
+      {filteredProducts.map((product) => (
         <ProductCard key={product.id} product={{
           id: product.id,
           name: product.name,
@@ -48,7 +58,7 @@ export function ProductGrid({ category }: ProductGridProps) {
           images: product.images,
           category: product.category,
           inventory: product.stock,
-          isFeatured: false,
+          isFeatured: product.isFeatured || false,
           wholesalePrice: product.wholesalePrice,
           distributorPrice: product.distributorPrice,
         }} />

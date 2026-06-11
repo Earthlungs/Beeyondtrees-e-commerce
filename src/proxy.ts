@@ -10,7 +10,7 @@ export default async function proxy(request: NextRequest) {
   }
   
   if (path.startsWith("/admin")) {
-    const token = await getToken({ req: request, secret: "beeyond-trees-secret-2024" })
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
     if (!token) {
       return NextResponse.redirect(new URL("/admin/login", request.url))
     }
