@@ -91,14 +91,10 @@ export default function CheckoutPage() {
   }
 
   const completeOrder = (ref: string) => {
-    // Deduct stock
-    const products = JSON.parse(localStorage.getItem('beeyond-trees-products') || '[]')
-    items.forEach(cartItem => {
-      const productId = cartItem.id.split('-')[0]
-      const idx = products.findIndex((p: any) => p.id === productId)
-      if (idx !== -1) products[idx].stock = Math.max(0, products[idx].stock - cartItem.quantity)
-    })
-    localStorage.setItem('beeyond-trees-products', JSON.stringify(products))
+    // Stock is managed in the database. The previous client-side localStorage
+    // stock edit wrote a raw array to "beeyond-trees-products", clobbering the
+    // zustand product cache stored under the same key (and crashing pages that
+    // read it). Removed — server-side stock decrement belongs in the order API.
     clearCart()
     setOrderRef(ref)
     setStep("success")
