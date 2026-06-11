@@ -25,6 +25,7 @@ export default function ProductDetailPage() {
   const [ready, setReady] = useState(false)
   const [selectedTier, setSelectedTier] = useState<"retail" | "wholesale" | "distributor">("retail")
   const [currentImage, setCurrentImage] = useState(0)
+  const [images, setImages] = useState<string[]>([])
   const addItem = useCartStore((state) => state.addItem)
 
   useEffect(() => {
@@ -33,15 +34,28 @@ export default function ProductDetailPage() {
   }, [loadProducts])
 
   const product = productsList.find((p) => slugify(p.name) === slug) || null
+  const productId = product?.id
+
+  // Images are excluded from the lightweight catalog payload; fetch the full
+  // record (with base64 images) once we know which product this is.
+  useEffect(() => {
+    if (!productId) return
+    let active = true
+    fetch(`/api/products/${productId}`)
+      .then((r) => r.json())
+      .then((d) => { if (active) setImages(Array.isArray(d.images) ? d.images : []) })
+      .catch(() => {})
+    return () => { active = false }
+  }, [productId])
 
   const nextImage = () => {
-    if (!product?.images) return
-    setCurrentImage((prev) => (prev + 1) % product.images.length)
+    if (images.length === 0) return
+    setCurrentImage((prev) => (prev + 1) % images.length)
   }
 
   const prevImage = () => {
-    if (!product?.images) return
-    setCurrentImage((prev) => (prev - 1 + product.images.length) % product.images.length)
+    if (images.length === 0) return
+    setCurrentImage((prev) => (prev - 1 + images.length) % images.length)
   }
 
   if (!ready) {
@@ -74,7 +88,6 @@ export default function ProductDetailPage() {
   const prices = { retail: product.retailPrice, wholesale: product.wholesalePrice, distributor: product.distributorPrice }
   const limit = tierLimits[selectedTier]
   const canPurchase = product.stock >= limit.min
-  const images = product.images || []
   const hasMultipleImages = images.length > 1
 
   const handleAddToCart = () => {
@@ -82,7 +95,7 @@ export default function ProductDetailPage() {
       id: `${product.id}-${selectedTier}`,
       name: product.name,
       price: prices[selectedTier],
-      image: images[0] || "",
+      image: `/api/products/${product.id}/image`,
       pricingTier: selectedTier,
       maxQuantity: Math.min(limit.max, product.stock),
       minQuantity: limit.min,

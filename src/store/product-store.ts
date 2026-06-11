@@ -10,7 +10,7 @@ export interface Product {
   wholesalePrice: number
   distributorPrice: number
   stock: number
-  images: string[]
+  images?: string[] // omitted from the catalog list; loaded on the detail page
   isOnOffer: boolean
   offerPrice: number | null
   isFeatured?: boolean
@@ -89,7 +89,9 @@ export const useProductStore = create<ProductStore>()(
           body: JSON.stringify(product),
         })
         const created: Product = await res.json()
-        const merged = sortByNewest([...get().products, created])
+        // Drop base64 images from the cached copy (kept small for localStorage).
+        const light: Product = { ...created, images: undefined }
+        const merged = sortByNewest([...get().products, light])
         set({ products: merged, lastSync: watermark(merged) || get().lastSync })
       },
 
@@ -99,7 +101,8 @@ export const useProductStore = create<ProductStore>()(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(product),
         })
-        const merged = get().products.map((p) => (p.id === product.id ? product : p))
+        const light: Product = { ...product, images: undefined }
+        const merged = get().products.map((p) => (p.id === product.id ? light : p))
         set({ products: merged, lastSync: watermark(merged) || get().lastSync })
       },
 

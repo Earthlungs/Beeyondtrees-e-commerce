@@ -74,8 +74,9 @@ export default function Home() {
             {products.map(product => (
               <Link key={product.id} href={`/products/${product.name.toLowerCase().replace(/\s+/g, "-")}`} style={{ textDecoration: 'none' }}>
                 <Card style={{ border: '1px solid #E5E7EB', borderRadius: '12px', overflow: 'hidden' }}>
-                  <div style={{ height: '180px', backgroundColor: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {product.images?.[0] ? <img src={product.images[0]} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '16px' }} /> : <TreePine size={40} style={{ color: '#6B7D5C', opacity: 0.3 }} />}
+                  <div style={{ height: '180px', backgroundColor: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                    <TreePine size={40} style={{ color: '#6B7D5C', opacity: 0.3, position: 'absolute' }} />
+                    <img src={`/api/products/${product.id}/image`} alt={product.name} loading="lazy" onError={e => { e.currentTarget.style.display = 'none' }} style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '16px', position: 'relative', backgroundColor: '#F3F4F6' }} />
                   </div>
                   <CardContent style={{ padding: '14px' }}>
                     <h3 style={{ fontWeight: '600', color: '#6B7D5C', fontSize: '15px' }}>{product.name}</h3>
