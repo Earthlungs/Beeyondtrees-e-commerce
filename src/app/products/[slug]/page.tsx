@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { ShoppingCart, Leaf, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react"
 import Link from "next/link"
-import { Product } from "@/store/product-store"
+import { useProductStore, slugify } from "@/store/product-store"
 import { useCartStore } from "@/store/cart-store"
 
 const tierLimits: Record<string, { min: number; max: number; label: string }> = {
@@ -20,23 +20,19 @@ const tierLimits: Record<string, { min: number; max: number; label: string }> = 
 export default function ProductDetailPage() {
   const params = useParams()
   const slug = params.slug as string
-  const [product, setProduct] = useState<Product | null>(null)
-  const [mounted, setMounted] = useState(false)
+  const productsList = useProductStore((state) => state.products)
+  const loadProducts = useProductStore((state) => state.loadProducts)
+  const [ready, setReady] = useState(false)
   const [selectedTier, setSelectedTier] = useState<"retail" | "wholesale" | "distributor">("retail")
   const [currentImage, setCurrentImage] = useState(0)
   const addItem = useCartStore((state) => state.addItem)
 
   useEffect(() => {
-    setMounted(true)
-    const stored = localStorage.getItem('beeyond-trees-products')
-    if (stored) {
-      const products: Product[] = JSON.parse(stored)
-      const found = products.find(
-        (p) => p.name.toLowerCase().replace(/\s+/g, "-") === slug
-      )
-      setProduct(found || null)
-    }
-  }, [slug])
+    // Cached products are served instantly; this revalidates in the background.
+    loadProducts().finally(() => setReady(true))
+  }, [loadProducts])
+
+  const product = productsList.find((p) => slugify(p.name) === slug) || null
 
   const nextImage = () => {
     if (!product?.images) return
@@ -48,7 +44,16 @@ export default function ProductDetailPage() {
     setCurrentImage((prev) => (prev - 1 + product.images.length) % product.images.length)
   }
 
-  if (!mounted) return null
+  if (!ready) {
+    return (
+      <div style={{ backgroundColor: '#F5F1E8', minHeight: '100vh' }}>
+        <Header />
+        <div style={{ padding: '64px 24px', textAlign: 'center', color: '#A89F91' }}>
+          Loading product...
+        </div>
+      </div>
+    )
+  }
 
   if (!product) {
     return (
@@ -56,9 +61,9 @@ export default function ProductDetailPage() {
         <Header />
         <div style={{ padding: '64px 24px', textAlign: 'center' }}>
           <h2 style={{ color: '#4A3F2F', marginBottom: '16px' }}>Product not found</h2>
-          <Link href="/products">
+          <Link href="/">
             <Button variant="outline" style={{ borderColor: '#6B7D5C', color: '#6B7D5C' }}>
-              <ArrowLeft size={16} style={{ marginRight: '8px' }} /> Back to Products
+              <ArrowLeft size={16} style={{ marginRight: '8px' }} /> Back to Home
             </Button>
           </Link>
         </div>
@@ -88,8 +93,8 @@ export default function ProductDetailPage() {
     <div style={{ backgroundColor: '#F5F1E8', minHeight: '100vh' }}>
       <Header />
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px 16px' }}>
-        <Link href="/products" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: '#6B7D5C', textDecoration: 'none', marginBottom: '24px', fontSize: '14px' }}>
-          <ArrowLeft size={16} /> Back to Products
+        <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: '#6B7D5C', textDecoration: 'none', marginBottom: '24px', fontSize: '14px' }}>
+          <ArrowLeft size={16} /> Back to Home
         </Link>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }} className="max-[768px]:grid-cols-1">

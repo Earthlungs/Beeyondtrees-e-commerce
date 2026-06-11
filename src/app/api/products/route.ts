@@ -1,9 +1,19 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 
-export async function GET() {
-  const products = await prisma.product.findMany({ orderBy: { createdAt: 'desc' } })
-  return NextResponse.json(products)
+export async function GET(request: NextRequest) {
+  // `?since=<ISO>` returns only products created/updated after that timestamp,
+  // so cached clients fetch just the delta instead of the whole catalog.
+  const since = request.nextUrl.searchParams.get('since')
+  const products = await prisma.product.findMany({
+    where: since ? { updatedAt: { gt: new Date(since) } } : undefined,
+    orderBy: { createdAt: 'desc' },
+  })
+  return NextResponse.json(products, {
+    headers: since
+      ? { 'Cache-Control': 'no-store' }
+      : { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=300' },
+  })
 }
 
 export async function POST(request: NextRequest) {
