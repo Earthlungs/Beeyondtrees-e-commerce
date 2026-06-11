@@ -16,9 +16,22 @@ export async function GET(
     select: { images: true },
   })
   const images = (product?.images as string[] | undefined) ?? []
-  const dataUri = images[i]
+  const image = images[i]
+  if (!image) return new Response(null, { status: 404 })
 
-  const match = dataUri?.match(/^data:([^;]+);base64,(.+)$/)
+  // Cloudinary (or any hosted) URL — redirect so the browser/CDN serves it
+  // directly. Legacy base64 data-URIs are decoded to binary inline.
+  if (/^https?:\/\//.test(image)) {
+    return new Response(null, {
+      status: 308,
+      headers: {
+        Location: image,
+        "Cache-Control": "public, max-age=31536000, immutable",
+      },
+    })
+  }
+
+  const match = image.match(/^data:([^;]+);base64,(.+)$/)
   if (!match) return new Response(null, { status: 404 })
 
   const [, contentType, b64] = match
