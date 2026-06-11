@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation"
 import { Header } from "@/components/layout/Header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Shield, Lock, User, Eye, EyeOff } from "lucide-react"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Shield, Lock, Eye, EyeOff, Loader2 } from "lucide-react"
 import { signIn } from "next-auth/react"
+import { cn } from "@/lib/utils"
 
 const STAFF_CODE = "Earthlungs2026"
 
@@ -20,7 +22,6 @@ export default function PortalPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
-  
   const [form, setForm] = useState({ username: "", password: "", name: "" })
 
   const handleGateSubmit = (e: React.FormEvent) => {
@@ -29,7 +30,7 @@ export default function PortalPage() {
       setStep("auth")
       setCodeError("")
     } else {
-      setCodeError("Invalid access code")
+      setCodeError("Invalid access code. Please check with your administrator.")
     }
   }
 
@@ -37,7 +38,7 @@ export default function PortalPage() {
     e.preventDefault()
     setLoading(true)
     setError("")
-    
+
     const result = await signIn("credentials", {
       username: form.username,
       password: form.password,
@@ -45,7 +46,7 @@ export default function PortalPage() {
     })
 
     if (result?.error) {
-      setError("Invalid credentials")
+      setError("Invalid username or password.")
     } else {
       router.push("/admin")
     }
@@ -56,122 +57,214 @@ export default function PortalPage() {
     e.preventDefault()
     setLoading(true)
     setError("")
-    
-    if (!form.name || !form.username || !form.password) {
-      setError("All fields are required")
+
+    if (!form.name.trim() || !form.username.trim() || !form.password.trim()) {
+      setError("All fields are required.")
       setLoading(false)
       return
     }
 
-    const res = await fetch('/api/auth/portal-register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, role: "merchant" }),
-    })
-    
-    const data = await res.json()
-    if (data.success) {
-      // Auto login after register
-      await signIn("credentials", {
-        username: form.username,
-        password: form.password,
-        redirect: false,
-      })
-      router.push("/admin")
-    } else {
-      setError(data.error || "Registration failed")
+    if (form.password.length < 6) {
+      setError("Password must be at least 6 characters.")
+      setLoading(false)
+      return
     }
+
+    try {
+      const res = await fetch("/api/auth/portal-register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, role: "merchant" }),
+      })
+
+      const data = await res.json()
+
+      if (data.success) {
+        const loginResult = await signIn("credentials", {
+          username: form.username,
+          password: form.password,
+          redirect: false,
+        })
+
+        if (loginResult?.error) {
+          setError("Account created but sign-in failed. Please sign in manually.")
+          setMode("login")
+        } else {
+          router.push("/admin")
+        }
+      } else {
+        setError(data.error || "Registration failed. Please try again.")
+      }
+    } catch {
+      setError("Network error. Please check your connection and try again.")
+    }
+
     setLoading(false)
   }
 
   return (
-    <div style={{ backgroundColor: '#F5F1E8', minHeight: '100vh' }}>
+    <div className="min-h-screen bg-background">
       <Header />
-      
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 64px)', padding: '24px' }}>
-        <Card style={{ width: '420px', maxWidth: '90vw', borderColor: '#A89F91' }}>
-          <CardHeader style={{ textAlign: 'center' }}>
-            <div style={{ width: '56px', height: '56px', backgroundColor: '#F5F1E8', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
-              <Shield size={28} style={{ color: '#6B7D5C' }} />
+
+      <div className="flex min-h-[calc(100vh-60px)] items-center justify-center px-4 py-12">
+        <Card className="w-full max-w-md border-border shadow-lg">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
+              <Shield className="h-7 w-7 text-primary" />
             </div>
-            <CardTitle style={{ color: '#4A3F2F', fontSize: '20px' }}>
-              {step === "gate" ? "Staff Access" : mode === "login" ? "Staff Sign In" : "Create Staff Account"}
+            <CardTitle className="text-xl text-foreground">
+              {step === "gate"
+                ? "Staff Access"
+                : mode === "login"
+                  ? "Staff Sign In"
+                  : "Create Staff Account"}
             </CardTitle>
+            <CardDescription>
+              {step === "gate"
+                ? "Enter your staff access code to continue"
+                : mode === "login"
+                  ? "Sign in to manage products and orders"
+                  : "Register as a merchant staff member"}
+            </CardDescription>
           </CardHeader>
+
           <CardContent>
             {step === "gate" ? (
-              <form onSubmit={handleGateSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <p style={{ color: '#A89F91', fontSize: '13px', textAlign: 'center' }}>
-                  Enter the staff access code to continue
-                </p>
-                <div style={{ position: 'relative' }}>
-                  <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#A89F91' }} />
-                  <Input 
-                    type="password" 
-                    value={code} 
-                    onChange={e => setCode(e.target.value)}
+              <form onSubmit={handleGateSubmit} className="space-y-4">
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    type="password"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
                     placeholder="Enter access code"
-                    style={{ paddingLeft: '40px', height: '44px', fontSize: '16px', textAlign: 'center', letterSpacing: '4px' }}
+                    className="h-11 pl-10 text-center tracking-widest"
                     autoFocus
                   />
                 </div>
                 {codeError && (
-                  <p style={{ color: '#8C6A4A', fontSize: '12px', textAlign: 'center' }}>{codeError}</p>
+                  <p className="text-center text-sm text-destructive">{codeError}</p>
                 )}
-                <Button type="submit" style={{ width: '100%', height: '44px', backgroundColor: '#6B7D5C', color: 'white' }}>
+                <Button type="submit" className="h-11 w-full">
                   Access Portal
                 </Button>
               </form>
             ) : (
               <>
-                <div style={{ display: 'flex', gap: '4px', marginBottom: '18px', backgroundColor: '#F5F1E8', borderRadius: '8px', padding: '3px' }}>
-                  <button onClick={() => setMode("login")} style={{
-                    flex: 1, padding: '8px', borderRadius: '6px', border: 'none',
-                    backgroundColor: mode === "login" ? '#6B7D5C' : 'transparent',
-                    color: mode === "login" ? 'white' : '#A89F91',
-                    cursor: 'pointer', fontWeight: '500', fontSize: '13px',
-                  }}>Sign In</button>
-                  <button onClick={() => setMode("register")} style={{
-                    flex: 1, padding: '8px', borderRadius: '6px', border: 'none',
-                    backgroundColor: mode === "register" ? '#8C6A4A' : 'transparent',
-                    color: mode === "register" ? 'white' : '#A89F91',
-                    cursor: 'pointer', fontWeight: '500', fontSize: '13px',
-                  }}>Create Account</button>
+                <div className="mb-5 flex gap-1 rounded-lg bg-muted p-1">
+                  {(["login", "register"] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      type="button"
+                      onClick={() => {
+                        setMode(tab)
+                        setError("")
+                      }}
+                      className={cn(
+                        "flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                        mode === tab
+                          ? tab === "login"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-accent text-accent-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {tab === "login" ? "Sign In" : "Create Account"}
+                    </button>
+                  ))}
                 </div>
 
                 {error && (
-                  <div style={{ backgroundColor: '#FFF5F5', color: '#8C6A4A', padding: '10px', borderRadius: '6px', marginBottom: '14px', fontSize: '13px', textAlign: 'center' }}>{error}</div>
+                  <div className="mb-4 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2.5 text-center text-sm text-destructive">
+                    {error}
+                  </div>
                 )}
 
-                <form onSubmit={mode === "login" ? handleLogin : handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <form
+                  onSubmit={mode === "login" ? handleLogin : handleRegister}
+                  className="space-y-4"
+                >
                   {mode === "register" && (
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', fontWeight: '500', color: '#4A3F2F' }}>Full Name</label>
-                      <Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="John Doe" style={{ height: '40px' }} />
+                    <div className="space-y-1.5">
+                      <Label htmlFor="name">Full Name</Label>
+                      <Input
+                        id="name"
+                        value={form.name}
+                        onChange={(e) => setForm({ ...form, name: e.target.value })}
+                        placeholder="John Doe"
+                        className="h-10"
+                      />
                     </div>
                   )}
-                  
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', fontWeight: '500', color: '#4A3F2F' }}>Username</label>
-                    <Input value={form.username} onChange={e => setForm({...form, username: e.target.value})} placeholder="Enter username" style={{ height: '40px' }} required />
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="username">Username</Label>
+                    <Input
+                      id="username"
+                      value={form.username}
+                      onChange={(e) => setForm({ ...form, username: e.target.value })}
+                      placeholder="Enter username"
+                      className="h-10"
+                      required
+                    />
                   </div>
 
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', fontWeight: '500', color: '#4A3F2F' }}>Password</label>
-                    <div style={{ position: 'relative' }}>
-                      <Input type={showPassword ? "text" : "password"} value={form.password} onChange={e => setForm({...form, password: e.target.value})} placeholder="Enter password" style={{ height: '40px' }} required />
-                      <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#A89F91' }}>
-                        {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="password">Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        value={form.password}
+                        onChange={(e) => setForm({ ...form, password: e.target.value })}
+                        placeholder="Enter password"
+                        className="h-10 pr-10"
+                        required
+                        minLength={6}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
                       </button>
                     </div>
                   </div>
 
-                  <Button type="submit" disabled={loading} style={{ width: '100%', height: '42px', backgroundColor: mode === "login" ? '#6B7D5C' : '#8C6A4A', color: 'white', fontSize: '14px', marginTop: '4px' }}>
-                    {loading ? 'Please wait...' : mode === "login" ? 'Sign In' : 'Create Account'}
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className={cn(
+                      "h-11 w-full",
+                      mode === "register" && "bg-accent hover:bg-accent/90"
+                    )}
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Please wait...
+                      </>
+                    ) : mode === "login" ? (
+                      "Sign In"
+                    ) : (
+                      "Create Account"
+                    )}
                   </Button>
 
-                  <button type="button" onClick={() => setStep("gate")} style={{ background: 'none', border: 'none', color: '#A89F91', fontSize: '12px', cursor: 'pointer', textAlign: 'center' }}>
-                    Back
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStep("gate")
+                      setError("")
+                    }}
+                    className="w-full text-center text-sm text-muted-foreground hover:text-foreground"
+                  >
+                    Back to access code
                   </button>
                 </form>
               </>
