@@ -67,7 +67,7 @@ export default function AdminProductsPage() {
     resetForm()
   }
 
-  const handleEdit = (product: Product) => {
+  const handleEdit = async (product: Product) => {
     setEditingId(product.id)
     setForm({
       name: product.name, description: product.description, category: product.category,
@@ -75,8 +75,17 @@ export default function AdminProductsPage() {
       distributorPrice: product.distributorPrice.toString(), stock: product.stock.toString(),
       isOnOffer: product.isOnOffer, offerPrice: product.offerPrice?.toString() || "",
     })
-    setImageUrls(product.images)
+    setImageUrls(product.images ?? [])
     setShowForm(true)
+    // The catalog list omits images; fetch the full record so saving an edit
+    // doesn't wipe existing images.
+    try {
+      const res = await fetch(`/api/products/${product.id}`)
+      const full = await res.json()
+      if (Array.isArray(full.images)) setImageUrls(full.images)
+    } catch {
+      /* keep whatever we have */
+    }
   }
 
   const lowStockProducts = products.filter(p => p.stock <= 5 && p.stock > 0)
