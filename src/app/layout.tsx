@@ -1,10 +1,16 @@
 import type { Metadata, Viewport } from "next"
-import { Geist } from "next/font/google"
+import { Geist, Fraunces } from "next/font/google"
 import "./globals.css"
 import Script from "next/script"
 import { Providers } from "@/components/providers/Providers"
 
-const geist = Geist({ subsets: ["latin"] })
+const geist = Geist({ subsets: ["latin"], variable: "--font-sans" })
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-display",
+  display: "swap",
+  style: ["normal", "italic"],
+})
 
 export const metadata: Metadata = {
   title: "BEEyond Trees - Sustaining Forest Adjacent Communities",
@@ -20,7 +26,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${geist.variable} ${fraunces.variable}`}>
       <head>
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
         {/* One-time self-heal: a previous PWA service worker cached stale HTML

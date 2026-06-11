@@ -58,9 +58,79 @@
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   background-color: var(--background);
   color: var(--foreground);
   font-feature-settings: "rlig" 1, "calt" 1;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Premium serif display face for headlines */
+.font-display {
+  font-family: var(--font-display), "Times New Roman", Georgia, serif;
+  letter-spacing: -0.01em;
+}
+
+::selection {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* Refined scrollbar */
+::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+::-webkit-scrollbar-track {
+  background: var(--muted);
+}
+::-webkit-scrollbar-thumb {
+  background: #c2b7a3;
+  border-radius: 999px;
+  border: 3px solid var(--muted);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+/* Reusable premium motion/utility helpers */
+@keyframes byt-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.byt-float { animation: byt-float 3.5s ease-in-out infinite; }
+
+@keyframes byt-shimmer {
+  100% { transform: translateX(100%); }
+}
+
+@keyframes byt-bob {
+  0%, 100% { transform: translateY(0); opacity: 0.8; }
+  50% { transform: translateY(7px); opacity: 1; }
+}
+.byt-bob { animation: byt-bob 1.8s ease-in-out infinite; }
+
+.byt-card {
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+.byt-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 28px 50px -24px rgba(74, 63, 47, 0.45);
+}
+.byt-zoom {
+  transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.byt-card:hover .byt-zoom {
+  transform: scale(1.07);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .byt-float, .byt-bob { animation: none; }
 }
