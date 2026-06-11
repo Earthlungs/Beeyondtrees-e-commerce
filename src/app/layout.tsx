@@ -23,6 +23,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <head>
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+        {/* One-time self-heal: a previous PWA service worker cached stale HTML
+            and served mismatched JS chunks ("e.filter is not a function" /
+            "This page couldn't load"). Unregister any SW + clear caches, then
+            reload once so assets come back consistent. Runs during HTML parse,
+            independent of chunk loading. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(function(rs){if(!rs||!rs.length)return;Promise.all(rs.map(function(r){return r.unregister()})).then(function(){if(self.caches&&caches.keys){caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k)})})}if(!sessionStorage.getItem('sw-killed')){sessionStorage.setItem('sw-killed','1');location.reload()}})});}}catch(e){}})();`,
+          }}
+        />
         <Script src="https://js.paystack.co/v1/inline.js" strategy="beforeInteractive" />
       </head>
       <body className={geist.className}>

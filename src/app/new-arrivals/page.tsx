@@ -8,22 +8,23 @@ import { Badge } from "@/components/ui/badge"
 import { TreePine, ShoppingCart, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { useCartStore } from "@/store/cart-store"
+import { useProductStore } from "@/store/product-store"
 
 export default function NewArrivalsPage() {
-  const [products, setProducts] = useState<any[]>([])
+  const allProducts = useProductStore((state) => state.products)
+  const loadProducts = useProductStore((state) => state.loadProducts)
   const [mounted, setMounted] = useState(false)
   const addItem = useCartStore((state) => state.addItem)
 
   useEffect(() => {
     setMounted(true)
-    const stored = localStorage.getItem('beeyond-trees-products')
-    if (stored) {
-      const all = JSON.parse(stored)
-      setProducts(all.slice(-6).reverse())
-    }
-  }, [])
+    loadProducts()
+  }, [loadProducts])
 
   if (!mounted) return null
+
+  // Store is sorted newest-first.
+  const products = allProducts.slice(0, 6)
 
   return (
     <div style={{ backgroundColor: '#F5F1E8', minHeight: '100vh' }}>
@@ -41,12 +42,9 @@ export default function NewArrivalsPage() {
             {products.map(product => (
               <Card key={product.id} style={{ borderColor: '#A89F91', overflow: 'hidden', transition: 'box-shadow 0.2s' }}>
                 <Link href={`/products/${product.name.toLowerCase().replace(/\s+/g, "-")}`}>
-                  <div style={{ height: '200px', backgroundColor: '#F5F1E8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {product.images?.[0] ? (
-                      <img src={product.images[0]} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '16px' }} />
-                    ) : (
-                      <TreePine size={48} style={{ color: '#6B7D5C', opacity: 0.3 }} />
-                    )}
+                  <div style={{ height: '200px', backgroundColor: '#F5F1E8', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                    <TreePine size={48} style={{ color: '#6B7D5C', opacity: 0.3, position: 'absolute' }} />
+                    <img src={`/api/products/${product.id}/image`} alt={product.name} loading="lazy" onError={e => { e.currentTarget.style.display = 'none' }} style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '16px', position: 'relative', backgroundColor: '#F5F1E8' }} />
                   </div>
                 </Link>
                 <CardContent style={{ padding: '16px' }}>
@@ -66,7 +64,7 @@ export default function NewArrivalsPage() {
                         id: `${product.id}-retail`,
                         name: product.name,
                         price: product.retailPrice,
-                        image: product.images?.[0] || "",
+                        image: `/api/products/${product.id}/image`,
                         pricingTier: "retail",
                         maxQuantity: product.stock,
                         minQuantity: 1,
@@ -82,8 +80,8 @@ export default function NewArrivalsPage() {
         ) : (
           <div style={{ textAlign: 'center', padding: '64px', color: '#A89F91' }}>
             <TreePine size={48} style={{ marginBottom: '16px', opacity: 0.3 }} />
-            <p style={{ fontSize: '16px' }}>No new arrivals yet.</p>
-            <p style={{ fontSize: '14px', marginTop: '8px' }}>Check back soon or add products in the admin panel.</p>
+            <p style={{ fontSize: '16px' }}>Our products will be displayed here</p>
+            <p style={{ fontSize: '14px', marginTop: '8px' }}>Check back soon for new arrivals.</p>
           </div>
         )}
       </section>
