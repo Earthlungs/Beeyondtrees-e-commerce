@@ -4,7 +4,7 @@ import { useRef } from "react"
 import { motion, useScroll, useTransform, useSpring } from "motion/react"
 
 // Dramatic scroll-linked image: as it travels through the viewport the photo
-// parallaxes, breathes in scale, and tilts — a bold, "alive" scroll effect.
+// parallaxes, breathes in scale, and tilts, a bold, "alive" scroll effect.
 // The inner image is oversized so the parallax never reveals an empty edge.
 export function ParallaxImage({
   src, alt, aspectRatio = "4/5", radius = 24, intensity = 1,

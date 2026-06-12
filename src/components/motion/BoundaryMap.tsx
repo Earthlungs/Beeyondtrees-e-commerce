@@ -120,7 +120,7 @@ export function BoundaryMap({
         />
       </svg>
 
-      {/* numeric scale bar — length tracks the tree count */}
+      {/* numeric scale bar, length tracks the tree count */}
       <div style={{ maxWidth: 500, margin: "12px auto 0", padding: "0 8px" }}>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 6 }}>
           <span style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.12em", color: "#8a8170", fontWeight: 700 }}>Coverage</span>

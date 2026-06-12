@@ -221,7 +221,7 @@ function OrderRow({ order, expanded, onToggle, onStatus, onDispatched }: {
 
               {!isPaid && (
                 <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 14, padding: "9px 12px", background: "#FFFBF0", border: "1px solid #F0E2BC", borderRadius: 10, color: "#9a7b1f", fontSize: 12.5 }}>
-                  <Lock size={13} /> Awaiting payment — dispatch &amp; delivery are locked until this order is paid.
+                  <Lock size={13} /> Awaiting payment, dispatch &amp; delivery are locked until this order is paid.
                 </div>
               )}
 

@@ -7,7 +7,7 @@ import { Header } from "@/components/layout/Header"
 import { ScrollProgress } from "@/components/motion/ScrollProgress"
 import { Reveal, RevealGroup, RevealItem } from "@/components/motion/Reveal"
 import { ProductCard } from "@/components/shared/ProductCard"
-import { ShoppingCart, Leaf, ArrowLeft, ChevronLeft, ChevronRight, Truck, Sprout, ShieldCheck } from "lucide-react"
+import { ShoppingCart, Leaf, ArrowLeft, ChevronLeft, ChevronRight, Truck, ShieldCheck } from "lucide-react"
 import Link from "next/link"
 import { useProductStore, slugify } from "@/store/product-store"
 import { useCartStore } from "@/store/cart-store"
@@ -217,7 +217,7 @@ export default function ProductDetailPage() {
 
               {/* Trust row */}
               <div style={{ display: "flex", gap: 18, marginTop: 24, flexWrap: "wrap" }}>
-                {[{ i: Sprout, t: "Plants trees" }, { i: ShieldCheck, t: "Naturally made" }, { i: Truck, t: "Kenya delivery" }].map((b) => (
+                {[{ i: ShieldCheck, t: "Naturally made" }, { i: Truck, t: "Countrywide delivery" }].map((b) => (
                   <div key={b.t} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#6b6353" }}>
                     <b.i size={17} style={{ color: SAGE }} /> {b.t}
                   </div>

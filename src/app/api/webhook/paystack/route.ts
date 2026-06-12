@@ -3,7 +3,7 @@ import crypto from "crypto"
 import { prisma } from "@/lib/db"
 import { markOrderPaid } from "@/lib/orders"
 
-// Paystack webhook — the resilient, server-to-server source of truth for
+// Paystack webhook, the resilient, server-to-server source of truth for
 // payment status (independent of whether the customer's browser stayed open
 // long enough to fire the inline callback).
 //

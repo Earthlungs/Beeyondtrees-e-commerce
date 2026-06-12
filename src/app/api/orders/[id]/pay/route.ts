@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 
 // Start a Paystack payment server-side (Standard/redirect flow). We initialize
-// the transaction with the SECRET key and hand back the hosted checkout URL —
+// the transaction with the SECRET key and hand back the hosted checkout URL,
 // no public key is involved, so this is immune to public-key mismatches. A
 // fresh reference is generated per attempt so retries never collide with a
 // previously-used Paystack reference.
@@ -29,7 +29,7 @@ export async function POST(
   await prisma.order.update({ where: { id }, data: { paymentRef: reference } })
 
   // Build the return URL from the public host the shopper is actually on
-  // (forwarded headers on Vercel), so we don't depend on NEXTAUTH_URL — which
+  // (forwarded headers on Vercel), so we don't depend on NEXTAUTH_URL, which
   // may be set to localhost. Falls back to NEXTAUTH_URL, then request origin.
   const fwdHost = request.headers.get("x-forwarded-host") || request.headers.get("host")
   const fwdProto = request.headers.get("x-forwarded-proto") || "https"
