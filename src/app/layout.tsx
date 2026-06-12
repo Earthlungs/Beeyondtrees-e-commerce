@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next"
 import { Geist, Fraunces } from "next/font/google"
 import "./globals.css"
-import Script from "next/script"
 import { Providers } from "@/components/providers/Providers"
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" })
@@ -39,7 +38,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             __html: `(function(){try{if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(function(rs){if(!rs||!rs.length)return;Promise.all(rs.map(function(r){return r.unregister()})).then(function(){if(self.caches&&caches.keys){caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k)})})}if(!sessionStorage.getItem('sw-killed')){sessionStorage.setItem('sw-killed','1');location.reload()}})});}}catch(e){}})();`,
           }}
         />
-        <Script src="https://js.paystack.co/v1/inline.js" strategy="beforeInteractive" />
       </head>
       <body className={geist.className}>
         <Providers>{children}</Providers>
