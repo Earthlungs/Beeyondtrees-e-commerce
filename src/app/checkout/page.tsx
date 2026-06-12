@@ -6,14 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useCartStore } from "@/store/cart-store"
-import { ArrowLeft, ShoppingCart, Truck, CreditCard, CheckCircle } from "lucide-react"
+import { ArrowLeft, ShoppingCart, Truck, CreditCard } from "lucide-react"
 import Link from "next/link"
-
-declare global {
-  interface Window {
-    PaystackPop: any
-  }
-}
 
 const counties = [
   "Nairobi", "Mombasa", "Kisumu", "Nakuru", "Kiambu", "Machakos",
@@ -21,10 +15,10 @@ const counties = [
 ]
 
 export default function CheckoutPage() {
-  const { items, getTotal, clearCart } = useCartStore()
+  const { items, getTotal } = useCartStore()
   const [mounted, setMounted] = useState(false)
-  const [step, setStep] = useState<"delivery" | "payment" | "success">("delivery")
-  const [orderRef, setOrderRef] = useState("")
+  const [step, setStep] = useState<"delivery" | "payment">("delivery")
+  const [paying, setPaying] = useState(false)
   const [customCounty, setCustomCounty] = useState("")
   
   const [form, setForm] = useState({
@@ -36,7 +30,7 @@ export default function CheckoutPage() {
 
   if (!mounted) return null
 
-  if (items.length === 0 && step !== "success") {
+  if (items.length === 0) {
     return (
       <div style={{ backgroundColor: '#F5F1E8', minHeight: '100vh' }}>
         <Header />
@@ -45,25 +39,6 @@ export default function CheckoutPage() {
           <h2 style={{ color: '#4A3F2F', marginBottom: '8px' }}>Cart is empty</h2>
           <Link href="/products">
             <Button style={{ backgroundColor: '#6B7D5C', color: 'white', marginTop: '16px' }}>Browse Products</Button>
-          </Link>
-        </div>
-      </div>
-    )
-  }
-
-  if (step === "success") {
-    return (
-      <div style={{ backgroundColor: '#F5F1E8', minHeight: '100vh' }}>
-        <Header />
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '80vh', padding: '16px', textAlign: 'center' }}>
-          <div style={{ backgroundColor: '#6B7D5C', borderRadius: '50%', width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
-            <CheckCircle size={48} style={{ color: 'white' }} />
-          </div>
-          <h2 style={{ color: '#4A3F2F', marginBottom: '8px', fontSize: '24px' }}>Payment Successful!</h2>
-          <p style={{ color: '#A89F91', marginBottom: '4px', fontSize: '14px' }}>Reference: <strong style={{ color: '#4A3F2F' }}>{orderRef}</strong></p>
-          <p style={{ color: '#A89F91', marginBottom: '24px', fontSize: '14px' }}>We will contact {form.phone} for delivery.</p>
-          <Link href="/products">
-            <Button variant="outline" style={{ borderColor: '#6B7D5C', color: '#6B7D5C' }}>Continue Shopping</Button>
           </Link>
         </div>
       </div>
@@ -90,34 +65,12 @@ export default function CheckoutPage() {
     setStep("payment")
   }
 
-  const completeOrder = (ref: string) => {
-    // Stock is managed in the database. The previous client-side localStorage
-    // stock edit wrote a raw array to "beeyond-trees-products", clobbering the
-    // zustand product cache stored under the same key (and crashing pages that
-    // read it). Removed — server-side stock decrement belongs in the order API.
-    clearCart()
-    setOrderRef(ref)
-    setStep("success")
-  }
+  const handlePay = async () => {
+    if (paying) return
+    setPaying(true)
 
-  const handlePaystackPayment = async () => {
-    if (typeof window === 'undefined' || !window.PaystackPop) {
-      alert("Paystack is loading. Please try again in a moment.")
-      return
-    }
-
-    const paystackKey = process.env.NEXT_PUBLIC_PAYSTACK_KEY
-    if (!paystackKey) {
-      alert("Payment is not configured. Please contact support.")
-      return
-    }
-
-    const totalAmount = getTotal()
-    const ref = "BT-" + Date.now().toString(36).toUpperCase()
-    const email = form.email || 'customer@beeyondtrees.com'
-
-    // Persist a pending order in the database before opening Paystack. The cart
-    // item id is `${productId}-${tier}`; strip the tier to recover productId.
+    // 1. Persist a pending order. The cart item id is `${productId}-${tier}`;
+    //    strip the tier to recover the productId for the OrderItem.
     let orderId: string
     try {
       const res = await fetch('/api/orders', {
@@ -131,8 +84,7 @@ export default function CheckoutPage() {
           town: form.town,
           landmark: form.landmark,
           deliveryInstructions: form.deliveryInstructions,
-          total: totalAmount,
-          paymentRef: ref,
+          total: getTotal(),
           items: items.map(i => ({
             productId: i.id.endsWith(`-${i.pricingTier}`)
               ? i.id.slice(0, -(i.pricingTier.length + 1))
@@ -148,62 +100,33 @@ export default function CheckoutPage() {
       const created = await res.json().catch(() => ({}))
       if (!res.ok) {
         alert(created?.error || "Could not start your order. Please try again.")
+        setPaying(false)
         return
       }
       orderId = created.id
     } catch (err) {
       console.error(err)
       alert("Could not start your order. Please check your connection and try again.")
+      setPaying(false)
       return
     }
 
-    const handler = window.PaystackPop.setup({
-      key: paystackKey,
-      email: email,
-      amount: totalAmount * 100,
-      currency: 'KES',
-      ref: ref,
-      label: 'Beeyond Trees',
-      firstname: form.fullName.split(' ')[0],
-      lastname: form.fullName.split(' ').slice(1).join(' ') || '',
-      phone: form.phone,
-      metadata: {
-        customer_name: form.fullName,
-        phone: form.phone,
-        location: `${form.town}, ${effectiveCounty}`,
-        landmark: form.landmark,
-        instructions: form.deliveryInstructions,
-      },
-      onClose: () => {
-        // Customer dismissed Paystack without completing payment. The order
-        // stays pending (unpaid) in the database — we never write payment
-        // status from the browser.
-      },
-      callback: (response: any) => {
-        // Never trust the browser that a payment succeeded. Paystack's inline
-        // callback fires on its own success event, but we confirm server-side
-        // (POST .../verify hits Paystack with the secret key) before marking
-        // the order paid and showing the success screen.
-        const reference = response?.reference || ref
-        fetch(`/api/orders/${orderId}/verify`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ reference }),
-        })
-          .then((r) => r.json())
-          .then((result) => {
-            if (result?.verified) {
-              completeOrder(ref)
-            } else {
-              alert(`We couldn't confirm your payment. If you were charged, please contact support with reference ${ref}.`)
-            }
-          })
-          .catch(() => {
-            alert(`We couldn't confirm your payment. If you were charged, please contact support with reference ${ref}.`)
-          })
-      },
-    })
-    handler.openIframe()
+    // 2. Initialize the payment server-side (secret key) and redirect to
+    //    Paystack's hosted checkout. On return, /checkout/verify confirms it.
+    try {
+      const res = await fetch(`/api/orders/${orderId}/pay`, { method: 'POST' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data?.authorization_url) {
+        alert(data?.error || "Could not start payment. Please try again.")
+        setPaying(false)
+        return
+      }
+      window.location.href = data.authorization_url
+    } catch (err) {
+      console.error(err)
+      alert("Could not reach the payment provider. Please try again.")
+      setPaying(false)
+    }
   }
 
   const OrderSummary = () => (
@@ -291,11 +214,11 @@ export default function CheckoutPage() {
                       Pay securely via M-Pesa, Airtel Money, or bank card through Paystack.
                     </p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <Button style={{ width: '100%', backgroundColor: '#6B7D5C', color: 'white', height: '48px', fontSize: '16px' }} onClick={handlePaystackPayment}>
+                      <Button disabled={paying} style={{ width: '100%', backgroundColor: '#6B7D5C', color: 'white', height: '48px', fontSize: '16px' }} onClick={handlePay}>
                         <CreditCard size={18} style={{ marginRight: '8px' }} />
-                        Pay KSh {getTotal().toLocaleString()}
+                        {paying ? "Starting payment…" : `Pay KSh ${getTotal().toLocaleString()}`}
                       </Button>
-                      <Button variant="outline" style={{ width: '100%', borderColor: '#A89F91', color: '#A89F91' }} onClick={() => setStep("delivery")}>
+                      <Button variant="outline" disabled={paying} style={{ width: '100%', borderColor: '#A89F91', color: '#A89F91' }} onClick={() => setStep("delivery")}>
                         Back
                       </Button>
                     </div>
