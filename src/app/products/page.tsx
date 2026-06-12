@@ -7,6 +7,7 @@ import { ChevronLeft } from "lucide-react"
 import { Header } from "@/components/layout/Header"
 import { ScrollProgress } from "@/components/motion/ScrollProgress"
 import { ProductGrid } from "@/components/products/ProductGrid"
+import { PaginatedGrid } from "@/components/products/PaginatedGrid"
 import { ProductFilters, priceRanges } from "@/components/products/ProductFilters"
 import { useProductStore } from "@/store/product-store"
 import { SlidersHorizontal, X, ChevronDown } from "lucide-react"
@@ -67,11 +68,15 @@ function ProductsContent() {
   // Pagination
   const PAGE_SIZE = 12
   const [page, setPage] = useState(1)
+  const [direction, setDirection] = useState(0)
   useEffect(() => { setPage(1) }, [selectedCategory, selectedPrice, searchTerm, sort])
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
   const goTo = (n: number) => {
-    setPage(Math.min(Math.max(1, n), totalPages))
+    const next = Math.min(Math.max(1, n), totalPages)
+    if (next === page) return
+    setDirection(next > page ? 1 : -1) // drives the transition's sweep direction
+    setPage(next)
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
@@ -132,10 +137,11 @@ function ProductsContent() {
           </aside>
 
           <div style={{ flex: 1, minWidth: 0 }}>
-            {/* key by page so the RevealGroup remounts and replays its entrance
-                animation; without it, items on pages 2+ mount into an already
-                -settled (once:true) group and stay stuck at opacity 0. */}
-            <ProductGrid key={page} products={pageItems} showSkeleton={showSkeleton} />
+            {showSkeleton || pageItems.length === 0 ? (
+              <ProductGrid products={pageItems} showSkeleton={showSkeleton} />
+            ) : (
+              <PaginatedGrid products={pageItems} page={page} direction={direction} />
+            )}
 
             {!showSkeleton && totalPages > 1 && (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 44, flexWrap: "wrap" }}>
