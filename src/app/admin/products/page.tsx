@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, Edit, X, Upload, AlertTriangle, Package, Image } from "lucide-react"
+import { Plus, Trash2, Edit, X, Upload, AlertTriangle, CheckCircle2, Package, Image } from "lucide-react"
 import { useProductStore, Product } from "@/store/product-store"
 import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary"
 
@@ -16,7 +16,7 @@ export default function AdminProductsPage() {
   const [imageUrls, setImageUrls] = useState<string[]>([])
   const [newImageUrl, setNewImageUrl] = useState("")
   const [uploading, setUploading] = useState(false)
-  const [notice, setNotice] = useState<string | null>(null)
+  const [notice, setNotice] = useState<{ text: string; tone: "error" | "success" } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Auto-dismiss the custom toast after a few seconds.
@@ -49,7 +49,7 @@ export default function AdminProductsPage() {
           setImageUrls(prev => [...prev, url])
         }
       } catch (err) {
-        setNotice(err instanceof Error ? err.message : "Image upload failed")
+        setNotice({ text: err instanceof Error ? err.message : "Image upload failed", tone: "error" })
       } finally {
         setUploading(false)
       }
@@ -63,7 +63,9 @@ export default function AdminProductsPage() {
 
   const removeImageUrl = (index: number) => { setImageUrls(imageUrls.filter((_, i) => i !== index)) }
 
-  const handleSave = () => {
+  const [saving, setSaving] = useState(false)
+
+  const handleSave = async () => {
     const productData: Product = {
       id: editingId || Date.now().toString(),
       name: form.name, description: form.description, category: form.category,
@@ -72,8 +74,17 @@ export default function AdminProductsPage() {
       images: imageUrls, isOnOffer: form.isOnOffer,
       offerPrice: form.isOnOffer ? Number(form.offerPrice) : null,
     }
-    if (editingId) { updateProduct(productData) } else { addProduct(productData) }
-    resetForm()
+    const wasEditing = Boolean(editingId)
+    setSaving(true)
+    try {
+      if (wasEditing) { await updateProduct(productData) } else { await addProduct(productData) }
+      resetForm()
+      setNotice({ text: wasEditing ? "Product updated" : "Product added", tone: "success" })
+    } catch {
+      setNotice({ text: "Couldn't save the product. Please try again.", tone: "error" })
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleEdit = async (product: Product) => {
@@ -105,10 +116,12 @@ export default function AdminProductsPage() {
     <div>
       {/* Custom toast (replaces browser alert) */}
       {notice && (
-        <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 1000, maxWidth: '360px', display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px 14px', backgroundColor: '#FFF5F5', border: '1px solid #8C6A4A', borderRadius: '8px', boxShadow: '0 4px 14px rgba(0,0,0,0.12)' }}>
-          <AlertTriangle size={18} style={{ color: '#8C6A4A', flexShrink: 0, marginTop: '1px' }} />
-          <span style={{ fontSize: '13px', color: '#4A3F2F', lineHeight: 1.4 }}>{notice}</span>
-          <button onClick={() => setNotice(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8C6A4A', flexShrink: 0, padding: 0, lineHeight: 0 }}><X size={14} /></button>
+        <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 1000, maxWidth: '360px', display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px 14px', backgroundColor: notice.tone === 'success' ? '#F1F7EE' : '#FFF5F5', border: `1px solid ${notice.tone === 'success' ? '#6B7D5C' : '#8C6A4A'}`, borderRadius: '8px', boxShadow: '0 4px 14px rgba(0,0,0,0.12)' }}>
+          {notice.tone === 'success'
+            ? <CheckCircle2 size={18} style={{ color: '#6B7D5C', flexShrink: 0, marginTop: '1px' }} />
+            : <AlertTriangle size={18} style={{ color: '#8C6A4A', flexShrink: 0, marginTop: '1px' }} />}
+          <span style={{ fontSize: '13px', color: '#4A3F2F', lineHeight: 1.4 }}>{notice.text}</span>
+          <button onClick={() => setNotice(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: notice.tone === 'success' ? '#6B7D5C' : '#8C6A4A', flexShrink: 0, padding: 0, lineHeight: 0 }}><X size={14} /></button>
         </div>
       )}
 
@@ -202,7 +215,7 @@ export default function AdminProductsPage() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
-              <Button onClick={handleSave} style={{ backgroundColor: '#6B7D5C', color: 'white' }} disabled={!form.name || !form.retailPrice || !form.stock || uploading}>{editingId ? 'Update' : 'Save'}</Button>
+              <Button onClick={handleSave} style={{ backgroundColor: '#6B7D5C', color: 'white' }} disabled={!form.name || !form.retailPrice || !form.stock || uploading || saving}>{saving ? 'Saving…' : editingId ? 'Update' : 'Save'}</Button>
               <Button variant="outline" onClick={resetForm}>Cancel</Button>
             </div>
           </CardContent>
