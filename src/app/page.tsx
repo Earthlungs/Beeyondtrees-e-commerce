@@ -264,7 +264,7 @@ export default function Home() {
               By turning natural, responsibly-sourced products into income for forest-adjacent communities, we make conservation something people can live on.
             </p>
             <div style={{ display: "flex", alignItems: "center", gap: 13, padding: "16px 0", borderTop: "1px solid #E2DAC9", marginBottom: 26 }}>
-              <img src="/icons/icon-192.png" alt="EarthLungs" width={40} height={40} style={{ width: 40, height: 40, objectFit: "contain", flexShrink: 0 }} />
+              <img src="/earthlungs.png" alt="EarthLungs Reforestation Foundation" width={40} height={40} style={{ width: 40, height: 40, objectFit: "contain", flexShrink: 0 }} />
               <div>
                 <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.18em", color: "#A89F91", fontWeight: 700 }}>In partnership with</div>
                 <div style={{ fontSize: 16, fontWeight: 600, color: DARK }}>EarthLungs Reforestation Foundation</div>
