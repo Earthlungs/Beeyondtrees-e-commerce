@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
+import { markOrderPaid } from "@/lib/orders"
 
 // Server-side Paystack verification. The browser cannot be trusted to assert a
 // payment succeeded, so we independently ask Paystack about the transaction
@@ -63,10 +64,9 @@ export async function POST(
     return NextResponse.json({ verified: false, error: "Payment not confirmed" }, { status: 402 })
   }
 
-  const updated = await prisma.order.update({
-    where: { id },
-    data: { paymentStatus: "paid", transactionRef: String(tx?.reference ?? reference) },
-  })
+  // Mark paid + decrement stock exactly once (shared with the webhook).
+  await markOrderPaid(id, String(tx?.reference ?? reference))
+  const updated = await prisma.order.findUnique({ where: { id } })
 
   return NextResponse.json({ verified: true, order: updated })
 }

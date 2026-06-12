@@ -4,6 +4,7 @@ import { Header } from "@/components/layout/Header"
 import { Footer } from "@/components/layout/Footer"
 import { ScrollProgress } from "@/components/motion/ScrollProgress"
 import { Reveal, RevealGroup, RevealItem } from "@/components/motion/Reveal"
+import { ParallaxImage } from "@/components/motion/ParallaxImage"
 import { motion } from "motion/react"
 import Link from "next/link"
 import {
@@ -68,9 +69,7 @@ export default function AboutPage() {
       <section style={{ maxWidth: 1180, margin: "0 auto", padding: "72px 20px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 56, alignItems: "center" }}>
           <Reveal>
-            <div style={{ position: "relative", borderRadius: 24, overflow: "hidden", aspectRatio: "4/5", boxShadow: "0 40px 70px -40px rgba(74,63,47,0.5)" }}>
-              <img src="https://images.unsplash.com/photo-1497436072909-60f360e1d4b1?w=900&q=80" alt="Restored forest landscape" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-            </div>
+            <ParallaxImage src="/icons/people.jpg" alt="The communities behind BEEyond Trees" aspectRatio="4/5" />
           </Reveal>
           <Reveal delay={0.12}>
             <p style={{ textTransform: "uppercase", letterSpacing: "0.28em", fontSize: 12, fontWeight: 600, color: SAGE, marginBottom: 16 }}>How it began</p>
