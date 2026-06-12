@@ -37,7 +37,7 @@ export default function AboutPage() {
 
       {/* ───────── HERO ───────── */}
       <section style={{ position: "relative", padding: "108px 20px 96px", overflow: "hidden", color: "white", textAlign: "center" }}>
-        <div style={{ position: "absolute", inset: 0, background: 'linear-gradient(rgba(28,34,24,0.62), rgba(28,34,24,0.76)), url("https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=1600&q=80") center/cover' }} />
+        <div style={{ position: "absolute", inset: 0, background: 'linear-gradient(rgba(28,34,24,0.62), rgba(28,34,24,0.76)), url("/icons/mushroom.jpg") center/cover' }} />
         <motion.div style={{ position: "relative", maxWidth: 780, margin: "0 auto" }}
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
           <p style={{ textTransform: "uppercase", letterSpacing: "0.3em", fontSize: 12, fontWeight: 600, color: SAND, marginBottom: 16 }}>Our Story</p>
