@@ -5,7 +5,7 @@ import { Footer } from "@/components/layout/Footer"
 import { ScrollProgress } from "@/components/motion/ScrollProgress"
 import { Reveal, RevealGroup, RevealItem } from "@/components/motion/Reveal"
 import { Counter } from "@/components/motion/Counter"
-import { SketchMap, type Neighbor, type MapSite } from "@/components/motion/SketchMap"
+import { BoundaryMap, type MapSite } from "@/components/motion/BoundaryMap"
 import { motion, AnimatePresence } from "motion/react"
 import { MapPin, TreePine, X } from "lucide-react"
 import { useState } from "react"
@@ -14,37 +14,19 @@ const SAGE = "#6B7D5C"
 const DARK = "#4A3F2F"
 const CREAM = "#F5F1E8"
 
-// Real neighbouring areas per landscape, placed by rough compass direction so
-// the sketch map reads geographically (ocean to the east of the coast, etc.).
-const neighborsByLocation: Record<string, Neighbor[]> = {
-  "Kilifi County": [
-    { name: "Tana River", dir: "N" }, { name: "Malindi", dir: "NE" },
-    { name: "Indian Ocean", dir: "E" }, { name: "Kwale", dir: "S" },
-    { name: "Mombasa", dir: "SW" }, { name: "Taita Taveta", dir: "W" },
-  ],
-  "Tana River County": [
-    { name: "Garissa", dir: "N" }, { name: "Lamu", dir: "E" },
-    { name: "Indian Ocean", dir: "SE" }, { name: "Kilifi", dir: "S" },
-    { name: "Kitui", dir: "W" },
-  ],
-  "Mkinga District": [
-    { name: "Lunga Lunga (KE)", dir: "N" }, { name: "Indian Ocean", dir: "E" },
-    { name: "Tanga City", dir: "S" }, { name: "Muheza", dir: "SW" },
-  ],
-  "Tanga District": [
-    { name: "Muheza", dir: "NW" }, { name: "Indian Ocean", dir: "E" },
-    { name: "Pangani", dir: "S" }, { name: "Korogwe", dir: "W" },
-  ],
-  "Mozambique": [
-    { name: "Tanzania", dir: "N" }, { name: "Indian Ocean", dir: "E" },
-    { name: "Nampula", dir: "S" }, { name: "Niassa", dir: "W" },
-  ],
+// Each landscape maps to its real administrative area (geoBoundaries data,
+// embedded in src/data/coverage-geo.json) plus the neighbouring districts to
+// draw around it. Mozambique is shown at province level (no single focal).
+const coverageConfig: Record<string, { focal: string; neighbors: string[] }> = {
+  "Kilifi County": { focal: "Kilifi", neighbors: ["Mombasa", "Kwale", "Taita Taveta", "Tana River"] },
+  "Tana River County": { focal: "Tana River", neighbors: ["Garissa", "Lamu", "Kilifi", "Kitui", "Isiolo"] },
+  "Mkinga District": { focal: "Mkinga", neighbors: ["Tanga Urban", "Muheza", "Korogwe"] },
+  "Tanga District": { focal: "Tanga Urban", neighbors: ["Mkinga", "Muheza", "Pangani", "Korogwe"] },
+  "Mozambique": { focal: "", neighbors: ["Cabo Delgado", "Nampula", "Niassa", "Zambézia", "Sofala", "Tete", "Manica", "Gaza", "Inhambane", "Maputo"] },
 }
 
-const neighborsFor = (location: string): Neighbor[] =>
-  neighborsByLocation[location] ?? [
-    { name: "Indian Ocean", dir: "E" }, { name: "Highlands", dir: "W" },
-  ]
+const configFor = (location: string) =>
+  coverageConfig[location] ?? { focal: "", neighbors: ["Kilifi", "Tana River"] }
 
 const countries = [
   {
@@ -128,7 +110,7 @@ export default function WhereWeWorkPage() {
               {c.sites.map((s) => {
                 const maxTrees = Math.max(...c.sites.map((x) => x.trees))
                 const open = () => setSelected({
-                  site: { name: s.name, location: s.location, trees: s.trees, neighbors: neighborsFor(s.location) },
+                  site: { name: s.name, location: s.location, trees: s.trees },
                   maxTrees,
                 })
                 return (
@@ -187,11 +169,16 @@ export default function WhereWeWorkPage() {
                 <p style={{ textTransform: "uppercase", letterSpacing: "0.2em", fontSize: 11, fontWeight: 700, color: SAGE, marginBottom: 6 }}>Restoration site</p>
                 <h3 className="font-display" style={{ fontSize: 26, fontWeight: 600, color: DARK, margin: 0 }}>{selected.site.name}</h3>
                 <p style={{ display: "flex", alignItems: "center", gap: 6, color: "#8a8170", fontSize: 14, marginTop: 4 }}>
-                  <MapPin size={14} /> {selected.site.location} · neighbouring areas mapped
+                  <MapPin size={14} /> {selected.site.location} · real district boundaries
                 </p>
               </div>
 
-              <SketchMap site={selected.site} maxTrees={selected.maxTrees} />
+              <BoundaryMap
+                focal={configFor(selected.site.location).focal}
+                neighbors={configFor(selected.site.location).neighbors}
+                site={selected.site}
+                maxTrees={selected.maxTrees}
+              />
             </motion.div>
           </motion.div>
         )}
