@@ -16,7 +16,15 @@ export default function AdminProductsPage() {
   const [imageUrls, setImageUrls] = useState<string[]>([])
   const [newImageUrl, setNewImageUrl] = useState("")
   const [uploading, setUploading] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Auto-dismiss the custom toast after a few seconds.
+  useEffect(() => {
+    if (!notice) return
+    const t = setTimeout(() => setNotice(null), 5000)
+    return () => clearTimeout(t)
+  }, [notice])
 
   const [form, setForm] = useState({
     name: "", description: "", category: "Furniture",
@@ -41,7 +49,7 @@ export default function AdminProductsPage() {
           setImageUrls(prev => [...prev, url])
         }
       } catch (err) {
-        alert(err instanceof Error ? err.message : "Image upload failed")
+        setNotice(err instanceof Error ? err.message : "Image upload failed")
       } finally {
         setUploading(false)
       }
@@ -95,6 +103,15 @@ export default function AdminProductsPage() {
 
   return (
     <div>
+      {/* Custom toast (replaces browser alert) */}
+      {notice && (
+        <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 1000, maxWidth: '360px', display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px 14px', backgroundColor: '#FFF5F5', border: '1px solid #8C6A4A', borderRadius: '8px', boxShadow: '0 4px 14px rgba(0,0,0,0.12)' }}>
+          <AlertTriangle size={18} style={{ color: '#8C6A4A', flexShrink: 0, marginTop: '1px' }} />
+          <span style={{ fontSize: '13px', color: '#4A3F2F', lineHeight: 1.4 }}>{notice}</span>
+          <button onClick={() => setNotice(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8C6A4A', flexShrink: 0, padding: 0, lineHeight: 0 }}><X size={14} /></button>
+        </div>
+      )}
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <div>
           <h1 style={{ fontSize: '22px', fontWeight: 'bold', color: '#4A3F2F' }}>Products</h1>
