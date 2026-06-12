@@ -132,7 +132,10 @@ function ProductsContent() {
           </aside>
 
           <div style={{ flex: 1, minWidth: 0 }}>
-            <ProductGrid products={pageItems} showSkeleton={showSkeleton} />
+            {/* key by page so the RevealGroup remounts and replays its entrance
+                animation; without it, items on pages 2+ mount into an already
+                -settled (once:true) group and stay stuck at opacity 0. */}
+            <ProductGrid key={page} products={pageItems} showSkeleton={showSkeleton} />
 
             {!showSkeleton && totalPages > 1 && (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 44, flexWrap: "wrap" }}>
