@@ -70,12 +70,13 @@ export function DeliveryAnimation() {
           </div>
         </div>
       ) : (
+        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
         <motion.button
           onClick={() => { window.location.href = "/products" }}
           initial={{ opacity: 0, scale: 0.8, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ type: "spring", stiffness: 210, damping: 18 }}
-          style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)", border: "none", cursor: "pointer", padding: 0, background: "transparent" }}
+          style={{ border: "none", cursor: "pointer", padding: 0, background: "transparent" }}
         >
           <motion.span
             animate={{ scale: [1, 1.045, 1] }}
@@ -91,6 +92,7 @@ export function DeliveryAnimation() {
             Your products are on the way
           </motion.span>
         </motion.button>
+        </div>
       )}
     </div>
   )

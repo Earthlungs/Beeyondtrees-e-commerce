@@ -106,6 +106,12 @@ export default function CheckoutPage() {
       return
     }
 
+    const paystackKey = process.env.NEXT_PUBLIC_PAYSTACK_KEY
+    if (!paystackKey) {
+      alert("Payment is not configured. Please contact support.")
+      return
+    }
+
     const totalAmount = getTotal()
     const ref = "BT-" + Date.now().toString(36).toUpperCase()
     const email = form.email || 'customer@beeyondtrees.com'
@@ -128,7 +134,7 @@ export default function CheckoutPage() {
     localStorage.setItem('beeyond-trees-orders', JSON.stringify(existingOrders))
 
     const handler = window.PaystackPop.setup({
-      key: 'pk_test_xxxxxxxxxxxxxxxxxxxxxxxx', // REPLACE with your Paystack public key
+      key: paystackKey,
       email: email,
       amount: totalAmount * 100,
       currency: 'KES',
