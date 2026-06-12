@@ -3,7 +3,7 @@
 import { motion } from "motion/react"
 import Link from "next/link"
 import { ShoppingBag, TreePine, Heart } from "lucide-react"
-import { Product, slugify } from "@/store/product-store"
+import { Product, slugify, productImageUrl } from "@/store/product-store"
 import { useCartStore } from "@/store/cart-store"
 import { useWishlistStore } from "@/store/wishlist-store"
 
@@ -24,7 +24,7 @@ export function ProductCard({ product }: { product: Product }) {
       id: `${product.id}-retail`,
       name: product.name,
       price: product.retailPrice,
-      image: `/api/products/${product.id}/image`,
+      image: productImageUrl(product),
       pricingTier: "retail",
       maxQuantity: product.stock,
       minQuantity: 1,
@@ -37,7 +37,7 @@ export function ProductCard({ product }: { product: Product }) {
           <TreePine size={42} style={{ color: SAGE, opacity: 0.22, position: "absolute" }} />
           <img
             className="byt-zoom"
-            src={`/api/products/${product.id}/image`}
+            src={productImageUrl(product)}
             alt={product.name}
             loading="lazy"
             onError={(e) => { e.currentTarget.style.display = "none" }}

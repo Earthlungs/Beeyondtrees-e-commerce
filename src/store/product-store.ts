@@ -20,6 +20,20 @@ export interface Product {
 
 export const slugify = (name: string) => name.toLowerCase().replace(/\s+/g, "-")
 
+// URL for a product's Nth image, cache-busted by `updatedAt`. The image endpoint
+// caches its response immutably, so the `?v=` param is what makes a changed image
+// actually show up on the storefront instead of the stale cached one.
+export const productImageUrl = (
+  product: Pick<Product, "id" | "updatedAt">,
+  i = 0
+) => {
+  const params = new URLSearchParams()
+  if (i) params.set("i", String(i))
+  if (product.updatedAt) params.set("v", product.updatedAt)
+  const qs = params.toString()
+  return `/api/products/${product.id}/image${qs ? `?${qs}` : ""}`
+}
+
 // Highest updatedAt in the list, used as the incremental-sync watermark.
 // Derived from server timestamps so it's immune to client clock skew.
 const watermark = (list: Product[]) =>
@@ -96,12 +110,16 @@ export const useProductStore = create<ProductStore>()(
       },
 
       updateProduct: async (product) => {
-        await fetch("/api/products", {
+        const res = await fetch("/api/products", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(product),
         })
-        const light: Product = { ...product, images: undefined }
+        // Use the server's response so the fresh `updatedAt` is stored — it's the
+        // cache-busting key for the image endpoints, so without it the storefront
+        // would keep serving the old (immutably cached) image.
+        const updated: Product = await res.json()
+        const light: Product = { ...updated, images: undefined }
         const merged = get().products.map((p) => (p.id === product.id ? light : p))
         set({ products: merged, lastSync: watermark(merged) || get().lastSync })
       },

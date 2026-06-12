@@ -9,7 +9,7 @@ import { Reveal, RevealGroup, RevealItem } from "@/components/motion/Reveal"
 import { ProductCard } from "@/components/shared/ProductCard"
 import { ShoppingCart, Leaf, ArrowLeft, ChevronLeft, ChevronRight, Truck, ShieldCheck } from "lucide-react"
 import Link from "next/link"
-import { useProductStore, slugify } from "@/store/product-store"
+import { useProductStore, slugify, productImageUrl } from "@/store/product-store"
 import { useCartStore } from "@/store/cart-store"
 
 const SAGE = "#6B7D5C"
@@ -41,16 +41,19 @@ export default function ProductDetailPage() {
 
   const product = productsList.find((p) => slugify(p.name) === slug) || null
   const productId = product?.id
+  const productUpdatedAt = product?.updatedAt
 
   useEffect(() => {
     if (!productId) return
     let active = true
-    fetch(`/api/products/${productId}`)
+    // `?v=updatedAt` busts the cached JSON so an edited product's images refresh.
+    const v = productUpdatedAt ? `?v=${encodeURIComponent(productUpdatedAt)}` : ""
+    fetch(`/api/products/${productId}${v}`)
       .then((r) => r.json())
       .then((d) => { if (active) setImages(Array.isArray(d.images) ? d.images : []) })
       .catch(() => {})
     return () => { active = false }
-  }, [productId])
+  }, [productId, productUpdatedAt])
 
   const related = useMemo(() => {
     if (!product) return []
@@ -97,7 +100,7 @@ export default function ProductDetailPage() {
       id: `${product.id}-${selectedTier}`,
       name: product.name,
       price: prices[selectedTier],
-      image: `/api/products/${product.id}/image`,
+      image: productImageUrl(product),
       pricingTier: selectedTier,
       maxQuantity: Math.min(limit.max, product.stock),
       minQuantity: limit.min,
