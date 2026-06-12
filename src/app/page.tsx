@@ -7,12 +7,13 @@ import { useCartStore } from "@/store/cart-store"
 import { Header } from "@/components/layout/Header"
 import { ScrollProgress } from "@/components/motion/ScrollProgress"
 import { Reveal, RevealGroup, RevealItem } from "@/components/motion/Reveal"
+import { DeliveryAnimation } from "@/components/motion/DeliveryAnimation"
 import { Skeleton } from "@/components/ui/skeleton"
 import Link from "next/link"
 import {
   ArrowRight, TreePine, Users, Globe, Sprout, Leaf, ShoppingBag,
   ChevronDown, MapPin, Phone, Mail, ArrowUpRight,
-  Hexagon, Trees, Milk, Palette, Truck, Package,
+  Hexagon, Trees, Milk, Palette,
 } from "lucide-react"
 
 const SAGE = "#6B7D5C"
@@ -226,7 +227,7 @@ export default function Home() {
           <RevealGroup style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 22 }} stagger={0.1}>
             {[
               { icon: Sprout, t: "Reforestation", d: "Every order funds indigenous trees, restoring Kenya's forests one canopy at a time." },
-              { icon: Users, t: "Community First", d: "We sustain forest-adjacent livelihoods beyond planting — fair work, lasting income." },
+              { icon: Users, t: "Community First", d: "We sustain forest-adjacent livelihoods beyond planting, fair work, lasting income." },
               { icon: Globe, t: "Sustainability", d: "Naturally sourced, low-impact goods designed to be kind to the land they come from." },
             ].map((v) => (
               <RevealItem key={v.t}>
@@ -248,7 +249,7 @@ export default function Home() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 56, alignItems: "center" }}>
           <Reveal>
             <div style={{ position: "relative", borderRadius: 24, overflow: "hidden", aspectRatio: "4/5", boxShadow: "0 40px 70px -40px rgba(74,63,47,0.5)" }}>
-              <img src="https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?w=900&q=80" alt="Forest canopy" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <img src="https://images.unsplash.com/photo-1532372320572-cda25653a26d?w=900&q=80" alt="Handcrafted natural furniture" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             </div>
           </Reveal>
           <Reveal delay={0.12}>
@@ -257,11 +258,18 @@ export default function Home() {
               A flagship initiative for people <span style={{ fontStyle: "italic", color: SAGE }}>and</span> planet
             </h2>
             <p style={{ fontSize: 16, lineHeight: 1.8, color: "#6b6353", marginBottom: 18 }}>
-              BEEyond Trees is developed by the EarthLungs Reforestation Foundation in Kenya — a sustainability and livelihood initiative that goes beyond planting and growing trees.
+              BEEyond Trees is developed by the EarthLungs Reforestation Foundation in Kenya, a sustainability and livelihood initiative that goes beyond planting and growing trees.
             </p>
             <p style={{ fontSize: 16, lineHeight: 1.8, color: "#6b6353", marginBottom: 30 }}>
               By turning natural, responsibly-sourced products into income for forest-adjacent communities, we make conservation something people can live on.
             </p>
+            <div style={{ display: "flex", alignItems: "center", gap: 13, padding: "16px 0", borderTop: "1px solid #E2DAC9", marginBottom: 26 }}>
+              <img src="/icons/icon-192.png" alt="EarthLungs" width={40} height={40} style={{ width: 40, height: 40, objectFit: "contain", flexShrink: 0 }} />
+              <div>
+                <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.18em", color: "#A89F91", fontWeight: 700 }}>In partnership with</div>
+                <div style={{ fontSize: 16, fontWeight: 600, color: DARK }}>EarthLungs Reforestation Foundation</div>
+              </div>
+            </div>
             <Link href="/where-we-work" style={{ textDecoration: "none" }}>
               <motion.span whileHover={{ x: 5 }} style={{ display: "inline-flex", alignItems: "center", gap: 8, color: SAGE, fontWeight: 600, fontSize: 16 }}>
                 See where we work <ArrowRight size={18} />
@@ -284,10 +292,10 @@ export default function Home() {
           {[
             { icon: Hexagon, t: "Apiculture (Beekeeping)", d: "Modern hives on farmlands adjacent to mangrove and terrestrial restoration sites. Women and youth trained in sustainable honey and wax production." },
             { icon: Sprout, t: "Fungi-Culture (Mushrooms)", d: "Recycled coconut coir and agro-waste from restoration sites turned into mushrooms and income-generating value chains." },
-            { icon: Trees, t: "Bamboo Value Chain", d: "Fast-growing bamboo for furniture, construction and carbon — with local workshops for baskets, lampshades, trays and mats." },
+            { icon: Trees, t: "Bamboo Value Chain", d: "Fast-growing bamboo for furniture, construction and carbon, with local workshops for baskets, lampshades, trays and mats." },
             { icon: Milk, t: "Dairy Goat Farming", d: "High-yielding, disease-resistant breeds piloted in Mombasa. Goat manure enriches agroforestry soils and household nutrition." },
-            { icon: Palette, t: "Handicraft & Weaving", d: "Natural fibres — coconut husk, banana and bamboo — woven into ropes, mats and artisanal goods by women's groups." },
-            { icon: Users, t: "People-first Impact", d: "Economic empowerment, gender inclusion and circular-economy models — built to scale across EarthLungs' territories." },
+            { icon: Palette, t: "Handicraft & Weaving", d: "Natural fibres, coconut husk, banana and bamboo, woven into ropes, mats and artisanal goods by women's groups." },
+            { icon: Users, t: "People-first Impact", d: "Economic empowerment, gender inclusion and circular-economy models, built to scale across EarthLungs' territories." },
           ].map((c) => (
             <RevealItem key={c.t}>
               <div style={{ background: "white", border: "1px solid #E7E1D4", borderRadius: 20, padding: "30px 26px", height: "100%" }}>
@@ -308,31 +316,10 @@ export default function Home() {
           <Reveal style={{ textAlign: "center", marginBottom: 30 }}>
             <p style={{ textTransform: "uppercase", letterSpacing: "0.28em", fontSize: 12, fontWeight: 600, color: SAGE, marginBottom: 12 }}>Logistics</p>
             <h2 className="font-display" style={{ fontSize: "clamp(26px,4vw,42px)", fontWeight: 600, color: DARK, margin: 0 }}>Delivered across Kenya</h2>
-            <p style={{ color: "#8a8170", fontSize: 16, marginTop: 12 }}>From our community hubs to your door — county to county.</p>
+            <p style={{ color: "#8a8170", fontSize: 16, marginTop: 12 }}>From our community hubs to your door, county to county.</p>
           </Reveal>
 
-          <div style={{ position: "relative", height: 130, marginTop: 20 }}>
-            {/* road */}
-            <div style={{ position: "absolute", left: 0, right: 0, bottom: 26, height: 3, background: "repeating-linear-gradient(90deg, #C2B7A3 0 24px, transparent 24px 44px)" }} />
-            {/* goods being loaded */}
-            {[0, 1, 2].map((i) => (
-              <motion.div key={i} style={{ position: "absolute", bottom: 32, left: 70 + i * 30, color: "#8C6A4A" }}
-                initial={{ opacity: 1, y: 0 }}
-                whileInView={{ opacity: [1, 1, 0], y: [0, 0, -10] }}
-                viewport={{ once: true, amount: 0.5 }}
-                transition={{ duration: 3.6, times: [0, 0.42 + i * 0.03, 0.56 + i * 0.03] }}>
-                <Package size={22} />
-              </motion.div>
-            ))}
-            {/* lorry: drives in → loads → speeds off */}
-            <motion.div style={{ position: "absolute", bottom: 18, left: 0, display: "flex", alignItems: "flex-end", gap: 0 }}
-              initial={{ x: -240 }}
-              whileInView={{ x: [-240, 130, 130, 1500] }}
-              viewport={{ once: true, amount: 0.5 }}
-              transition={{ duration: 3.6, times: [0, 0.36, 0.62, 1], ease: "easeInOut" }}>
-              <Truck size={68} strokeWidth={1.6} style={{ color: SAGE }} />
-            </motion.div>
-          </div>
+          <DeliveryAnimation />
         </div>
       </section>
 
@@ -341,9 +328,9 @@ export default function Home() {
         <Leaf size={120} style={{ position: "absolute", top: -20, right: -10, opacity: 0.06 }} />
         <Leaf size={120} style={{ position: "absolute", bottom: -30, left: -20, opacity: 0.06, transform: "rotate(180deg)" }} />
         <Reveal style={{ maxWidth: 640, margin: "0 auto", position: "relative" }}>
-          <h2 className="font-display" style={{ fontSize: "clamp(28px,4.5vw,46px)", fontWeight: 600, marginBottom: 16 }}>More than an initiative — a movement</h2>
+          <h2 className="font-display" style={{ fontSize: "clamp(28px,4.5vw,46px)", fontWeight: 600, marginBottom: 16 }}>More than an initiative, a movement</h2>
           <p style={{ fontSize: 17, opacity: 0.92, lineHeight: 1.7, marginBottom: 30 }}>
-            BEEyond Trees empowers communities to become custodians of the forests they helped restore — a future built on sustainable livelihoods, circular economies and people-first conservation.
+            BEEyond Trees empowers communities to become custodians of the forests they helped restore, a future built on sustainable livelihoods, circular economies and people-first conservation.
           </p>
           <Link href="/products" style={{ textDecoration: "none" }}>
             <motion.span whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
@@ -360,7 +347,7 @@ export default function Home() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 36, marginBottom: 44 }}>
             <div>
               <div className="font-display" style={{ fontSize: 22, fontWeight: 600, color: "white", marginBottom: 12 }}>BEEyond Trees</div>
-              <p style={{ fontSize: 14, color: "#B8A99A", lineHeight: 1.7, maxWidth: 260 }}>Sustainable natural products from Kenya — sustaining forest-adjacent communities beyond tree planting.</p>
+              <p style={{ fontSize: 14, color: "#B8A99A", lineHeight: 1.7, maxWidth: 260 }}>Sustainable natural products from Kenya, sustaining forest-adjacent communities beyond tree planting.</p>
             </div>
             <div>
               <h4 style={{ fontWeight: 600, marginBottom: 14, color: "white", fontSize: 14, letterSpacing: "0.05em" }}>Explore</h4>
@@ -383,7 +370,7 @@ export default function Home() {
               <div style={{ display: "flex", flexDirection: "column", gap: 11, fontSize: 14, color: "#B8A99A" }}>
                 <span style={{ display: "flex", alignItems: "center", gap: 8 }}><MapPin size={15} /> Nairobi, Kenya</span>
                 <span style={{ display: "flex", alignItems: "center", gap: 8 }}><Phone size={15} /> +254 718 681 684</span>
-                <span style={{ display: "flex", alignItems: "center", gap: 8 }}><Mail size={15} /> hello@beeyondtrees.com</span>
+                <span style={{ display: "flex", alignItems: "center", gap: 8 }}><Mail size={15} /> beeyondtrees@earthlungs.org</span>
               </div>
             </div>
           </div>

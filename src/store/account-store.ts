@@ -7,6 +7,7 @@ import { persist } from "zustand/middleware"
 export interface Customer {
   name: string
   email: string
+  picture?: string
 }
 
 interface AccountStore {
