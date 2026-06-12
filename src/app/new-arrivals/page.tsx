@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { TreePine, ShoppingCart, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { useCartStore } from "@/store/cart-store"
-import { useProductStore } from "@/store/product-store"
+import { useProductStore, productImageUrl } from "@/store/product-store"
 
 export default function NewArrivalsPage() {
   const allProducts = useProductStore((state) => state.products)
@@ -44,7 +44,7 @@ export default function NewArrivalsPage() {
                 <Link href={`/products/${product.name.toLowerCase().replace(/\s+/g, "-")}`}>
                   <div style={{ height: '200px', backgroundColor: '#F5F1E8', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                     <TreePine size={48} style={{ color: '#6B7D5C', opacity: 0.3, position: 'absolute' }} />
-                    <img src={`/api/products/${product.id}/image`} alt={product.name} loading="lazy" onError={e => { e.currentTarget.style.display = 'none' }} style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '16px', position: 'relative', backgroundColor: '#F5F1E8' }} />
+                    <img src={productImageUrl(product)} alt={product.name} loading="lazy" onError={e => { e.currentTarget.style.display = 'none' }} style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '16px', position: 'relative', backgroundColor: '#F5F1E8' }} />
                   </div>
                 </Link>
                 <CardContent style={{ padding: '16px' }}>
@@ -64,7 +64,7 @@ export default function NewArrivalsPage() {
                         id: `${product.id}-retail`,
                         name: product.name,
                         price: product.retailPrice,
-                        image: `/api/products/${product.id}/image`,
+                        image: productImageUrl(product),
                         pricingTier: "retail",
                         maxQuantity: product.stock,
                         minQuantity: 1,

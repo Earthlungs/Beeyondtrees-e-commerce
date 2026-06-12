@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { motion, useScroll, useTransform } from "motion/react"
-import { useProductStore } from "@/store/product-store"
+import { useProductStore, productImageUrl } from "@/store/product-store"
 import { useCartStore } from "@/store/cart-store"
 import { Header } from "@/components/layout/Header"
 import { ScrollProgress } from "@/components/motion/ScrollProgress"
@@ -51,7 +51,7 @@ export default function Home() {
       id: `${p.id}-retail`,
       name: p.name,
       price: p.retailPrice,
-      image: `/api/products/${p.id}/image`,
+      image: productImageUrl(p),
       pricingTier: "retail",
       maxQuantity: p.stock,
       minQuantity: 1,
@@ -179,7 +179,7 @@ export default function Home() {
                   <Link href={`/products/${slugify(p.name)}`} style={{ textDecoration: "none", display: "block" }}>
                     <div style={{ position: "relative", height: 230, backgroundColor: "#F3EFE6", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <TreePine size={42} style={{ color: SAGE, opacity: 0.25, position: "absolute" }} />
-                      <img className="byt-zoom" src={`/api/products/${p.id}/image`} alt={p.name} loading="lazy"
+                      <img className="byt-zoom" src={productImageUrl(p)} alt={p.name} loading="lazy"
                         onError={(e) => { e.currentTarget.style.display = "none" }}
                         style={{ width: "100%", height: "100%", objectFit: "cover", position: "relative" }} />
                       {p.stock <= 5 && p.stock > 0 && (
