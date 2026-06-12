@@ -80,7 +80,7 @@ export default function AboutPage() {
               BEEyond Trees was born from a simple yet powerful realization: reforestation efforts cannot succeed without the active participation and economic empowerment of forest-adjacent communities. As a flagship initiative of EarthLungs Reforestation Foundation, we bridge the gap between environmental conservation and sustainable livelihoods.
             </p>
             <p style={{ color: "#6b6353", lineHeight: 1.8, fontSize: 16, marginBottom: 16 }}>
-              Our model integrates nature-based enterprises — from sustainable honey production to mushroom farming and artisan crafts — directly into reforestation projects. This creates a virtuous cycle where communities have both the means and motivation to protect and restore their surrounding forests.
+              Our model integrates nature-based enterprises, from sustainable honey production to mushroom farming and artisan crafts, directly into reforestation projects. This creates a virtuous cycle where communities have both the means and motivation to protect and restore their surrounding forests.
             </p>
             <p style={{ color: "#6b6353", lineHeight: 1.8, fontSize: 16, marginBottom: 28 }}>
               Every product sold through this platform directly supports tree planting, community development, and ecosystem restoration across Kenya, Tanzania, and Mozambique.

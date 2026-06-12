@@ -20,7 +20,7 @@ export interface Product {
 
 export const slugify = (name: string) => name.toLowerCase().replace(/\s+/g, "-")
 
-// Highest updatedAt in the list — used as the incremental-sync watermark.
+// Highest updatedAt in the list, used as the incremental-sync watermark.
 // Derived from server timestamps so it's immune to client clock skew.
 const watermark = (list: Product[]) =>
   list.reduce((max, p) => (p.updatedAt && p.updatedAt > max ? p.updatedAt : max), "")

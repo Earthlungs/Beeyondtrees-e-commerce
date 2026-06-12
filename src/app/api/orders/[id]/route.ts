@@ -3,7 +3,7 @@ import { getToken } from "next-auth/jwt"
 import { prisma } from "@/lib/db"
 
 // Admin-only order management (e.g. marking an order delivered/cancelled).
-// Payment status is NOT set here — it's verified server-side against Paystack
+// Payment status is NOT set here, it's verified server-side against Paystack
 // in POST /api/orders/[id]/verify so the browser can't forge a paid order.
 export async function PATCH(
   request: NextRequest,

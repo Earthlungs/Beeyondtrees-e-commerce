@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getToken } from "next-auth/jwt"
 import { prisma } from "@/lib/db"
 
-// Admin order list — newest first, with line items and any dispatch record.
+// Admin order list, newest first, with line items and any dispatch record.
 // Orders contain customer PII (name, phone, address) so this is admin-only.
 export async function GET(request: NextRequest) {
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })

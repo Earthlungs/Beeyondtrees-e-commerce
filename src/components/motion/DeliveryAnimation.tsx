@@ -6,7 +6,7 @@ import { motion, useInView, useAnimate, stagger } from "motion/react"
 const SAGE = "#6B7D5C"
 
 // Orchestrated delivery: a lorry drives onto dark tarmac, opens its rear door,
-// loads goods, closes up, switches on its lights and speeds off — then the
+// loads goods, closes up, switches on its lights and speeds off, then the
 // tarmac becomes a button that ticks "Your products are on the way".
 export function DeliveryAnimation() {
   const [scope, animate] = useAnimate()

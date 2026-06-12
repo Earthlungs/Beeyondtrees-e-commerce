@@ -10,7 +10,7 @@ import { useWishlistStore } from "@/store/wishlist-store"
 const SAGE = "#6B7D5C"
 const DARK = "#4A3F2F"
 
-// Premium catalog card — image lazy-loads from the per-product image endpoint,
+// Premium catalog card, image lazy-loads from the per-product image endpoint,
 // retail quick-add; full pricing tiers live on the detail page.
 export function ProductCard({ product }: { product: Product }) {
   const addItem = useCartStore((s) => s.addItem)

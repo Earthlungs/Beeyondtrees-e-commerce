@@ -34,7 +34,7 @@ export async function POST(
     return NextResponse.json({ verified: false, error: "Reference mismatch" }, { status: 400 })
   }
 
-  // Already verified — idempotent success.
+  // Already verified, idempotent success.
   if (order.paymentStatus === "paid") {
     return NextResponse.json({ verified: true, order })
   }
