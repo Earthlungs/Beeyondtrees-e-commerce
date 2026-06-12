@@ -135,6 +135,14 @@ export function BoundaryMap({
             transition={{ delay: 0.6, duration: 1.1, ease: [0.4, 0, 0.2, 1] }}
           />
         </div>
+        <p style={{ fontSize: 10.5, color: "#A89F91", marginTop: 10, textAlign: "right" }}>
+          Boundaries ©{" "}
+          <a href="https://www.geoboundaries.org" target="_blank" rel="noopener noreferrer"
+            style={{ color: "#8a8170", textDecoration: "underline" }}>
+            geoBoundaries
+          </a>{" "}
+          (CC BY 4.0)
+        </p>
       </div>
     </div>
   )
