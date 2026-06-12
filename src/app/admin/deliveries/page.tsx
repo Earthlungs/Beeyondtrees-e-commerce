@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
   Truck, Phone, MapPin, Package, ChevronDown, ChevronUp,
-  Bike, CheckCircle, XCircle, Clock, RefreshCw,
+  Bike, CheckCircle, XCircle, Clock, RefreshCw, Mail, User, X, Lock,
 } from "lucide-react"
 
 const SAGE = "#6B7D5C"
@@ -163,6 +163,7 @@ function OrderRow({ order, expanded, onToggle, onStatus, onDispatched }: {
   onStatus: (id: string, status: string) => void
   onDispatched: (d: Dispatch) => void
 }) {
+  const isPaid = order.paymentStatus === "paid"
   return (
     <Card style={{ borderColor: "#E2DAC9" }}>
       <CardContent style={{ padding: 16 }}>
@@ -188,8 +189,14 @@ function OrderRow({ order, expanded, onToggle, onStatus, onDispatched }: {
 
         {expanded && (
           <div style={{ marginTop: 16, borderTop: "1px solid #EFE9DC", paddingTop: 16, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20 }}>
-            {/* Items + delivery */}
+            {/* Customer + items + delivery */}
             <div>
+              <h4 style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.08em", color: MUTED, fontWeight: 700, marginBottom: 8 }}>Customer</h4>
+              <div style={{ fontSize: 13, color: DARK, lineHeight: 1.8, marginBottom: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 600 }}><User size={13} style={{ color: SAGE }} /> {order.customerName}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, color: MUTED }}><Phone size={13} /> {order.customerPhone}</div>
+                {order.customerEmail && <div style={{ display: "flex", alignItems: "center", gap: 6, color: MUTED }}><Mail size={13} /> {order.customerEmail}</div>}
+              </div>
               <h4 style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.08em", color: MUTED, fontWeight: 700, marginBottom: 10 }}>Items</h4>
               <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 }}>
                 {order.items?.map((it) => (
@@ -210,17 +217,29 @@ function OrderRow({ order, expanded, onToggle, onStatus, onDispatched }: {
 
             {/* Dispatch + actions */}
             <div>
-              <DispatchPanel order={order} onDispatched={onDispatched} />
+              <DispatchPanel order={order} onDispatched={onDispatched} isPaid={isPaid} />
+
+              {!isPaid && (
+                <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 14, padding: "9px 12px", background: "#FFFBF0", border: "1px solid #F0E2BC", borderRadius: 10, color: "#9a7b1f", fontSize: 12.5 }}>
+                  <Lock size={13} /> Awaiting payment — dispatch &amp; delivery are locked until this order is paid.
+                </div>
+              )}
+
               <div style={{ marginTop: 16 }}>
                 <h4 style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.08em", color: MUTED, fontWeight: 700, marginBottom: 10 }}>Update status</h4>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <Button onClick={() => onStatus(order.id, "delivered")} disabled={order.status === "delivered"}
-                    style={{ backgroundColor: SAGE, color: "white", fontSize: 13, gap: 6, height: 38 }}>
+                  <Button onClick={() => onStatus(order.id, "delivered")} disabled={!isPaid || order.status === "delivered"}
+                    title={!isPaid ? "Order must be paid first" : undefined}
+                    style={{ backgroundColor: SAGE, color: "white", fontSize: 13, gap: 6, height: 38, opacity: !isPaid || order.status === "delivered" ? 0.5 : 1, cursor: !isPaid ? "not-allowed" : undefined }}>
                     <CheckCircle size={15} /> Mark delivered
                   </Button>
                   <Button onClick={() => onStatus(order.id, "cancelled")} disabled={order.status === "cancelled"}
                     variant="outline" style={{ borderColor: "#C0392B", color: "#C0392B", fontSize: 13, gap: 6, height: 38 }}>
                     <XCircle size={15} /> Cancel
+                  </Button>
+                  <Button onClick={onToggle}
+                    variant="outline" style={{ borderColor: MUTED, color: MUTED, fontSize: 13, gap: 6, height: 38 }}>
+                    <X size={15} /> Close
                   </Button>
                 </div>
               </div>
@@ -232,7 +251,7 @@ function OrderRow({ order, expanded, onToggle, onStatus, onDispatched }: {
   )
 }
 
-function DispatchPanel({ order, onDispatched }: { order: Order; onDispatched: (d: Dispatch) => void }) {
+function DispatchPanel({ order, onDispatched, isPaid }: { order: Order; onDispatched: (d: Dispatch) => void; isPaid: boolean }) {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
@@ -268,11 +287,15 @@ function DispatchPanel({ order, onDispatched }: { order: Order; onDispatched: (d
   if (order.dispatch && !open) {
     return (
       <div>
-        <h4 style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.08em", color: MUTED, fontWeight: 700, marginBottom: 10 }}>Rider</h4>
-        <div style={{ background: "#F8F6F0", border: "1px solid #EFE9DC", borderRadius: 10, padding: 12, fontSize: 13, color: DARK, lineHeight: 1.7 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 600 }}><Bike size={14} style={{ color: SAGE }} /> {order.dispatch.riderName}</div>
-          <div style={{ color: MUTED }}>{order.dispatch.riderPhone} · {order.dispatch.motorbikePlate}</div>
-          <div style={{ color: MUTED, fontSize: 12 }}>ID: {order.dispatch.riderIdNo}</div>
+        <h4 style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.08em", color: MUTED, fontWeight: 700, marginBottom: 10 }}>Rider details</h4>
+        <div style={{ background: "#F8F6F0", border: "1px solid #EFE9DC", borderRadius: 10, padding: 14, fontSize: 13, color: DARK, lineHeight: 1.9 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 600, fontSize: 14 }}><Bike size={15} style={{ color: SAGE }} /> {order.dispatch.riderName}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, color: MUTED }}><Phone size={12} /> {order.dispatch.riderPhone}</div>
+          <div style={{ color: MUTED }}>Plate: <strong style={{ color: DARK }}>{order.dispatch.motorbikePlate}</strong></div>
+          <div style={{ color: MUTED }}>Rider ID: <strong style={{ color: DARK }}>{order.dispatch.riderIdNo}</strong></div>
+          {order.dispatch.estimatedDelivery && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, color: MUTED }}><Clock size={12} /> ETA {new Date(order.dispatch.estimatedDelivery).toLocaleString()}</div>
+          )}
         </div>
         <button onClick={() => setOpen(true)} style={{ marginTop: 8, background: "none", border: "none", color: SAGE, fontSize: 13, cursor: "pointer", textDecoration: "underline" }}>Reassign rider</button>
       </div>
@@ -283,7 +306,9 @@ function DispatchPanel({ order, onDispatched }: { order: Order; onDispatched: (d
     return (
       <div>
         <h4 style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.08em", color: MUTED, fontWeight: 700, marginBottom: 10 }}>Dispatch</h4>
-        <Button onClick={() => setOpen(true)} style={{ backgroundColor: "#8C6A4A", color: "white", fontSize: 13, gap: 6, height: 38 }}>
+        <Button onClick={() => setOpen(true)} disabled={!isPaid}
+          title={!isPaid ? "Order must be paid first" : undefined}
+          style={{ backgroundColor: "#8C6A4A", color: "white", fontSize: 13, gap: 6, height: 38, opacity: isPaid ? 1 : 0.5, cursor: isPaid ? undefined : "not-allowed" }}>
           <Bike size={15} /> Assign rider
         </Button>
       </div>
