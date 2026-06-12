@@ -100,7 +100,7 @@ export default function CheckoutPage() {
     setStep("success")
   }
 
-  const handlePaystackPayment = () => {
+  const handlePaystackPayment = async () => {
     if (typeof window === 'undefined' || !window.PaystackPop) {
       alert("Paystack is loading. Please try again in a moment.")
       return
@@ -116,22 +116,43 @@ export default function CheckoutPage() {
     const ref = "BT-" + Date.now().toString(36).toUpperCase()
     const email = form.email || 'customer@beeyondtrees.com'
 
-    // Save order as pending
-    const order = {
-      id: ref,
-      customer: { ...form, county: effectiveCounty },
-      items: items.map(i => ({
-        name: i.name, price: i.price, quantity: i.quantity,
-        pricingTier: i.pricingTier, subtotal: i.price * i.quantity,
-      })),
-      total: totalAmount,
-      date: new Date().toISOString(),
-      status: "pending",
-      paymentRef: ref,
+    // Persist a pending order in the database before opening Paystack. The cart
+    // item id is `${productId}-${tier}`; strip the tier to recover productId.
+    let orderId: string
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerName: form.fullName,
+          customerPhone: form.phone,
+          customerEmail: form.email || null,
+          county: effectiveCounty,
+          town: form.town,
+          landmark: form.landmark,
+          deliveryInstructions: form.deliveryInstructions,
+          total: totalAmount,
+          paymentRef: ref,
+          items: items.map(i => ({
+            productId: i.id.endsWith(`-${i.pricingTier}`)
+              ? i.id.slice(0, -(i.pricingTier.length + 1))
+              : i.id,
+            productName: i.name,
+            price: i.price,
+            quantity: i.quantity,
+            pricingTier: i.pricingTier,
+            subtotal: i.price * i.quantity,
+          })),
+        }),
+      })
+      if (!res.ok) throw new Error(`Order create failed (${res.status})`)
+      const created = await res.json()
+      orderId = created.id
+    } catch (err) {
+      console.error(err)
+      alert("Could not start your order. Please check your connection and try again.")
+      return
     }
-    const existingOrders = JSON.parse(localStorage.getItem('beeyond-trees-orders') || '[]')
-    existingOrders.push(order)
-    localStorage.setItem('beeyond-trees-orders', JSON.stringify(existingOrders))
 
     const handler = window.PaystackPop.setup({
       key: paystackKey,
@@ -151,20 +172,22 @@ export default function CheckoutPage() {
         instructions: form.deliveryInstructions,
       },
       onClose: () => {
-        // User closed the popup
-        const orders = JSON.parse(localStorage.getItem('beeyond-trees-orders') || '[]')
-        const updatedOrders = orders.map((o: any) => 
-          o.id === ref ? { ...o, status: 'cancelled', paymentStatus: 'cancelled' } : o
-        )
-        localStorage.setItem('beeyond-trees-orders', JSON.stringify(updatedOrders))
+        // User closed the popup — mark the pending order cancelled.
+        fetch(`/api/orders/${orderId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'cancelled', paymentStatus: 'cancelled' }),
+        }).catch(console.error)
       },
       callback: (response: any) => {
-        // Payment successful
-        const orders = JSON.parse(localStorage.getItem('beeyond-trees-orders') || '[]')
-        const updatedOrders = orders.map((o: any) => 
-          o.id === ref ? { ...o, status: 'pending', paymentStatus: 'paid', transactionRef: response.transaction } : o
-        )
-        localStorage.setItem('beeyond-trees-orders', JSON.stringify(updatedOrders))
+        // Payment successful — record it, then show the success screen. The
+        // PATCH is fire-and-forget so the confirmation isn't gated on the
+        // network round-trip.
+        fetch(`/api/orders/${orderId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ paymentStatus: 'paid', transactionRef: response.transaction }),
+        }).catch(console.error)
         completeOrder(ref)
       },
     })
