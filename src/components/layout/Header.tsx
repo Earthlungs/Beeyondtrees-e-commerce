@@ -7,6 +7,7 @@ import { ShoppingBag, Search, User, Heart, LogOut, X } from "lucide-react"
 import { useCartStore } from "@/store/cart-store"
 import { useWishlistStore } from "@/store/wishlist-store"
 import { useAccountStore } from "@/store/account-store"
+import { GoogleSignIn } from "@/components/auth/GoogleSignIn"
 import { CartSheet } from "@/components/cart/CartSheet"
 
 const SAGE = "#6B7D5C"
@@ -16,8 +17,9 @@ const navLinks = [
   { label: "Home", href: "/" },
   { label: "Shop", href: "/products" },
   { label: "New Arrivals", href: "/new-arrivals" },
-  { label: "About Us", href: "/about" },
   { label: "Where We Work", href: "/where-we-work" },
+  { label: "Our Stories", href: "/our-stories" },
+  { label: "About", href: "/about" },
   { label: "Contact", href: "/contact" },
 ]
 
@@ -37,8 +39,8 @@ export function Header() {
       <header style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(255,255,255,0.85)", backdropFilter: "blur(12px)", borderBottom: "1px solid #E7E1D4" }}>
         <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 20px", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
           {/* Logo */}
-          <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", flexShrink: 0 }}>
-            <div style={{ width: 38, height: 38, borderRadius: 11, background: SAGE, color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 17 }}>B</div>
+          <Link href="/" style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none", flexShrink: 0 }}>
+            <img src="/icons/icon-192.png" alt="BEEyond Trees" width={40} height={40} style={{ width: 40, height: 40, objectFit: "contain" }} />
             <span className="font-display" style={{ fontSize: 21, fontWeight: 600, color: SAGE }}>
               BEEyond<span style={{ color: DARK }}> Trees</span>
             </span>
@@ -56,10 +58,12 @@ export function Header() {
           </nav>
 
           {/* Actions */}
-          <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-            <IconButton label="Search" onClick={() => setSearchOpen((s) => !s)}>
-              <Search size={19} />
-            </IconButton>
+          <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+            <span className="hidden md:inline-flex">
+              <IconButton label="Search" onClick={() => setSearchOpen((s) => !s)}>
+                <Search size={19} />
+              </IconButton>
+            </span>
 
             <Link href="/wishlist" style={{ textDecoration: "none" }}>
               <IconButton label="Wishlist" badge={wishCount}>
@@ -72,7 +76,7 @@ export function Header() {
             </IconButton>
 
             {/* Account */}
-            <div style={{ position: "relative" }} onMouseLeave={() => setAccountOpen(false)}>
+            <div className="hidden md:block" style={{ position: "relative" }} onMouseLeave={() => setAccountOpen(false)}>
               <IconButton label="Account" onClick={() => setAccountOpen((s) => !s)}>
                 <User size={19} />
               </IconButton>
@@ -154,6 +158,11 @@ export function Header() {
                 <span className="font-display" style={{ fontSize: 20, fontWeight: 600, color: SAGE }}>BEEyond Trees</span>
                 <button onClick={() => setMenuOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: DARK }}><X size={22} /></button>
               </div>
+              <form action="/products" onSubmit={() => setMenuOpen(false)} style={{ position: "relative", marginBottom: 18 }}>
+                <Search size={16} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#A89F91" }} />
+                <input name="q" placeholder="Search products…"
+                  style={{ width: "100%", padding: "11px 14px 11px 38px", borderRadius: 12, border: "1px solid #D4C9B8", outline: "none", fontSize: 14.5, background: "white" }} />
+              </form>
               <nav style={{ display: "flex", flexDirection: "column" }}>
                 {navLinks.map((l) => (
                   <Link key={l.href} href={l.href} onClick={() => setMenuOpen(false)}
@@ -238,7 +247,13 @@ function AuthModal({ open, onClose }: { open: boolean; onClose: () => void }) {
               <User size={24} style={{ color: SAGE }} />
             </div>
             <h2 className="font-display" style={{ fontSize: 26, fontWeight: 600, color: DARK, marginBottom: 6 }}>Create your profile</h2>
-            <p style={{ color: "#8a8170", fontSize: 14.5, marginBottom: 22 }}>Save your wishlist and check out faster.</p>
+            <p style={{ color: "#8a8170", fontSize: 14.5, marginBottom: 20 }}>Save your wishlist and check out faster.</p>
+            <GoogleSignIn onSuccess={(p) => { signUp({ name: p.name, email: p.email, picture: p.picture }); onClose() }} />
+            <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "18px 0" }}>
+              <div style={{ flex: 1, height: 1, background: "#E7E1D4" }} />
+              <span style={{ fontSize: 12, color: "#A89F91" }}>or</span>
+              <div style={{ flex: 1, height: 1, background: "#E7E1D4" }} />
+            </div>
             <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" required
                 style={inputStyle} />
