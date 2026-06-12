@@ -27,7 +27,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${geist.variable} ${fraunces.variable}`}>
       <head>
-        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
         {/* One-time self-heal: a previous PWA service worker cached stale HTML
             and served mismatched JS chunks ("e.filter is not a function" /
             "This page couldn't load"). Unregister any SW + clear caches, then
