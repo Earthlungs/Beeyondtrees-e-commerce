@@ -33,6 +33,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Missing required order fields" }, { status: 400 })
   }
 
+  // Validate product references up front. A stale cart (e.g. an old persisted
+  // product cache pointing at deleted/re-seeded ids) would otherwise fail the
+  // OrderItem foreign key and 500 the whole checkout. Return a clear 400 so the
+  // shopper knows to refresh rather than seeing a generic failure.
+  const productIds: string[] = [...new Set(items.map((i: { productId: string }) => i.productId))]
+  const existing = await prisma.product.findMany({
+    where: { id: { in: productIds } },
+    select: { id: true },
+  })
+  const existingIds = new Set(existing.map((p) => p.id))
+  const missing = productIds.filter((id) => !existingIds.has(id))
+  if (missing.length > 0) {
+    return NextResponse.json(
+      { error: "Some items in your cart are no longer available. Please refresh and try again.", missing },
+      { status: 400 }
+    )
+  }
+
   const order = await prisma.order.create({
     data: {
       customerName,
