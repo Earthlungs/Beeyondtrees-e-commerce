@@ -172,23 +172,32 @@ export default function CheckoutPage() {
         instructions: form.deliveryInstructions,
       },
       onClose: () => {
-        // User closed the popup — mark the pending order cancelled.
-        fetch(`/api/orders/${orderId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'cancelled', paymentStatus: 'cancelled' }),
-        }).catch(console.error)
+        // Customer dismissed Paystack without completing payment. The order
+        // stays pending (unpaid) in the database — we never write payment
+        // status from the browser.
       },
       callback: (response: any) => {
-        // Payment successful — record it, then show the success screen. The
-        // PATCH is fire-and-forget so the confirmation isn't gated on the
-        // network round-trip.
-        fetch(`/api/orders/${orderId}`, {
-          method: 'PATCH',
+        // Never trust the browser that a payment succeeded. Paystack's inline
+        // callback fires on its own success event, but we confirm server-side
+        // (POST .../verify hits Paystack with the secret key) before marking
+        // the order paid and showing the success screen.
+        const reference = response?.reference || ref
+        fetch(`/api/orders/${orderId}/verify`, {
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ paymentStatus: 'paid', transactionRef: response.transaction }),
-        }).catch(console.error)
-        completeOrder(ref)
+          body: JSON.stringify({ reference }),
+        })
+          .then((r) => r.json())
+          .then((result) => {
+            if (result?.verified) {
+              completeOrder(ref)
+            } else {
+              alert(`We couldn't confirm your payment. If you were charged, please contact support with reference ${ref}.`)
+            }
+          })
+          .catch(() => {
+            alert(`We couldn't confirm your payment. If you were charged, please contact support with reference ${ref}.`)
+          })
       },
     })
     handler.openIframe()
