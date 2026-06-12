@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import crypto from "crypto"
 import { prisma } from "@/lib/db"
+import { markOrderPaid } from "@/lib/orders"
 
 // Paystack webhook — the resilient, server-to-server source of truth for
 // payment status (independent of whether the customer's browser stayed open
@@ -45,10 +46,8 @@ export async function POST(request: NextRequest) {
         const currencyOk = data.currency === "KES"
 
         if (data.status === "success" && amountOk && currencyOk) {
-          await prisma.order.update({
-            where: { id: order.id },
-            data: { paymentStatus: "paid", transactionRef: String(reference) },
-          })
+          // Mark paid + decrement stock exactly once (shared with verify).
+          await markOrderPaid(order.id, String(reference))
         }
       }
     }

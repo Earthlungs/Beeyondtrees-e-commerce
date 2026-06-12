@@ -5,12 +5,46 @@ import { Footer } from "@/components/layout/Footer"
 import { ScrollProgress } from "@/components/motion/ScrollProgress"
 import { Reveal, RevealGroup, RevealItem } from "@/components/motion/Reveal"
 import { Counter } from "@/components/motion/Counter"
-import { motion } from "motion/react"
-import { MapPin, TreePine } from "lucide-react"
+import { SketchMap, type Neighbor, type MapSite } from "@/components/motion/SketchMap"
+import { motion, AnimatePresence } from "motion/react"
+import { MapPin, TreePine, X } from "lucide-react"
+import { useState } from "react"
 
 const SAGE = "#6B7D5C"
 const DARK = "#4A3F2F"
 const CREAM = "#F5F1E8"
+
+// Real neighbouring areas per landscape, placed by rough compass direction so
+// the sketch map reads geographically (ocean to the east of the coast, etc.).
+const neighborsByLocation: Record<string, Neighbor[]> = {
+  "Kilifi County": [
+    { name: "Tana River", dir: "N" }, { name: "Malindi", dir: "NE" },
+    { name: "Indian Ocean", dir: "E" }, { name: "Kwale", dir: "S" },
+    { name: "Mombasa", dir: "SW" }, { name: "Taita Taveta", dir: "W" },
+  ],
+  "Tana River County": [
+    { name: "Garissa", dir: "N" }, { name: "Lamu", dir: "E" },
+    { name: "Indian Ocean", dir: "SE" }, { name: "Kilifi", dir: "S" },
+    { name: "Kitui", dir: "W" },
+  ],
+  "Mkinga District": [
+    { name: "Lunga Lunga (KE)", dir: "N" }, { name: "Indian Ocean", dir: "E" },
+    { name: "Tanga City", dir: "S" }, { name: "Muheza", dir: "SW" },
+  ],
+  "Tanga District": [
+    { name: "Muheza", dir: "NW" }, { name: "Indian Ocean", dir: "E" },
+    { name: "Pangani", dir: "S" }, { name: "Korogwe", dir: "W" },
+  ],
+  "Mozambique": [
+    { name: "Tanzania", dir: "N" }, { name: "Indian Ocean", dir: "E" },
+    { name: "Nampula", dir: "S" }, { name: "Niassa", dir: "W" },
+  ],
+}
+
+const neighborsFor = (location: string): Neighbor[] =>
+  neighborsByLocation[location] ?? [
+    { name: "Indian Ocean", dir: "E" }, { name: "Highlands", dir: "W" },
+  ]
 
 const countries = [
   {
@@ -40,6 +74,8 @@ const countries = [
 ]
 
 export default function WhereWeWorkPage() {
+  const [selected, setSelected] = useState<{ site: MapSite; maxTrees: number } | null>(null)
+
   return (
     <div style={{ backgroundColor: CREAM, minHeight: "100vh", overflowX: "hidden" }}>
       <ScrollProgress />
@@ -89,9 +125,21 @@ export default function WhereWeWorkPage() {
               <p style={{ color: "#8a8170", fontSize: 15.5, lineHeight: 1.7 }}>{c.blurb}</p>
             </Reveal>
             <RevealGroup style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 18 }} stagger={0.06}>
-              {c.sites.map((s) => (
+              {c.sites.map((s) => {
+                const maxTrees = Math.max(...c.sites.map((x) => x.trees))
+                const open = () => setSelected({
+                  site: { name: s.name, location: s.location, trees: s.trees, neighbors: neighborsFor(s.location) },
+                  maxTrees,
+                })
+                return (
                 <RevealItem key={s.name}>
-                  <div className="byt-card" style={{ background: "white", border: "1px solid #E7E1D4", borderRadius: 18, padding: "24px 22px", height: "100%" }}>
+                  <motion.div
+                    onClick={open}
+                    whileHover={{ y: -4 }} whileTap={{ scale: 0.98 }}
+                    role="button" tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open() } }}
+                    className="byt-card" style={{ background: "white", border: "1px solid #E7E1D4", borderRadius: 18, padding: "24px 22px", height: "100%", cursor: "pointer" }}
+                  >
                     <div style={{ width: 46, height: 46, borderRadius: 13, background: "#EFE9DC", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
                       <TreePine size={22} style={{ color: SAGE }} />
                     </div>
@@ -101,13 +149,53 @@ export default function WhereWeWorkPage() {
                     </p>
                     <div className="font-display" style={{ fontSize: 26, fontWeight: 600, color: SAGE }}><Counter to={s.trees} /></div>
                     <div style={{ fontSize: 12.5, color: "#8a8170", marginTop: 2 }}>trees planted</div>
-                  </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 14, color: SAGE, fontSize: 12.5, fontWeight: 600 }}>
+                      <MapPin size={13} /> View coverage map
+                    </div>
+                  </motion.div>
                 </RevealItem>
-              ))}
+                )
+              })}
             </RevealGroup>
           </div>
         </section>
       ))}
+
+      {/* Coverage map modal */}
+      <AnimatePresence>
+        {selected && (
+          <motion.div
+            onClick={() => setSelected(null)}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(28,34,24,0.55)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+          >
+            <motion.div
+              key={selected.site.name}
+              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.92, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: "spring", stiffness: 240, damping: 24 }}
+              style={{ background: CREAM, borderRadius: 24, padding: "26px 24px 30px", maxWidth: 560, width: "100%", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 40px 90px -30px rgba(0,0,0,0.6)", position: "relative" }}
+            >
+              <button onClick={() => setSelected(null)} aria-label="Close"
+                style={{ position: "absolute", top: 16, right: 16, width: 36, height: 36, borderRadius: "50%", border: "none", background: "#E7E1D4", color: DARK, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <X size={18} />
+              </button>
+
+              <div style={{ marginBottom: 18 }}>
+                <p style={{ textTransform: "uppercase", letterSpacing: "0.2em", fontSize: 11, fontWeight: 700, color: SAGE, marginBottom: 6 }}>Restoration site</p>
+                <h3 className="font-display" style={{ fontSize: 26, fontWeight: 600, color: DARK, margin: 0 }}>{selected.site.name}</h3>
+                <p style={{ display: "flex", alignItems: "center", gap: 6, color: "#8a8170", fontSize: 14, marginTop: 4 }}>
+                  <MapPin size={14} /> {selected.site.location} · neighbouring areas mapped
+                </p>
+              </div>
+
+              <SketchMap site={selected.site} maxTrees={selected.maxTrees} />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <Footer />
     </div>
