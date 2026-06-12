@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
+import { getToken } from "next-auth/jwt"
 import { prisma } from "@/lib/db"
 
 // Admin order list — newest first, with line items and any dispatch record.
-export async function GET() {
+// Orders contain customer PII (name, phone, address) so this is admin-only.
+export async function GET(request: NextRequest) {
+  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
+  if (!token) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
   const orders = await prisma.order.findMany({
     orderBy: { createdAt: "desc" },
     include: { items: true, dispatch: true },

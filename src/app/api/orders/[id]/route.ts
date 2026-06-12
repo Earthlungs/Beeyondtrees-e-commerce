@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from "next/server"
+import { getToken } from "next-auth/jwt"
 import { prisma } from "@/lib/db"
 
-// Update an order after checkout — primarily payment status (paid/cancelled)
-// from the Paystack handlers, and order status from the admin dashboard.
+// Admin-only order management (e.g. marking an order delivered/cancelled).
+// Payment status is NOT set here — it's verified server-side against Paystack
+// in POST /api/orders/[id]/verify so the browser can't forge a paid order.
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
+  if (!token) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
   const { id } = await params
   const body = await request.json()
 
