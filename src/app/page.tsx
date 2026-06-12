@@ -79,7 +79,7 @@ export default function Home() {
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.1 }}
             style={{ textTransform: "uppercase", letterSpacing: "0.32em", fontSize: 12.5, fontWeight: 600, color: SAND, marginBottom: 22 }}
           >
-            EarthLungs Reforestation Foundation
+            In partnership with EarthLungs Reforestation Foundation
           </motion.p>
 
           <h1 className="font-display" style={{ fontSize: "clamp(48px, 9vw, 104px)", fontWeight: 600, lineHeight: 1.0, margin: 0 }}>
