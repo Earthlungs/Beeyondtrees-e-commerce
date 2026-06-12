@@ -145,8 +145,11 @@ export default function CheckoutPage() {
           })),
         }),
       })
-      if (!res.ok) throw new Error(`Order create failed (${res.status})`)
-      const created = await res.json()
+      const created = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert(created?.error || "Could not start your order. Please try again.")
+        return
+      }
       orderId = created.id
     } catch (err) {
       console.error(err)
