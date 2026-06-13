@@ -14,6 +14,7 @@ model User {
   password  String
   name      String
   role      String   @default("merchant")
+  active    Boolean  @default(true) // blocked/deactivated users can't log in
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -63,6 +64,7 @@ model Product {
   retailPrice      Float
   wholesalePrice   Float
   distributorPrice Float
+  costPrice        Float       @default(0) // buying/production cost, for profit calc (admin-only, never in public catalog)
   stock            Int         @default(0)
   images           Json        @default("[]")
   isOnOffer        Boolean     @default(false)
