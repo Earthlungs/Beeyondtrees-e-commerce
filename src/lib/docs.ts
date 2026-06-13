@@ -51,6 +51,16 @@ export function normalizeLines(raw: unknown): { items: DocLine[]; subtotal: numb
   return { items, subtotal, vat, total }
 }
 
+// Parse a date input safely. Browsers without a native date picker render
+// `<input type="date">` as a plain text field, so users can type unparseable
+// values (e.g. "13/06/2026") — `new Date()` then yields an Invalid Date that
+// Prisma rejects with a 500. Anything unparseable/empty becomes null here.
+export function parseDate(v: unknown): Date | null {
+  if (v === null || v === undefined || v === "") return null
+  const d = new Date(v as string)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
 // Sequential document number like INV-0001 / LPO-0007.
 export function nextDocNumber(prefix: string, n: number): string {
   return `${prefix}-${String(n).padStart(4, "0")}`

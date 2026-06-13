@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
-import { requireDocRole, normalizeLines, createNumbered } from "@/lib/docs"
+import { requireDocRole, normalizeLines, createNumbered, parseDate } from "@/lib/docs"
 
 export async function GET(request: NextRequest) {
   const auth = await requireDocRole(request)
@@ -32,8 +32,8 @@ export async function POST(request: NextRequest) {
         prisma.invoice.create({
           data: {
             number,
-            date: body.date ? new Date(body.date) : new Date(),
-            dueDate: body.dueDate ? new Date(body.dueDate) : null,
+            date: parseDate(body.date) ?? new Date(),
+            dueDate: parseDate(body.dueDate),
             customerName: body.customerName.trim(),
             customerContact: body.customerContact?.trim() || null,
             items: items as unknown as Prisma.InputJsonValue,
