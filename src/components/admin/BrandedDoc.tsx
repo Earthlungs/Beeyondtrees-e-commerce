@@ -21,7 +21,7 @@ export default function BrandedDoc({
         @media print {
           body * { visibility: hidden !important; }
           #doc, #doc * { visibility: visible !important; }
-          #doc { position: absolute; left: 0; top: 0; width: 100%; margin: 0; box-shadow: none !important; border: none !important; }
+          #doc { position: absolute; left: 0; top: 0; width: 100%; margin: 0; min-height: auto !important; box-shadow: none !important; border: none !important; }
           .no-print { display: none !important; }
           @page { size: A4; margin: 12mm; }
           /* Force background colours (footer blocks, divider) to print/PDF even
