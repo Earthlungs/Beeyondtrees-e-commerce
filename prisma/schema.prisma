@@ -50,6 +50,15 @@ model Order {
   paymentRef           String?
   paymentStatus        String?
   transactionRef       String?
+  // Sales channel: "online" (web checkout) or "pos" (physical shop till).
+  // Both decrement the same Product.stock, so the two storefronts stay in sync.
+  channel              String      @default("online")
+  // POS-only fields. paymentMethod is "cash" | "mpesa" | "card".
+  paymentMethod        String?
+  cashReceived         Float?      // amount tendered for cash sales (for change)
+  mpesaCode            String?     // M-Pesa confirmation code
+  cardRef              String?     // card/terminal reference
+  soldBy               String?     // name of the cashier who rang up the sale
   createdAt            DateTime    @default(now())
   updatedAt            DateTime    @updatedAt
   items                OrderItem[]
