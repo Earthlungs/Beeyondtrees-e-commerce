@@ -26,16 +26,30 @@ export const slugify = (name: string) => name.toLowerCase().replace(/\s+/g, "-")
 export const urlImages = (images?: string[]) =>
   (images ?? []).map((s) => (/^https?:\/\//.test(s) ? s : ""))
 
+// Inject Cloudinary delivery transforms — f_auto (serve AVIF/WebP), q_auto
+// (auto compression), and an optional max width (c_limit = downscale-only,
+// aspect preserved) — so we deliver modern, right-sized images instead of
+// full-res originals. No-op for any non-Cloudinary URL.
+export const cldUrl = (url: string, width?: number) => {
+  const marker = "/upload/"
+  if (!url.includes("res.cloudinary.com") || !url.includes(marker)) return url
+  const t = ["f_auto", "q_auto", ...(width ? ["c_limit", `w_${width}`] : [])].join(",")
+  return url.replace(marker, `${marker}${t}/`)
+}
+
 // URL for a product's Nth image. When the catalog already carries a hosted
-// (Cloudinary) URL we return it directly so the browser loads from the CDN with
-// no DB round-trip. Otherwise we fall back to the image API route, cache-busted
-// by `updatedAt` (that endpoint caches immutably, so `?v=` refreshes edits).
+// (Cloudinary) URL we return it directly (with delivery transforms) so the
+// browser loads an optimized image from the CDN with no DB round-trip. Pass
+// `width` to right-size for the slot (cards ~500, gallery ~1200). Otherwise we
+// fall back to the image API route, cache-busted by `updatedAt` (that endpoint
+// caches immutably, so `?v=` refreshes edits).
 export const productImageUrl = (
   product: Pick<Product, "id" | "updatedAt" | "images">,
-  i = 0
+  i = 0,
+  width?: number
 ) => {
   const direct = product.images?.[i]
-  if (direct && /^https?:\/\//.test(direct)) return direct
+  if (direct && /^https?:\/\//.test(direct)) return cldUrl(direct, width)
 
   const params = new URLSearchParams()
   if (i) params.set("i", String(i))

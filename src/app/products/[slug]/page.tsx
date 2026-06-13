@@ -9,7 +9,7 @@ import { Reveal, RevealGroup, RevealItem } from "@/components/motion/Reveal"
 import { ProductCard } from "@/components/shared/ProductCard"
 import { ShoppingCart, Leaf, ArrowLeft, ChevronLeft, ChevronRight, Truck, ShieldCheck } from "lucide-react"
 import Link from "next/link"
-import { useProductStore, slugify, productImageUrl } from "@/store/product-store"
+import { useProductStore, slugify, productImageUrl, cldUrl } from "@/store/product-store"
 import { useCartStore } from "@/store/cart-store"
 
 const SAGE = "#6B7D5C"
@@ -100,7 +100,7 @@ export default function ProductDetailPage() {
       id: `${product.id}-${selectedTier}`,
       name: product.name,
       price: prices[selectedTier],
-      image: productImageUrl(product),
+      image: productImageUrl(product, 0, 200),
       pricingTier: selectedTier,
       maxQuantity: Math.min(limit.max, product.stock),
       minQuantity: limit.min,
@@ -129,7 +129,7 @@ export default function ProductDetailPage() {
                 {images.length > 0 ? (
                   <motion.img
                     key={currentImage}
-                    src={images[currentImage]}
+                    src={cldUrl(images[currentImage], 1200)}
                     alt={product.name}
                     initial={{ opacity: 0, scale: 1.02 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
                     transition={{ duration: 0.35 }}
@@ -157,7 +157,7 @@ export default function ProductDetailPage() {
               <div style={{ display: "flex", gap: 10, marginTop: 14, overflowX: "auto", paddingBottom: 4 }}>
                 {images.map((img, i) => (
                   <button key={i} onClick={() => setCurrentImage(i)} style={{ width: 70, height: 70, borderRadius: 12, overflow: "hidden", border: i === currentImage ? `2px solid ${SAGE}` : "1px solid #D4C9B8", cursor: "pointer", flexShrink: 0, opacity: i === currentImage ? 1 : 0.65, background: "white", padding: 0 }}>
-                    <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <img src={cldUrl(img, 150)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                   </button>
                 ))}
               </div>

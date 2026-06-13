@@ -225,7 +225,7 @@ export default function PosPage() {
                   }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={productImageUrl(p)}
+                      src={productImageUrl(p, 0, 500)}
                       alt={p.name}
                       loading="lazy"
                       style={{ width: "100%", height: "100%", objectFit: "cover" }}

@@ -44,7 +44,7 @@ export default function NewArrivalsPage() {
                 <Link href={`/products/${product.name.toLowerCase().replace(/\s+/g, "-")}`}>
                   <div style={{ height: '200px', backgroundColor: '#F5F1E8', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                     <TreePine size={48} style={{ color: '#6B7D5C', opacity: 0.3, position: 'absolute' }} />
-                    <img src={productImageUrl(product)} alt={product.name} loading="lazy" onError={e => { e.currentTarget.style.display = 'none' }} style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '16px', position: 'relative', backgroundColor: '#F5F1E8' }} />
+                    <img src={productImageUrl(product, 0, 500)} alt={product.name} loading="lazy" onError={e => { e.currentTarget.style.display = 'none' }} style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '16px', position: 'relative', backgroundColor: '#F5F1E8' }} />
                   </div>
                 </Link>
                 <CardContent style={{ padding: '16px' }}>
@@ -64,7 +64,7 @@ export default function NewArrivalsPage() {
                         id: `${product.id}-retail`,
                         name: product.name,
                         price: product.retailPrice,
-                        image: productImageUrl(product),
+                        image: productImageUrl(product, 0, 200),
                         pricingTier: "retail",
                         maxQuantity: product.stock,
                         minQuantity: 1,
