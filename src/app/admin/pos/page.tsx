@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
   Search, Plus, Minus, Trash2, ShoppingCart, X,
-  Banknote, Smartphone, CreditCard, AlertTriangle, Loader2,
+  Banknote, Smartphone, CreditCard, AlertTriangle, Loader2, CheckCircle2,
 } from "lucide-react"
 import { useProductStore, productImageUrl, type Product } from "@/store/product-store"
 
@@ -39,6 +39,7 @@ export default function PosPage() {
   const { products, loadProducts, loading } = useProductStore()
   const [query, setQuery] = useState("")
   const [lines, setLines] = useState<Line[]>([])
+  const [cartOpen, setCartOpen] = useState(false)
   const [method, setMethod] = useState<Method | null>(null)
   const [cashReceived, setCashReceived] = useState("")
   const [mpesaCode, setMpesaCode] = useState("")
@@ -51,7 +52,7 @@ export default function PosPage() {
   useEffect(() => { loadProducts() }, [])
   useEffect(() => {
     if (!notice) return
-    const t = setTimeout(() => setNotice(null), 6000)
+    const t = setTimeout(() => setNotice(null), 3500)
     return () => clearTimeout(t)
   }, [notice])
 
@@ -65,10 +66,8 @@ export default function PosPage() {
     return list.slice(0, 60)
   }, [products, query])
 
-  const total = useMemo(
-    () => lines.reduce((s, l) => s + tierPrice(l) * l.quantity, 0),
-    [lines]
-  )
+  const total = useMemo(() => lines.reduce((s, l) => s + tierPrice(l) * l.quantity, 0), [lines])
+  const itemCount = useMemo(() => lines.reduce((s, l) => s + l.quantity, 0), [lines])
 
   const addProduct = (p: Product) => {
     if (p.stock <= 0) return
@@ -77,67 +76,45 @@ export default function PosPage() {
       const existing = prev.find((l) => keyOf(l.productId, l.tier) === k)
       if (existing) {
         return prev.map((l) =>
-          keyOf(l.productId, l.tier) === k
-            ? { ...l, quantity: Math.min(l.quantity + 1, l.stock) }
-            : l
+          keyOf(l.productId, l.tier) === k ? { ...l, quantity: Math.min(l.quantity + 1, l.stock) } : l
         )
       }
       return [
         ...prev,
         {
-          productId: p.id,
-          name: p.name,
-          tier: "retail",
-          quantity: 1,
-          stock: p.stock,
+          productId: p.id, name: p.name, tier: "retail", quantity: 1, stock: p.stock,
           prices: { retail: p.retailPrice, wholesale: p.wholesalePrice, distributor: p.distributorPrice },
           updatedAt: p.updatedAt,
         },
       ]
     })
+    setNotice({ text: `Added ${p.name}`, tone: "success" })
   }
 
   const setQty = (k: string, qty: number) =>
-    setLines((prev) =>
-      prev.map((l) =>
-        keyOf(l.productId, l.tier) === k
-          ? { ...l, quantity: Math.max(1, Math.min(qty, l.stock)) }
-          : l
-      )
-    )
+    setLines((prev) => prev.map((l) => (keyOf(l.productId, l.tier) === k ? { ...l, quantity: Math.max(1, Math.min(qty, l.stock)) } : l)))
 
   const setTier = (k: string, tier: Tier) =>
     setLines((prev) => {
-      // Merge into an existing line if the same product already sits at that tier.
       const line = prev.find((l) => keyOf(l.productId, l.tier) === k)
       if (!line) return prev
       const targetKey = keyOf(line.productId, tier)
       const target = prev.find((l) => keyOf(l.productId, l.tier) === targetKey && l !== line)
       if (target) {
-        return prev
-          .filter((l) => l !== line)
-          .map((l) =>
-            l === target ? { ...l, quantity: Math.min(l.quantity + line.quantity, l.stock) } : l
-          )
+        return prev.filter((l) => l !== line).map((l) => (l === target ? { ...l, quantity: Math.min(l.quantity + line.quantity, l.stock) } : l))
       }
       return prev.map((l) => (l === line ? { ...l, tier } : l))
     })
 
-  const removeLine = (k: string) =>
-    setLines((prev) => prev.filter((l) => keyOf(l.productId, l.tier) !== k))
+  const removeLine = (k: string) => setLines((prev) => prev.filter((l) => keyOf(l.productId, l.tier) !== k))
 
   const resetSale = () => {
     setLines([]); setMethod(null); setCashReceived(""); setMpesaCode("")
-    setCardRef(""); setCustomerName(""); setCustomerPhone("")
+    setCardRef(""); setCustomerName(""); setCustomerPhone(""); setCartOpen(false)
   }
 
   const change = method === "cash" && cashReceived ? Number(cashReceived) - total : 0
-
-  const canComplete =
-    lines.length > 0 &&
-    !!method &&
-    !submitting &&
-    (method !== "cash" || (Number(cashReceived) >= total))
+  const canComplete = lines.length > 0 && !!method && !submitting && (method !== "cash" || Number(cashReceived) >= total)
 
   const completeSale = async () => {
     if (!canComplete || !method) return
@@ -160,21 +137,18 @@ export default function PosPage() {
       const data = await res.json()
       if (!res.ok) {
         if (res.status === 409 && Array.isArray(data.items)) {
-          const detail = data.items
-            .map((i: { productName: string; available: number }) => `${i.productName} (${i.available} left)`)
-            .join(", ")
+          const detail = data.items.map((i: { productName: string; available: number }) => `${i.productName} (${i.available} left)`).join(", ")
           setNotice({ text: `Not enough stock: ${detail}. Please adjust quantities.`, tone: "error" })
-          // Pull fresh stock so the cashier sees the real numbers.
           loadProducts(true)
         } else {
           setNotice({ text: data.error || "Could not complete the sale.", tone: "error" })
         }
         return
       }
-      // Refresh shared stock (now reflects this sale) and open the receipt.
+      // Refresh shared stock and open the auto-printing receipt.
       loadProducts(true)
       resetSale()
-      router.push(`/admin/pos/receipt/${data.id}`)
+      router.push(`/admin/pos/receipt/${data.id}?print=1`)
     } catch {
       setNotice({ text: "Network error — sale not recorded. Try again.", tone: "error" })
     } finally {
@@ -183,211 +157,180 @@ export default function PosPage() {
   }
 
   return (
-    <div style={{ display: "flex", gap: 20, alignItems: "flex-start", flexWrap: "wrap" }}>
-      {/* ---------- Product picker ---------- */}
-      <div style={{ flex: "1 1 420px", minWidth: 320 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-          <ShoppingCart size={22} color={GREEN} />
-          <h1 style={{ fontSize: 22, fontWeight: "bold", color: TEXT }}>Point of Sale</h1>
+    <div style={{ paddingBottom: lines.length ? 90 : 0 }}>
+      {/* Toast (fixed, visible over grid and modal) */}
+      {notice && (
+        <div style={{
+          position: "fixed", top: 14, left: "50%", transform: "translateX(-50%)", zIndex: 70,
+          display: "flex", gap: 8, alignItems: "center", padding: "10px 16px", borderRadius: 10,
+          background: notice.tone === "error" ? "#FBEAEA" : "#EAF3EA",
+          color: notice.tone === "error" ? "#9B2C2C" : "#2F5D2F", fontSize: 13, fontWeight: 500,
+          boxShadow: "0 6px 20px rgba(0,0,0,0.12)", maxWidth: "90vw",
+        }}>
+          {notice.tone === "error" ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />}
+          <span>{notice.text}</span>
         </div>
+      )}
 
-        <div style={{ position: "relative", marginBottom: 16 }}>
-          <Search size={18} color={MUTED} style={{ position: "absolute", left: 12, top: 11 }} />
-          <Input
-            autoFocus
-            placeholder="Search by name, SKU or category…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            style={{ paddingLeft: 38, height: 42, fontSize: 15 }}
-          />
-        </div>
-
-        {loading && products.length === 0 ? (
-          <p style={{ color: MUTED, padding: 20 }}>Loading products…</p>
-        ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 12 }}>
-            {results.map((p) => {
-              const out = p.stock <= 0
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => addProduct(p)}
-                  disabled={out}
-                  style={{
-                    textAlign: "left", background: "white", border: "1px solid #E5E7EB",
-                    borderRadius: 12, padding: 10, cursor: out ? "not-allowed" : "pointer",
-                    opacity: out ? 0.5 : 1, display: "flex", flexDirection: "column", gap: 6,
-                  }}
-                >
-                  <div style={{
-                    width: "100%", aspectRatio: "1 / 1", borderRadius: 8, overflow: "hidden",
-                    background: CREAM, display: "flex", alignItems: "center", justifyContent: "center",
-                  }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={productImageUrl(p, 0, 500)}
-                      alt={p.name}
-                      loading="lazy"
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = "hidden" }}
-                    />
-                  </div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: TEXT, lineHeight: 1.25, minHeight: 30 }}>
-                    {p.name}
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: GREEN }}>{ksh(p.retailPrice)}</span>
-                    <span style={{
-                      fontSize: 11, fontWeight: 600,
-                      color: out ? BROWN : p.stock <= 5 ? "#E6A817" : MUTED,
-                    }}>
-                      {out ? "Out" : `${p.stock} left`}
-                    </span>
-                  </div>
-                </button>
-              )
-            })}
-            {results.length === 0 && (
-              <p style={{ color: MUTED, gridColumn: "1 / -1", padding: 20 }}>No products match “{query}”.</p>
-            )}
-          </div>
-        )}
+      {/* Header + search */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+        <ShoppingCart size={22} color={GREEN} />
+        <h1 style={{ fontSize: 22, fontWeight: "bold", color: TEXT }}>Point of Sale</h1>
+      </div>
+      <div style={{ position: "relative", marginBottom: 16, maxWidth: 520 }}>
+        <Search size={18} color={MUTED} style={{ position: "absolute", left: 12, top: 11 }} />
+        <Input autoFocus placeholder="Search by name, SKU or category…" value={query} onChange={(e) => setQuery(e.target.value)} style={{ paddingLeft: 38, height: 42, fontSize: 15 }} />
       </div>
 
-      {/* ---------- Cart / checkout ---------- */}
-      <div style={{
-        flex: "0 0 360px", maxWidth: "100%", background: "white", borderRadius: 14,
-        border: "1px solid #E5E7EB", padding: 16, position: "sticky", top: 16,
-        display: "flex", flexDirection: "column", gap: 12,
-      }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: TEXT }}>Current Sale</div>
-
-        {notice && (
-          <div style={{
-            display: "flex", gap: 8, alignItems: "flex-start", padding: "10px 12px", borderRadius: 8,
-            background: notice.tone === "error" ? "#FBEAEA" : "#EAF3EA",
-            color: notice.tone === "error" ? "#9B2C2C" : "#2F5D2F", fontSize: 12.5,
-          }}>
-            <AlertTriangle size={15} style={{ flexShrink: 0, marginTop: 1 }} />
-            <span>{notice.text}</span>
-          </div>
-        )}
-
-        {lines.length === 0 ? (
-          <p style={{ color: MUTED, fontSize: 13, padding: "24px 0", textAlign: "center" }}>
-            Tap products to add them to the sale.
-          </p>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 320, overflowY: "auto" }}>
-            {lines.map((l) => {
-              const k = keyOf(l.productId, l.tier)
-              return (
-                <div key={k} style={{ borderBottom: "1px solid #F0EDE6", paddingBottom: 10 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                    <span style={{ fontSize: 12.5, fontWeight: 600, color: TEXT, lineHeight: 1.3 }}>{l.name}</span>
-                    <button onClick={() => removeLine(k)} style={{ background: "none", border: "none", cursor: "pointer", color: BROWN, flexShrink: 0 }}>
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8, gap: 8 }}>
-                    <select
-                      value={l.tier}
-                      onChange={(e) => setTier(k, e.target.value as Tier)}
-                      style={{ fontSize: 11.5, padding: "4px 6px", borderRadius: 6, border: "1px solid #E5E7EB", color: TEXT, background: CREAM }}
-                    >
-                      <option value="retail">Retail · {ksh(l.prices.retail)}</option>
-                      <option value="wholesale">Wholesale · {ksh(l.prices.wholesale)}</option>
-                      <option value="distributor">Distributor · {ksh(l.prices.distributor)}</option>
-                    </select>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <button onClick={() => setQty(k, l.quantity - 1)} style={stepBtn}><Minus size={13} /></button>
-                      <span style={{ minWidth: 22, textAlign: "center", fontSize: 13, fontWeight: 600 }}>{l.quantity}</span>
-                      <button onClick={() => setQty(k, l.quantity + 1)} disabled={l.quantity >= l.stock} style={stepBtn}><Plus size={13} /></button>
-                    </div>
-                  </div>
-                  <div style={{ textAlign: "right", fontSize: 12.5, fontWeight: 700, color: GREEN, marginTop: 4 }}>
-                    {ksh(tierPrice(l) * l.quantity)}
-                  </div>
+      {/* Full-width product grid */}
+      {loading && products.length === 0 ? (
+        <p style={{ color: MUTED, padding: 20 }}>Loading products…</p>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 12 }}>
+          {results.map((p) => {
+            const out = p.stock <= 0
+            return (
+              <button key={p.id} onClick={() => addProduct(p)} disabled={out} style={{
+                textAlign: "left", background: "white", border: "1px solid #E5E7EB", borderRadius: 12, padding: 10,
+                cursor: out ? "not-allowed" : "pointer", opacity: out ? 0.5 : 1, display: "flex", flexDirection: "column", gap: 6,
+              }}>
+                <div style={{ width: "100%", aspectRatio: "1 / 1", borderRadius: 8, overflow: "hidden", background: CREAM, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={productImageUrl(p, 0, 500)} alt={p.name} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = "hidden" }} />
                 </div>
-              )
-            })}
-          </div>
-        )}
-
-        {/* Optional customer */}
-        <div style={{ display: "flex", gap: 8 }}>
-          <Input placeholder="Customer name (optional)" value={customerName} onChange={(e) => setCustomerName(e.target.value)} style={{ fontSize: 12.5, height: 36 }} />
-          <Input placeholder="Phone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} style={{ fontSize: 12.5, height: 36 }} />
+                <div style={{ fontSize: 12, fontWeight: 600, color: TEXT, lineHeight: 1.25, minHeight: 30 }}>{p.name}</div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: GREEN }}>{ksh(p.retailPrice)}</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: out ? BROWN : p.stock <= 5 ? "#E6A817" : MUTED }}>{out ? "Out" : `${p.stock} left`}</span>
+                </div>
+              </button>
+            )
+          })}
+          {results.length === 0 && <p style={{ color: MUTED, gridColumn: "1 / -1", padding: 20 }}>No products match “{query}”.</p>}
         </div>
+      )}
 
-        {/* Total */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #E5E7EB", paddingTop: 10 }}>
-          <span style={{ fontSize: 14, color: TEXT }}>Total</span>
-          <span style={{ fontSize: 22, fontWeight: 800, color: DARK }}>{ksh(total)}</span>
-        </div>
+      {/* Floating checkout bar — always visible, opens the cart popup (no scrolling) */}
+      {lines.length > 0 && !cartOpen && (
+        <button onClick={() => setCartOpen(true)} style={{
+          position: "fixed", left: "50%", bottom: 18, transform: "translateX(-50%)", zIndex: 60,
+          display: "flex", alignItems: "center", gap: 14, padding: "12px 22px", borderRadius: 999,
+          background: GREEN, color: "white", border: "none", cursor: "pointer",
+          boxShadow: "0 8px 24px rgba(107,125,92,0.45)", fontSize: 15, fontWeight: 700, maxWidth: "94vw",
+        }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <ShoppingCart size={18} />
+            <span style={{ background: "rgba(255,255,255,0.25)", borderRadius: 999, padding: "1px 9px", fontSize: 13 }}>{itemCount}</span>
+          </span>
+          <span>{ksh(total)}</span>
+          <span style={{ opacity: 0.85 }}>· Complete Sale →</span>
+        </button>
+      )}
 
-        {/* Payment method */}
-        <div style={{ display: "flex", gap: 8 }}>
-          {([
-            { m: "cash" as Method, label: "Cash", Icon: Banknote },
-            { m: "mpesa" as Method, label: "M-Pesa", Icon: Smartphone },
-            { m: "card" as Method, label: "Card", Icon: CreditCard },
-          ]).map(({ m, label, Icon }) => (
-            <button
-              key={m}
-              onClick={() => setMethod(m)}
-              style={{
-                flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
-                padding: "8px 4px", borderRadius: 8, cursor: "pointer", fontSize: 11.5, fontWeight: 600,
-                border: method === m ? `2px solid ${GREEN}` : "1px solid #E5E7EB",
-                background: method === m ? "#EAF3EA" : "white", color: method === m ? GREEN : TEXT,
-              }}
-            >
-              <Icon size={18} /> {label}
-            </button>
-          ))}
-        </div>
+      {/* Cart / checkout popup */}
+      {cartOpen && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 65, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div onClick={() => setCartOpen(false)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)" }} />
+          <div style={{
+            position: "relative", zIndex: 1, background: "white", borderRadius: 16, width: 420, maxWidth: "100%",
+            maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+          }}>
+            {/* Modal header */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", borderBottom: "1px solid #F0EDE6" }}>
+              <span style={{ fontSize: 16, fontWeight: 700, color: TEXT }}>Current Sale</span>
+              <button onClick={() => setCartOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: MUTED }}><X size={20} /></button>
+            </div>
 
-        {/* Method-specific inputs */}
-        {method === "cash" && (
-          <div>
-            <Input type="number" placeholder="Cash received" value={cashReceived} onChange={(e) => setCashReceived(e.target.value)} style={{ height: 38 }} />
-            {cashReceived !== "" && (
-              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 13 }}>
-                <span style={{ color: MUTED }}>Change</span>
-                <span style={{ fontWeight: 700, color: change < 0 ? BROWN : GREEN }}>
-                  {change < 0 ? `Short ${ksh(Math.abs(change))}` : ksh(change)}
-                </span>
+            {/* Scrollable body */}
+            <div style={{ overflowY: "auto", padding: "14px 18px", display: "flex", flexDirection: "column", gap: 12 }}>
+              {lines.length === 0 ? (
+                <p style={{ color: MUTED, fontSize: 13, textAlign: "center", padding: "20px 0" }}>Cart is empty.</p>
+              ) : (
+                lines.map((l) => {
+                  const k = keyOf(l.productId, l.tier)
+                  return (
+                    <div key={k} style={{ borderBottom: "1px solid #F0EDE6", paddingBottom: 10 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: TEXT, lineHeight: 1.3 }}>{l.name}</span>
+                        <button onClick={() => removeLine(k)} style={{ background: "none", border: "none", cursor: "pointer", color: BROWN, flexShrink: 0 }}><Trash2 size={15} /></button>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8, gap: 8 }}>
+                        <select value={l.tier} onChange={(e) => setTier(k, e.target.value as Tier)} style={{ fontSize: 12, padding: "5px 6px", borderRadius: 6, border: "1px solid #E5E7EB", color: TEXT, background: CREAM }}>
+                          <option value="retail">Retail · {ksh(l.prices.retail)}</option>
+                          <option value="wholesale">Wholesale · {ksh(l.prices.wholesale)}</option>
+                          <option value="distributor">Distributor · {ksh(l.prices.distributor)}</option>
+                        </select>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <button onClick={() => setQty(k, l.quantity - 1)} style={stepBtn}><Minus size={13} /></button>
+                          <span style={{ minWidth: 22, textAlign: "center", fontSize: 14, fontWeight: 600 }}>{l.quantity}</span>
+                          <button onClick={() => setQty(k, l.quantity + 1)} disabled={l.quantity >= l.stock} style={stepBtn}><Plus size={13} /></button>
+                        </div>
+                      </div>
+                      <div style={{ textAlign: "right", fontSize: 13, fontWeight: 700, color: GREEN, marginTop: 4 }}>{ksh(tierPrice(l) * l.quantity)}</div>
+                    </div>
+                  )
+                })
+              )}
+
+              <div style={{ display: "flex", gap: 8 }}>
+                <Input placeholder="Customer name (optional)" value={customerName} onChange={(e) => setCustomerName(e.target.value)} style={{ fontSize: 12.5, height: 36 }} />
+                <Input placeholder="Phone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} style={{ fontSize: 12.5, height: 36 }} />
               </div>
-            )}
+
+              {/* Payment method */}
+              <div style={{ display: "flex", gap: 8 }}>
+                {([
+                  { m: "cash" as Method, label: "Cash", Icon: Banknote },
+                  { m: "mpesa" as Method, label: "M-Pesa", Icon: Smartphone },
+                  { m: "card" as Method, label: "Card", Icon: CreditCard },
+                ]).map(({ m, label, Icon }) => (
+                  <button key={m} onClick={() => setMethod(m)} style={{
+                    flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "8px 4px",
+                    borderRadius: 8, cursor: "pointer", fontSize: 11.5, fontWeight: 600,
+                    border: method === m ? `2px solid ${GREEN}` : "1px solid #E5E7EB",
+                    background: method === m ? "#EAF3EA" : "white", color: method === m ? GREEN : TEXT,
+                  }}>
+                    <Icon size={18} /> {label}
+                  </button>
+                ))}
+              </div>
+
+              {method === "cash" && (
+                <div>
+                  <Input type="number" placeholder="Cash received" value={cashReceived} onChange={(e) => setCashReceived(e.target.value)} style={{ height: 38 }} />
+                  {cashReceived !== "" && (
+                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 13 }}>
+                      <span style={{ color: MUTED }}>Change</span>
+                      <span style={{ fontWeight: 700, color: change < 0 ? BROWN : GREEN }}>{change < 0 ? `Short ${ksh(Math.abs(change))}` : ksh(change)}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+              {method === "mpesa" && <Input placeholder="M-Pesa confirmation code" value={mpesaCode} onChange={(e) => setMpesaCode(e.target.value.toUpperCase())} style={{ height: 38 }} />}
+              {method === "card" && <Input placeholder="Card / terminal reference" value={cardRef} onChange={(e) => setCardRef(e.target.value)} style={{ height: 38 }} />}
+            </div>
+
+            {/* Pinned footer — total + complete, no scrolling needed */}
+            <div style={{ borderTop: "1px solid #F0EDE6", padding: "14px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 14, color: TEXT }}>Total</span>
+                <span style={{ fontSize: 24, fontWeight: 800, color: DARK }}>{ksh(total)}</span>
+              </div>
+              <Button onClick={completeSale} disabled={!canComplete} style={{ height: 48, background: canComplete ? GREEN : "#C9C7BF", color: "white", fontSize: 16, fontWeight: 700, gap: 8 }}>
+                {submitting ? <><Loader2 size={16} className="animate-spin" /> Processing…</> : `Complete Sale · ${ksh(total)}`}
+              </Button>
+              <button onClick={resetSale} style={{ background: "none", border: "none", color: MUTED, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, justifyContent: "center" }}>
+                <X size={13} /> Clear sale
+              </button>
+            </div>
           </div>
-        )}
-        {method === "mpesa" && (
-          <Input placeholder="M-Pesa confirmation code" value={mpesaCode} onChange={(e) => setMpesaCode(e.target.value.toUpperCase())} style={{ height: 38 }} />
-        )}
-        {method === "card" && (
-          <Input placeholder="Card / terminal reference" value={cardRef} onChange={(e) => setCardRef(e.target.value)} style={{ height: 38 }} />
-        )}
-
-        <Button
-          onClick={completeSale}
-          disabled={!canComplete}
-          style={{ height: 46, background: canComplete ? GREEN : "#C9C7BF", color: "white", fontSize: 15, fontWeight: 700, gap: 8 }}
-        >
-          {submitting ? <><Loader2 size={16} className="animate-spin" /> Processing…</> : `Complete Sale · ${ksh(total)}`}
-        </Button>
-
-        {lines.length > 0 && (
-          <button onClick={resetSale} style={{ background: "none", border: "none", color: MUTED, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, justifyContent: "center" }}>
-            <X size={13} /> Clear sale
-          </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }
 
 const stepBtn: React.CSSProperties = {
-  width: 26, height: 26, borderRadius: 6, border: "1px solid #E5E7EB",
+  width: 28, height: 28, borderRadius: 6, border: "1px solid #E5E7EB",
   background: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: TEXT,
 }
