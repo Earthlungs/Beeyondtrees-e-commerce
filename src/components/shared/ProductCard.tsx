@@ -24,7 +24,7 @@ export function ProductCard({ product }: { product: Product }) {
       id: `${product.id}-retail`,
       name: product.name,
       price: product.retailPrice,
-      image: productImageUrl(product),
+      image: productImageUrl(product, 0, 200),
       pricingTier: "retail",
       maxQuantity: product.stock,
       minQuantity: 1,
@@ -37,7 +37,7 @@ export function ProductCard({ product }: { product: Product }) {
           <TreePine size={42} style={{ color: SAGE, opacity: 0.22, position: "absolute" }} />
           <img
             className="byt-zoom"
-            src={productImageUrl(product)}
+            src={productImageUrl(product, 0, 500)}
             alt={product.name}
             loading="lazy"
             onError={(e) => { e.currentTarget.style.display = "none" }}
