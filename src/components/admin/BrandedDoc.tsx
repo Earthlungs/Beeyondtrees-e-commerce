@@ -24,6 +24,9 @@ export default function BrandedDoc({
           #doc { position: absolute; left: 0; top: 0; width: 100%; margin: 0; box-shadow: none !important; border: none !important; }
           .no-print { display: none !important; }
           @page { size: A4; margin: 12mm; }
+          /* Force background colours (footer blocks, divider) to print/PDF even
+             when the user hasn't ticked "Background graphics". */
+          #doc, #doc * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
       `}</style>
 
@@ -33,6 +36,7 @@ export default function BrandedDoc({
           width: 800, maxWidth: "100%", background: "white", color: TEXT,
           border: "1px solid #E5E7EB", borderRadius: 10, overflow: "hidden",
           display: "flex", flexDirection: "column", minHeight: 1040,
+          WebkitPrintColorAdjust: "exact", printColorAdjust: "exact",
         }}
       >
         {/* Header */}
