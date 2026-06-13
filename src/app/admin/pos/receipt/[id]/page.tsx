@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import Link from "next/link"
 import { prisma } from "@/lib/db"
 import PrintControls from "./print-controls"
@@ -99,10 +100,16 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
 
           <div style={{ textAlign: "center", fontSize: 11, color: "#777", borderTop: "1px dashed #CCC", paddingTop: 12 }}>
             Asante sana! Thank you for shopping with us.
+            <div style={{ marginTop: 6, fontSize: 10, lineHeight: 1.6 }}>
+              www.beeyondtrees.org · +254 790 279 826<br />
+              Palm Court, Waiyaki Way
+            </div>
           </div>
         </div>
 
-        <PrintControls />
+        <Suspense fallback={null}>
+          <PrintControls />
+        </Suspense>
       </div>
     </>
   )

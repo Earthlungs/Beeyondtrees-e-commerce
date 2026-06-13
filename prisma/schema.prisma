@@ -18,6 +18,43 @@ model User {
   updatedAt DateTime @updatedAt
 }
 
+// Customer invoice (branded printable doc, matches templates/Invoice). Line
+// items are stored as JSON: [{ description, qty, unitPrice, taxRate, amount }].
+model Invoice {
+  id              String    @id @default(cuid())
+  number          String    @unique // e.g. INV-0001
+  date            DateTime  @default(now())
+  dueDate         DateTime?
+  customerName    String
+  customerContact String? // phone / email
+  items           Json      @default("[]")
+  subtotal        Float     @default(0)
+  vat             Float     @default(0)
+  total           Float     @default(0)
+  notes           String?   @db.Text // payment details
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+// Local Purchase Order to a supplier (branded printable doc, matches
+// templates/Purchase Order). Same JSON line-item shape as Invoice.
+model Lpo {
+  id              String    @id @default(cuid())
+  number          String    @unique // e.g. LPO-0001
+  orderDate       DateTime  @default(now())
+  expectedArrival DateTime?
+  supplierName    String
+  shippingAddress String?   @db.Text
+  purchaseRep     String?
+  items           Json      @default("[]")
+  subtotal        Float     @default(0)
+  vat             Float     @default(0)
+  total           Float     @default(0)
+  notes           String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
 model Product {
   id               String      @id @default(cuid())
   name             String

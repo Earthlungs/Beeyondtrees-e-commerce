@@ -1,11 +1,26 @@
 "use client"
 
+import { useEffect, useRef } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { Printer, Plus } from "lucide-react"
 
 // Print + next-sale controls for the receipt. Hidden from the printout itself
 // via the `.no-print` class (see the print stylesheet on the receipt page).
+// When opened with ?print=1 (straight after completing a sale) the receipt is
+// generated automatically — the print dialog fires once on load.
 export default function PrintControls() {
+  const params = useSearchParams()
+  const printed = useRef(false)
+
+  useEffect(() => {
+    if (params.get("print") === "1" && !printed.current) {
+      printed.current = true
+      const t = setTimeout(() => window.print(), 600)
+      return () => clearTimeout(t)
+    }
+  }, [params])
+
   return (
     <div className="no-print" style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 20 }}>
       <button
