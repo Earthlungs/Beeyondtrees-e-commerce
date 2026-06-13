@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 import { getToken, type JWT } from "next-auth/jwt"
 
 // LPO and invoicing are business documents — merchants/admins only, never the
@@ -50,8 +51,29 @@ export function normalizeLines(raw: unknown): { items: DocLine[]; subtotal: numb
   return { items, subtotal, vat, total }
 }
 
-// Next sequential document number like INV-0001 / LPO-0007, derived from the
-// current row count inside the caller's transaction.
-export function nextDocNumber(prefix: string, count: number): string {
-  return `${prefix}-${String(count + 1).padStart(4, "0")}`
+// Sequential document number like INV-0001 / LPO-0007.
+export function nextDocNumber(prefix: string, n: number): string {
+  return `${prefix}-${String(n).padStart(4, "0")}`
+}
+
+// Create a document with a unique sequential number, race-safe. A plain
+// count()+create() can collide under concurrent/double submits (two rows get
+// the same number → P2002 unique violation → 500). Here we seed from the count
+// and, on a unique-number collision, retry with the next number a few times.
+// `create` receives the number string to put on the row.
+export async function createNumbered<T>(
+  prefix: string,
+  count: () => Promise<number>,
+  create: (docNumber: string) => Promise<T>
+): Promise<T> {
+  const base = await count()
+  for (let i = 1; i <= 12; i++) {
+    try {
+      return await create(nextDocNumber(prefix, base + i))
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") continue
+      throw e
+    }
+  }
+  throw new Error("Could not allocate a unique document number")
 }
