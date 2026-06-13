@@ -27,27 +27,39 @@ export default function AdminDashboard() {
   useEffect(() => { loadProducts() }, [loadProducts])
 
   useEffect(() => {
-    // Orders aren't backed by a store yet; read defensively (guard against a
-    // non-array, e.g. legacy/corrupt localStorage) so the dashboard can't crash.
-    const raw = JSON.parse(localStorage.getItem('beeyond-trees-orders') || '[]')
-    const orders: any[] = Array.isArray(raw) ? raw : []
+    // Orders come from the database (newest first). Guard against a non-array
+    // response so the dashboard can't crash if the API errors.
+    let cancelled = false
+    fetch('/api/orders')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((raw) => {
+        if (cancelled) return
+        const orders: any[] = Array.isArray(raw) ? raw : []
 
-    const pending = orders.filter((o) => o.status === 'pending').length
-    const delivered = orders.filter((o) => o.status === 'delivered').length
-    const revenue = orders.reduce((s: number, o) => s + (o.total || 0), 0)
-    const uniqueCustomers = new Set(orders.map((o) => o.customer?.phone)).size
+        const pending = orders.filter((o) => o.status === 'pending').length
+        const delivered = orders.filter((o) => o.status === 'delivered').length
+        // Only count revenue from orders that were actually paid.
+        const revenue = orders
+          .filter((o) => o.paymentStatus === 'paid')
+          .reduce((s: number, o) => s + (o.total || 0), 0)
+        const uniqueCustomers = new Set(orders.map((o) => o.customerPhone)).size
 
-    setStats({
-      products: products.length,
-      orders: orders.length,
-      pending,
-      delivered,
-      revenue,
-      customers: uniqueCustomers,
-    })
+        setStats({
+          products: products.length,
+          orders: orders.length,
+          pending,
+          delivered,
+          revenue,
+          customers: uniqueCustomers,
+        })
 
-    setRecentOrders(orders.slice(-5).reverse())
+        // API already returns newest-first, so take the first five.
+        setRecentOrders(orders.slice(0, 5))
+      })
+      .catch(() => { if (!cancelled) setRecentOrders([]) })
+
     setLowStock(products.filter((p) => p.stock <= 5))
+    return () => { cancelled = true }
   }, [products])
 
   return (
@@ -111,8 +123,8 @@ export default function AdminDashboard() {
                 {recentOrders.map((order, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', backgroundColor: '#F5F1E8', borderRadius: '8px' }}>
                     <div>
-                      <p style={{ fontWeight: '500', color: '#4A3F2F', fontSize: '14px' }}>{order.customer?.fullName}</p>
-                      <p style={{ fontSize: '12px', color: '#A89F91' }}>{order.items?.length} items - {new Date(order.date).toLocaleDateString()}</p>
+                      <p style={{ fontWeight: '500', color: '#4A3F2F', fontSize: '14px' }}>{order.customerName}</p>
+                      <p style={{ fontSize: '12px', color: '#A89F91' }}>{order.items?.length} items - {new Date(order.createdAt).toLocaleDateString()}</p>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <span style={{ fontWeight: 'bold', color: '#4A3F2F', fontSize: '14px' }}>KSh {order.total?.toLocaleString()}</span>

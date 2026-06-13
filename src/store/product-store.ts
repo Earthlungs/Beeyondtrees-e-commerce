@@ -9,6 +9,7 @@ export interface Product {
   retailPrice: number
   wholesalePrice: number
   distributorPrice: number
+  costPrice?: number // admin-only; never in the public catalog or cached store
   stock: number
   images?: string[] // omitted from the catalog list; loaded on the detail page
   isOnOffer: boolean
@@ -20,7 +21,45 @@ export interface Product {
 
 export const slugify = (name: string) => name.toLowerCase().replace(/\s+/g, "-")
 
-// Highest updatedAt in the list — used as the incremental-sync watermark.
+// Keep only hosted (Cloudinary) URLs for the lightweight cached copy; base64
+// data-URIs are dropped (kept out of localStorage) and rendered via the
+// /api/products/[id]/image fallback instead. Positions are preserved with "".
+export const urlImages = (images?: string[]) =>
+  (images ?? []).map((s) => (/^https?:\/\//.test(s) ? s : ""))
+
+// Inject Cloudinary delivery transforms — f_auto (serve AVIF/WebP), q_auto
+// (auto compression), and an optional max width (c_limit = downscale-only,
+// aspect preserved) — so we deliver modern, right-sized images instead of
+// full-res originals. No-op for any non-Cloudinary URL.
+export const cldUrl = (url: string, width?: number) => {
+  const marker = "/upload/"
+  if (!url.includes("res.cloudinary.com") || !url.includes(marker)) return url
+  const t = ["f_auto", "q_auto", ...(width ? ["c_limit", `w_${width}`] : [])].join(",")
+  return url.replace(marker, `${marker}${t}/`)
+}
+
+// URL for a product's Nth image. When the catalog already carries a hosted
+// (Cloudinary) URL we return it directly (with delivery transforms) so the
+// browser loads an optimized image from the CDN with no DB round-trip. Pass
+// `width` to right-size for the slot (cards ~500, gallery ~1200). Otherwise we
+// fall back to the image API route, cache-busted by `updatedAt` (that endpoint
+// caches immutably, so `?v=` refreshes edits).
+export const productImageUrl = (
+  product: Pick<Product, "id" | "updatedAt" | "images">,
+  i = 0,
+  width?: number
+) => {
+  const direct = product.images?.[i]
+  if (direct && /^https?:\/\//.test(direct)) return cldUrl(direct, width)
+
+  const params = new URLSearchParams()
+  if (i) params.set("i", String(i))
+  if (product.updatedAt) params.set("v", product.updatedAt)
+  const qs = params.toString()
+  return `/api/products/${product.id}/image${qs ? `?${qs}` : ""}`
+}
+
+// Highest updatedAt in the list, used as the incremental-sync watermark.
 // Derived from server timestamps so it's immune to client clock skew.
 const watermark = (list: Product[]) =>
   list.reduce((max, p) => (p.updatedAt && p.updatedAt > max ? p.updatedAt : max), "")
@@ -89,19 +128,24 @@ export const useProductStore = create<ProductStore>()(
           body: JSON.stringify(product),
         })
         const created: Product = await res.json()
-        // Drop base64 images from the cached copy (kept small for localStorage).
-        const light: Product = { ...created, images: undefined }
+        // Keep only hosted URLs in the cached copy (base64 stays out of localStorage);
+        // drop costPrice so the sensitive cost never lands in the public store.
+        const light: Product = { ...created, images: urlImages(created.images), costPrice: undefined }
         const merged = sortByNewest([...get().products, light])
         set({ products: merged, lastSync: watermark(merged) || get().lastSync })
       },
 
       updateProduct: async (product) => {
-        await fetch("/api/products", {
+        const res = await fetch("/api/products", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(product),
         })
-        const light: Product = { ...product, images: undefined }
+        // Use the server's response so the fresh `updatedAt` is stored — it's the
+        // cache-busting key for the image endpoints, so without it the storefront
+        // would keep serving the old (immutably cached) image.
+        const updated: Product = await res.json()
+        const light: Product = { ...updated, images: urlImages(updated.images), costPrice: undefined }
         const merged = get().products.map((p) => (p.id === product.id ? light : p))
         set({ products: merged, lastSync: watermark(merged) || get().lastSync })
       },

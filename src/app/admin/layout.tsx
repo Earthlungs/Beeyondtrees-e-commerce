@@ -4,9 +4,10 @@ import { useSession } from "next-auth/react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { 
-  Leaf, LayoutDashboard, Package, Truck, 
-  LogOut, Menu, X, Users, TrendingUp, Settings, Store
+import {
+  Leaf, LayoutDashboard, Package, Truck,
+  LogOut, Menu, X, Users, TrendingUp, Settings, Store, ShoppingCart,
+  FileText, ClipboardList, UserCog
 } from "lucide-react"
 import { signOut } from "next-auth/react"
 import { useState } from "react"
@@ -24,18 +25,28 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: '#A89F91', fontSize: '18px' }}>Access Denied. Please <Link href="/admin/login" style={{ color: '#6B7D5C' }}>sign in</Link>.</div>
   }
 
-  const role = (session.user as any)?.role || "merchant"
+  const role = (session.user as { role?: string })?.role || "merchant"
 
-  const menuItems = [
-    { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/admin/products", label: "Products", icon: Package },
-    { href: "/admin/deliveries", label: "Deliveries", icon: Truck },
-    ...(role === "admin" ? [
-      { href: "/admin/customers", label: "Customers", icon: Users },
-      { href: "/admin/analytics", label: "Analytics", icon: TrendingUp },
-      { href: "/admin/settings", label: "Settings", icon: Settings },
-    ] : []),
-  ]
+  // Cashiers are sell-only: they get the till and nothing else. (proxy.ts also
+  // enforces this server-side by redirecting them away from other /admin pages.)
+  const menuItems = role === "cashier"
+    ? [
+        { href: "/admin/pos", label: "Point of Sale", icon: ShoppingCart },
+      ]
+    : [
+        { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+        { href: "/admin/pos", label: "Point of Sale", icon: ShoppingCart },
+        { href: "/admin/products", label: "Products", icon: Package },
+        { href: "/admin/deliveries", label: "Deliveries", icon: Truck },
+        { href: "/admin/lpo", label: "LPO", icon: ClipboardList },
+        { href: "/admin/invoicing", label: "Invoicing", icon: FileText },
+        ...(role === "admin" ? [
+          { href: "/admin/analytics", label: "Analytics", icon: TrendingUp },
+          { href: "/admin/customers", label: "Customers", icon: Users },
+          { href: "/admin/users", label: "Users", icon: UserCog },
+          { href: "/admin/settings", label: "Settings", icon: Settings },
+        ] : []),
+      ]
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#F5F1E8' }}>

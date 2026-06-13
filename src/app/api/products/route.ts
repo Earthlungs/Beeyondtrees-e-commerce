@@ -8,16 +8,24 @@ export async function GET(request: NextRequest) {
   const products = await prisma.product.findMany({
     where: since ? { updatedAt: { gt: new Date(since) } } : undefined,
     orderBy: { createdAt: 'desc' },
-    // Exclude `images` — they're base64 data-URIs (~0.5MB each) that bloat the
-    // catalog to tens of MB. Cards lazy-load them via /api/products/[id]/image.
     select: {
       id: true, name: true, description: true, category: true,
       retailPrice: true, wholesalePrice: true, distributorPrice: true,
       stock: true, isOnOffer: true, offerPrice: true, isFeatured: true,
-      createdAt: true, updatedAt: true,
+      createdAt: true, updatedAt: true, images: true,
     },
   })
-  return NextResponse.json(products, {
+  // Include only hosted (Cloudinary) image URLs so cards load straight from the
+  // CDN — no per-thumbnail DB round-trip. Any legacy base64 data-URI (~0.5MB) is
+  // replaced with "" to keep the catalog JSON tiny; those positions fall back to
+  // /api/products/[id]/image (see productImageUrl), preserving image order.
+  const sanitized = products.map((p) => ({
+    ...p,
+    images: ((p.images as string[]) ?? []).map((s) =>
+      /^https?:\/\//.test(s) ? s : ""
+    ),
+  }))
+  return NextResponse.json(sanitized, {
     headers: since
       ? { 'Cache-Control': 'no-store' }
       : { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=600' },

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Leaf, Lock, User, Shield, Store, ChevronRight } from "lucide-react"
+import { Lock, User, Shield, Store } from "lucide-react"
 
 export default function AdminLoginPage() {
   const router = useRouter()
@@ -38,8 +38,6 @@ export default function AdminLoginPage() {
 
   const quickLogin = (role: "admin" | "merchant") => {
     setSelectedRole(role)
-    setUsername(role)
-    setPassword(role === "admin" ? "beeyond2024" : "merchant2024")
   }
 
   return (
@@ -51,15 +49,7 @@ export default function AdminLoginPage() {
       background: 'linear-gradient(135deg, #6B7D5C 0%, #4A5A3F 50%, #2D3626 100%)',
       padding: '20px'
     }}>
-      <div style={{ position: 'absolute', top: '40px', left: '50%', transform: 'translateX(-50%)', textAlign: 'center', color: 'white' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '8px' }}>
-          <Leaf size={32} />
-          <h1 style={{ fontSize: '28px', fontWeight: 'bold', margin: 0 }}>BEEyond Trees</h1>
-        </div>
-        <p style={{ color: '#E6D3A3', fontSize: '14px' }}>Admin & Merchant Portal</p>
-      </div>
-
-      <Card style={{ 
+      <Card style={{
         width: '440px', 
         maxWidth: '90vw',
         backgroundColor: 'white', 
@@ -158,9 +148,6 @@ export default function AdminLoginPage() {
             </Button>
           </form>
 
-          <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#F5F1E8', borderRadius: '8px', fontSize: '12px', color: '#A89F91', textAlign: 'center' }}>
-            <strong>Admin:</strong> admin / beeyond2024 &nbsp;|&nbsp; <strong>Merchant:</strong> merchant / merchant2024
-          </div>
         </CardContent>
       </Card>
     </div>

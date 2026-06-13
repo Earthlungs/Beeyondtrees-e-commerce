@@ -14,8 +14,46 @@ model User {
   password  String
   name      String
   role      String   @default("merchant")
+  active    Boolean  @default(true) // blocked/deactivated users can't log in
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Customer invoice (branded printable doc, matches templates/Invoice). Line
+// items are stored as JSON: [{ description, qty, unitPrice, taxRate, amount }].
+model Invoice {
+  id              String    @id @default(cuid())
+  number          String    @unique // e.g. INV-0001
+  date            DateTime  @default(now())
+  dueDate         DateTime?
+  customerName    String
+  customerContact String? // phone / email
+  items           Json      @default("[]")
+  subtotal        Float     @default(0)
+  vat             Float     @default(0)
+  total           Float     @default(0)
+  notes           String?   @db.Text // payment details
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+// Local Purchase Order to a supplier (branded printable doc, matches
+// templates/Purchase Order). Same JSON line-item shape as Invoice.
+model Lpo {
+  id              String    @id @default(cuid())
+  number          String    @unique // e.g. LPO-0001
+  orderDate       DateTime  @default(now())
+  expectedArrival DateTime?
+  supplierName    String
+  shippingAddress String?   @db.Text
+  purchaseRep     String?
+  items           Json      @default("[]")
+  subtotal        Float     @default(0)
+  vat             Float     @default(0)
+  total           Float     @default(0)
+  notes           String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }
 
 model Product {
@@ -26,6 +64,7 @@ model Product {
   retailPrice      Float
   wholesalePrice   Float
   distributorPrice Float
+  costPrice        Float       @default(0) // buying/production cost, for profit calc (admin-only, never in public catalog)
   stock            Int         @default(0)
   images           Json        @default("[]")
   isOnOffer        Boolean     @default(false)
@@ -50,6 +89,15 @@ model Order {
   paymentRef           String?
   paymentStatus        String?
   transactionRef       String?
+  // Sales channel: "online" (web checkout) or "pos" (physical shop till).
+  // Both decrement the same Product.stock, so the two storefronts stay in sync.
+  channel              String      @default("online")
+  // POS-only fields. paymentMethod is "cash" | "mpesa" | "card".
+  paymentMethod        String?
+  cashReceived         Float?      // amount tendered for cash sales (for change)
+  mpesaCode            String?     // M-Pesa confirmation code
+  cardRef              String?     // card/terminal reference
+  soldBy               String?     // name of the cashier who rang up the sale
   createdAt            DateTime    @default(now())
   updatedAt            DateTime    @updatedAt
   items                OrderItem[]

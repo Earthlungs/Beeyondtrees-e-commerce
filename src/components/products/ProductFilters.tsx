@@ -1,15 +1,14 @@
 "use client"
 
-import { Input } from "@/components/ui/input"
-import { Separator } from "@/components/ui/separator"
-import { Search, SlidersHorizontal, X } from "lucide-react"
+import { Search, X } from "lucide-react"
 
-const categories = ["All", "Furniture", "Home & Living", "Pottery", "Ornamental & Curios"]
-const priceRanges = [
+export const categories = ["All", "Furniture", "Home & Living", "Pottery", "Ornamental & Curios"]
+
+export const priceRanges = [
   { label: "Under KSh 500", min: 0, max: 500 },
-  { label: "KSh 500 - KSh 2,000", min: 500, max: 2000 },
-  { label: "KSh 2,000 - KSh 5,000", min: 2000, max: 5000 },
-  { label: "KSh 5,000 - KSh 15,000", min: 5000, max: 15000 },
+  { label: "KSh 500 – 2,000", min: 500, max: 2000 },
+  { label: "KSh 2,000 – 5,000", min: 2000, max: 5000 },
+  { label: "KSh 5,000 – 15,000", min: 5000, max: 15000 },
   { label: "Above KSh 15,000", min: 15000, max: Infinity },
 ]
 
@@ -22,83 +21,95 @@ interface ProductFiltersProps {
   onSearchChange: (term: string) => void
 }
 
+const SAGE = "#6B7D5C"
+const DARK = "#4A3F2F"
+
+function Heading({ children }: { children: React.ReactNode }) {
+  return (
+    <p style={{ textTransform: "uppercase", letterSpacing: "0.16em", fontSize: 11, fontWeight: 700, color: "#A89F91", marginBottom: 12 }}>{children}</p>
+  )
+}
+
 export function ProductFilters({ selectedCategory, onCategoryChange, selectedPrice, onPriceChange, searchTerm, onSearchChange }: ProductFiltersProps) {
   return (
-    <div className="space-y-6">
+    <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+      {/* Search */}
       <div>
-        <h3 className="font-semibold text-[#4A3F2F] mb-3 flex items-center gap-2">
-          <SlidersHorizontal className="h-4 w-4" /> Filters
-        </h3>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#A89F91]" />
-          <Input 
-            placeholder="Search products..." 
-            className="pl-10 border-[#A89F91] focus:border-[#6B7D5C]" 
+        <Heading>Search</Heading>
+        <div style={{ position: "relative" }}>
+          <Search size={16} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#A89F91" }} />
+          <input
+            placeholder="Search products…"
             value={searchTerm}
-            onChange={e => onSearchChange(e.target.value)}
+            onChange={(e) => onSearchChange(e.target.value)}
+            style={{ width: "100%", padding: "10px 32px 10px 38px", borderRadius: 12, border: "1px solid #D4C9B8", background: "white", fontSize: 14, color: DARK, outline: "none" }}
           />
           {searchTerm && (
-            <button onClick={() => onSearchChange('')} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#A89F91' }}>
-              <X size={14} />
+            <button onClick={() => onSearchChange("")} aria-label="Clear search" style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#A89F91" }}>
+              <X size={15} />
             </button>
           )}
         </div>
       </div>
 
-      <Separator className="bg-[#A89F91]" />
-
+      {/* Category */}
       <div>
-        <h4 className="font-medium text-[#4A3F2F] mb-2">Category</h4>
-        <div className="space-y-1">
-          {categories.map((cat) => (
-            <button 
-              key={cat} 
-              onClick={() => onCategoryChange(cat)}
-              className={`block w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                selectedCategory === cat 
-                  ? "bg-[#6B7D5C] text-white" 
-                  : "text-[#A89F91] hover:bg-[#E6D3A3] hover:text-[#4A3F2F]"
-              }`}
-            >
-              {cat}
-              {selectedCategory === cat && cat !== "All" && (
-                <span style={{ float: 'right', fontSize: '11px', opacity: 0.7 }}>✓</span>
-              )}
-            </button>
-          ))}
+        <Heading>Category</Heading>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {categories.map((cat) => {
+            const active = selectedCategory === cat
+            return (
+              <button
+                key={cat}
+                onClick={() => onCategoryChange(cat)}
+                style={{
+                  textAlign: "left", padding: "9px 14px", borderRadius: 10, border: "none", cursor: "pointer",
+                  fontSize: 14, fontWeight: active ? 600 : 400,
+                  backgroundColor: active ? SAGE : "transparent",
+                  color: active ? "white" : "#6b6353",
+                  transition: "background-color 0.18s, color 0.18s",
+                }}
+                onMouseEnter={(e) => { if (!active) e.currentTarget.style.backgroundColor = "#EFE9DC" }}
+                onMouseLeave={(e) => { if (!active) e.currentTarget.style.backgroundColor = "transparent" }}
+              >
+                {cat}
+              </button>
+            )
+          })}
         </div>
       </div>
 
-      <Separator className="bg-[#A89F91]" />
-
+      {/* Price */}
       <div>
-        <h4 className="font-medium text-[#4A3F2F] mb-2">Price Range</h4>
-        <div className="space-y-1">
-          {priceRanges.map((range) => (
-            <label 
-              key={range.label}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors ${
-                selectedPrice === range.label 
-                  ? "bg-[#6B7D5C] text-white" 
-                  : "text-[#A89F91] hover:bg-[#E6D3A3] hover:text-[#4A3F2F]"
-              }`}
-            >
-              <input 
-                type="radio" 
-                name="price" 
-                className="hidden" 
-                checked={selectedPrice === range.label} 
-                onChange={() => onPriceChange(selectedPrice === range.label ? null : range.label)} 
-              />
-              {range.label}
-            </label>
-          ))}
+        <Heading>Price</Heading>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {priceRanges.map((range) => {
+            const active = selectedPrice === range.label
+            return (
+              <button
+                key={range.label}
+                onClick={() => onPriceChange(active ? null : range.label)}
+                style={{
+                  textAlign: "left", padding: "9px 14px", borderRadius: 10, border: "none", cursor: "pointer",
+                  fontSize: 14, fontWeight: active ? 600 : 400,
+                  backgroundColor: active ? SAGE : "transparent",
+                  color: active ? "white" : "#6b6353",
+                  display: "flex", alignItems: "center", gap: 10,
+                  transition: "background-color 0.18s, color 0.18s",
+                }}
+                onMouseEnter={(e) => { if (!active) e.currentTarget.style.backgroundColor = "#EFE9DC" }}
+                onMouseLeave={(e) => { if (!active) e.currentTarget.style.backgroundColor = "transparent" }}
+              >
+                <span style={{ width: 14, height: 14, borderRadius: "50%", border: `2px solid ${active ? "white" : "#C2B7A3"}`, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  {active && <span style={{ width: 6, height: 6, borderRadius: "50%", background: "white" }} />}
+                </span>
+                {range.label}
+              </button>
+            )
+          })}
         </div>
         {selectedPrice && (
-          <button 
-            onClick={() => onPriceChange(null)}
-            style={{ marginTop: '8px', fontSize: '12px', color: '#8C6A4A', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
-          >
+          <button onClick={() => onPriceChange(null)} style={{ marginTop: 10, fontSize: 12.5, color: "#8C6A4A", background: "none", border: "none", cursor: "pointer", fontWeight: 500 }}>
             Clear price filter
           </button>
         )}
