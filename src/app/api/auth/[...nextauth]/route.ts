@@ -17,6 +17,8 @@ const handler = NextAuth({
           where: { username: credentials.username },
         })
         if (!user) return null
+        // Blocked/deactivated accounts cannot sign in.
+        if (!user.active) return null
         const isValid = await bcrypt.compare(credentials.password, user.password)
         if (!isValid) return null
         return {

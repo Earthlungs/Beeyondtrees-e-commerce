@@ -28,14 +28,14 @@ export default function AdminProductsPage() {
 
   const [form, setForm] = useState({
     name: "", description: "", category: "Furniture",
-    retailPrice: "", wholesalePrice: "", distributorPrice: "",
+    retailPrice: "", wholesalePrice: "", distributorPrice: "", costPrice: "",
     stock: "", isOnOffer: false, offerPrice: "",
   })
 
   useEffect(() => { loadProducts() }, [])
 
   const resetForm = () => {
-    setForm({ name: "", description: "", category: "Furniture", retailPrice: "", wholesalePrice: "", distributorPrice: "", stock: "", isOnOffer: false, offerPrice: "" })
+    setForm({ name: "", description: "", category: "Furniture", retailPrice: "", wholesalePrice: "", distributorPrice: "", costPrice: "", stock: "", isOnOffer: false, offerPrice: "" })
     setImageUrls([]); setNewImageUrl(""); setEditingId(null); setShowForm(false)
   }
 
@@ -70,7 +70,8 @@ export default function AdminProductsPage() {
       id: editingId || Date.now().toString(),
       name: form.name, description: form.description, category: form.category,
       retailPrice: Number(form.retailPrice), wholesalePrice: Number(form.wholesalePrice),
-      distributorPrice: Number(form.distributorPrice), stock: Number(form.stock),
+      distributorPrice: Number(form.distributorPrice), costPrice: Number(form.costPrice) || 0,
+      stock: Number(form.stock),
       images: imageUrls, isOnOffer: form.isOnOffer,
       offerPrice: form.isOnOffer ? Number(form.offerPrice) : null,
     }
@@ -92,17 +93,19 @@ export default function AdminProductsPage() {
     setForm({
       name: product.name, description: product.description, category: product.category,
       retailPrice: product.retailPrice.toString(), wholesalePrice: product.wholesalePrice.toString(),
-      distributorPrice: product.distributorPrice.toString(), stock: product.stock.toString(),
+      distributorPrice: product.distributorPrice.toString(), costPrice: (product.costPrice ?? 0).toString(),
+      stock: product.stock.toString(),
       isOnOffer: product.isOnOffer, offerPrice: product.offerPrice?.toString() || "",
     })
     setImageUrls(product.images ?? [])
     setShowForm(true)
-    // The catalog list omits images; fetch the full record so saving an edit
-    // doesn't wipe existing images.
+    // The catalog list omits images + costPrice; fetch the full record so saving
+    // an edit doesn't wipe images and the cost price shows for editing.
     try {
       const res = await fetch(`/api/products/${product.id}`)
       const full = await res.json()
       if (Array.isArray(full.images)) setImageUrls(full.images)
+      if (full.costPrice != null) setForm((prev) => ({ ...prev, costPrice: String(full.costPrice) }))
     } catch {
       /* keep whatever we have */
     }
@@ -185,6 +188,7 @@ export default function AdminProductsPage() {
               <div><label style={{ fontSize: '12px', fontWeight: '500', color: '#4A3F2F', marginBottom: '4px', display: 'block' }}>Retail Price (KSh) *</label><Input type="number" value={form.retailPrice} onChange={e => setForm({...form, retailPrice: e.target.value})} /></div>
               <div><label style={{ fontSize: '12px', fontWeight: '500', color: '#4A3F2F', marginBottom: '4px', display: 'block' }}>Wholesale Price (KSh) *</label><Input type="number" value={form.wholesalePrice} onChange={e => setForm({...form, wholesalePrice: e.target.value})} /></div>
               <div><label style={{ fontSize: '12px', fontWeight: '500', color: '#4A3F2F', marginBottom: '4px', display: 'block' }}>Distributor Price (KSh) *</label><Input type="number" value={form.distributorPrice} onChange={e => setForm({...form, distributorPrice: e.target.value})} /></div>
+              <div><label style={{ fontSize: '12px', fontWeight: '500', color: '#4A3F2F', marginBottom: '4px', display: 'block' }}>Cost Price (KSh) <span style={{ color: '#A89F91', fontWeight: 400 }}>— for profit</span></label><Input type="number" value={form.costPrice} onChange={e => setForm({...form, costPrice: e.target.value})} placeholder="What it costs you" /></div>
               <div><label style={{ fontSize: '12px', fontWeight: '500', color: '#4A3F2F', marginBottom: '4px', display: 'block' }}>Stock *</label><Input type="number" value={form.stock} onChange={e => setForm({...form, stock: e.target.value})} /></div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px' }}><input type="checkbox" checked={form.isOnOffer} onChange={e => setForm({...form, isOnOffer: e.target.checked})} /> On Offer</label>

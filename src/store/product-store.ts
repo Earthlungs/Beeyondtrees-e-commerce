@@ -9,6 +9,7 @@ export interface Product {
   retailPrice: number
   wholesalePrice: number
   distributorPrice: number
+  costPrice?: number // admin-only; never in the public catalog or cached store
   stock: number
   images?: string[] // omitted from the catalog list; loaded on the detail page
   isOnOffer: boolean
@@ -127,8 +128,9 @@ export const useProductStore = create<ProductStore>()(
           body: JSON.stringify(product),
         })
         const created: Product = await res.json()
-        // Keep only hosted URLs in the cached copy (base64 stays out of localStorage).
-        const light: Product = { ...created, images: urlImages(created.images) }
+        // Keep only hosted URLs in the cached copy (base64 stays out of localStorage);
+        // drop costPrice so the sensitive cost never lands in the public store.
+        const light: Product = { ...created, images: urlImages(created.images), costPrice: undefined }
         const merged = sortByNewest([...get().products, light])
         set({ products: merged, lastSync: watermark(merged) || get().lastSync })
       },
@@ -143,7 +145,7 @@ export const useProductStore = create<ProductStore>()(
         // cache-busting key for the image endpoints, so without it the storefront
         // would keep serving the old (immutably cached) image.
         const updated: Product = await res.json()
-        const light: Product = { ...updated, images: urlImages(updated.images) }
+        const light: Product = { ...updated, images: urlImages(updated.images), costPrice: undefined }
         const merged = get().products.map((p) => (p.id === product.id ? light : p))
         set({ products: merged, lastSync: watermark(merged) || get().lastSync })
       },

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import {
   Leaf, LayoutDashboard, Package, Truck,
   LogOut, Menu, X, Users, TrendingUp, Settings, Store, ShoppingCart,
-  FileText, ClipboardList
+  FileText, ClipboardList, UserCog
 } from "lucide-react"
 import { signOut } from "next-auth/react"
 import { useState } from "react"
@@ -41,8 +41,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         { href: "/admin/lpo", label: "LPO", icon: ClipboardList },
         { href: "/admin/invoicing", label: "Invoicing", icon: FileText },
         ...(role === "admin" ? [
-          { href: "/admin/customers", label: "Customers", icon: Users },
           { href: "/admin/analytics", label: "Analytics", icon: TrendingUp },
+          { href: "/admin/customers", label: "Customers", icon: Users },
+          { href: "/admin/users", label: "Users", icon: UserCog },
           { href: "/admin/settings", label: "Settings", icon: Settings },
         ] : []),
       ]
