@@ -20,13 +20,23 @@ export interface Product {
 
 export const slugify = (name: string) => name.toLowerCase().replace(/\s+/g, "-")
 
-// URL for a product's Nth image, cache-busted by `updatedAt`. The image endpoint
-// caches its response immutably, so the `?v=` param is what makes a changed image
-// actually show up on the storefront instead of the stale cached one.
+// Keep only hosted (Cloudinary) URLs for the lightweight cached copy; base64
+// data-URIs are dropped (kept out of localStorage) and rendered via the
+// /api/products/[id]/image fallback instead. Positions are preserved with "".
+export const urlImages = (images?: string[]) =>
+  (images ?? []).map((s) => (/^https?:\/\//.test(s) ? s : ""))
+
+// URL for a product's Nth image. When the catalog already carries a hosted
+// (Cloudinary) URL we return it directly so the browser loads from the CDN with
+// no DB round-trip. Otherwise we fall back to the image API route, cache-busted
+// by `updatedAt` (that endpoint caches immutably, so `?v=` refreshes edits).
 export const productImageUrl = (
-  product: Pick<Product, "id" | "updatedAt">,
+  product: Pick<Product, "id" | "updatedAt" | "images">,
   i = 0
 ) => {
+  const direct = product.images?.[i]
+  if (direct && /^https?:\/\//.test(direct)) return direct
+
   const params = new URLSearchParams()
   if (i) params.set("i", String(i))
   if (product.updatedAt) params.set("v", product.updatedAt)
@@ -103,8 +113,8 @@ export const useProductStore = create<ProductStore>()(
           body: JSON.stringify(product),
         })
         const created: Product = await res.json()
-        // Drop base64 images from the cached copy (kept small for localStorage).
-        const light: Product = { ...created, images: undefined }
+        // Keep only hosted URLs in the cached copy (base64 stays out of localStorage).
+        const light: Product = { ...created, images: urlImages(created.images) }
         const merged = sortByNewest([...get().products, light])
         set({ products: merged, lastSync: watermark(merged) || get().lastSync })
       },
@@ -119,7 +129,7 @@ export const useProductStore = create<ProductStore>()(
         // cache-busting key for the image endpoints, so without it the storefront
         // would keep serving the old (immutably cached) image.
         const updated: Product = await res.json()
-        const light: Product = { ...updated, images: undefined }
+        const light: Product = { ...updated, images: urlImages(updated.images) }
         const merged = get().products.map((p) => (p.id === product.id ? light : p))
         set({ products: merged, lastSync: watermark(merged) || get().lastSync })
       },
