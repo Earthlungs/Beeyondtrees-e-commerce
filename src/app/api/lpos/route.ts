@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
-import { requireDocRole, normalizeLines, createNumbered } from "@/lib/docs"
+import { requireDocRole, normalizeLines, createNumbered, parseDate } from "@/lib/docs"
 
 export async function GET(request: NextRequest) {
   const auth = await requireDocRole(request)
@@ -32,8 +32,8 @@ export async function POST(request: NextRequest) {
         prisma.lpo.create({
           data: {
             number,
-            orderDate: body.orderDate ? new Date(body.orderDate) : new Date(),
-            expectedArrival: body.expectedArrival ? new Date(body.expectedArrival) : null,
+            orderDate: parseDate(body.orderDate) ?? new Date(),
+            expectedArrival: parseDate(body.expectedArrival),
             supplierName: body.supplierName.trim(),
             shippingAddress: body.shippingAddress?.trim() || null,
             purchaseRep: body.purchaseRep?.trim() || null,
