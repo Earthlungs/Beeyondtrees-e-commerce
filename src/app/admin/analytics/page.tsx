@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import {
   TrendingUp, TrendingDown, Wallet, Boxes, Globe, Store,
-  MapPin, Package, UserRound, Clock, Loader2,
+  MapPin, Package, Clock, Loader2, Banknote, Smartphone, CreditCard, Receipt,
 } from "lucide-react"
 
 const TEXT = "#4A3F2F", MUTED = "#A89F91", GREEN = "#6B7D5C", BROWN = "#8C6A4A", DARK = "#3D3226", CREAM = "#FAF8F3"
@@ -19,6 +19,8 @@ interface Analytics {
   topLocations: { location: string; orders: number; revenue: number }[]
   topProducts: { name: string; qty: number; revenue: number }[]
   topSellers: { name: string; orders: number; revenue: number }[]
+  byMethod: Record<string, { amount: number; count: number }>
+  collectors: { name: string; total: number; cash: number; mpesa: number; card: number; orders: number }[]
   hourly: { hour: number; online: number; pos: number }[]
 }
 
@@ -110,7 +112,50 @@ export default function AnalyticsPage() {
             <Kpi icon={<Boxes size={18} />} label="Stock Value (retail)" value={ksh(data.stockRetailValue)} sub={`cost ${ksh(data.stockCostValue)}`} accent={DARK} />
           </div>
 
+          {/* Money collected by method */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 14, marginBottom: 22 }}>
+            <MethodCard icon={<Banknote size={18} />} label="Cash collected" m={data.byMethod.cash} accent="#2E7D32" />
+            <MethodCard icon={<Smartphone size={18} />} label="M-Pesa collected" m={data.byMethod.mpesa} accent="#1B7A3D" />
+            <MethodCard icon={<CreditCard size={18} />} label="Card collected" m={data.byMethod.card} accent="#3E6E8E" />
+            <MethodCard icon={<Globe size={18} />} label="Online (Paystack)" m={data.byMethod.online} accent={BROWN} />
+          </div>
+
+          {/* Collections by staff */}
+          <Panel title="Collections by staff — collected & receipted by" icon={<Receipt size={16} />}>
+            {data.collectors.length === 0 ? (
+              <p style={{ color: MUTED, fontSize: 13, padding: "12px 0" }}>No till collections in range.</p>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 460, marginTop: 6 }}>
+                  <thead>
+                    <tr style={{ fontSize: 11.5, color: MUTED, textAlign: "left" }}>
+                      <th style={{ padding: "6px 8px" }}>Staff</th>
+                      <th style={{ padding: "6px 8px", textAlign: "right" }}>Cash</th>
+                      <th style={{ padding: "6px 8px", textAlign: "right" }}>M-Pesa</th>
+                      <th style={{ padding: "6px 8px", textAlign: "right" }}>Card</th>
+                      <th style={{ padding: "6px 8px", textAlign: "right" }}>Sales</th>
+                      <th style={{ padding: "6px 8px", textAlign: "right" }}>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.collectors.map((c, i) => (
+                      <tr key={i} style={{ borderTop: "1px solid #F0EDE6" }}>
+                        <td style={{ padding: "9px 8px", fontSize: 13, fontWeight: 600, color: TEXT }}>{c.name}</td>
+                        <td style={cellR}>{ksh(c.cash)}</td>
+                        <td style={cellR}>{ksh(c.mpesa)}</td>
+                        <td style={cellR}>{ksh(c.card)}</td>
+                        <td style={{ ...cellR, color: MUTED }}>{c.orders}</td>
+                        <td style={{ ...cellR, fontWeight: 800, color: GREEN }}>{ksh(c.total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Panel>
+
           {/* Active hours */}
+          <div style={{ marginTop: 18 }} />
           <Panel title="When is the shop active?" icon={<Clock size={16} />}>
             <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 140, marginTop: 8 }}>
               {data.hourly.map((h) => {
@@ -139,9 +184,6 @@ export default function AnalyticsPage() {
             <Panel title="Best-selling products" icon={<Package size={16} />}>
               <RankTable rows={data.topProducts.map((p) => ({ a: p.name, b: `${p.qty} sold`, c: ksh(p.revenue) }))} empty="No sales in range." />
             </Panel>
-            <Panel title="Top sellers (POS)" icon={<UserRound size={16} />}>
-              <RankTable rows={data.topSellers.map((s) => ({ a: s.name, b: `${s.orders} sales`, c: ksh(s.revenue) }))} empty="No POS sales in range." />
-            </Panel>
           </div>
         </>
       )}
@@ -158,6 +200,18 @@ function Kpi({ icon, label, value, sub, accent }: { icon: React.ReactNode; label
       <div style={{ display: "flex", alignItems: "center", gap: 8, color: accent, marginBottom: 8 }}>{icon}<span style={{ fontSize: 12.5, color: MUTED, fontWeight: 500 }}>{label}</span></div>
       <div style={{ fontSize: 24, fontWeight: 800, color: DARK }}>{value}</div>
       <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>{sub}</div>
+    </div>
+  )
+}
+
+const cellR: React.CSSProperties = { padding: "9px 8px", fontSize: 12.5, color: TEXT, textAlign: "right" }
+
+function MethodCard({ icon, label, m, accent }: { icon: React.ReactNode; label: string; m?: { amount: number; count: number }; accent: string }) {
+  return (
+    <div style={{ background: "white", border: "1px solid #E5E7EB", borderRadius: 14, padding: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, color: accent, marginBottom: 6 }}>{icon}<span style={{ fontSize: 12, color: MUTED, fontWeight: 500 }}>{label}</span></div>
+      <div style={{ fontSize: 20, fontWeight: 800, color: DARK }}>{ksh(m?.amount ?? 0)}</div>
+      <div style={{ fontSize: 11.5, color: MUTED, marginTop: 2 }}>{m?.count ?? 0} payments</div>
     </div>
   )
 }

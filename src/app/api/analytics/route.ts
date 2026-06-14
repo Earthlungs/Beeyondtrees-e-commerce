@@ -42,6 +42,12 @@ export async function GET(request: NextRequest) {
   const byProduct = new Map<string, { name: string; qty: number; revenue: number }>()
   const bySeller = new Map<string, { name: string; orders: number; revenue: number }>()
   const hourly = Array.from({ length: 24 }, (_, h) => ({ hour: h, online: 0, pos: 0 }))
+  // Money collected by payment method, and by which staff member collected it.
+  const byMethod: Record<string, { amount: number; count: number }> = {
+    cash: { amount: 0, count: 0 }, mpesa: { amount: 0, count: 0 },
+    card: { amount: 0, count: 0 }, online: { amount: 0, count: 0 },
+  }
+  const byCollector = new Map<string, { name: string; total: number; cash: number; mpesa: number; card: number; orders: number }>()
 
   for (const o of orders) {
     totalSales += o.total
@@ -74,6 +80,24 @@ export async function GET(request: NextRequest) {
     const eatHour = (new Date(o.createdAt).getUTCHours() + 3) % 24
     if (isPos) hourly[eatHour].pos += o.total
     else hourly[eatHour].online += o.total
+
+    // Money collected by method + by collector (POS uses the recorded method
+    // and soldBy = the cashier who collected and generated the receipt).
+    if (isPos) {
+      const m = (["cash", "mpesa", "card"].includes(o.paymentMethod ?? "") ? o.paymentMethod : "cash") as "cash" | "mpesa" | "card"
+      byMethod[m].amount += o.total
+      byMethod[m].count += 1
+      if (o.soldBy) {
+        const c = byCollector.get(o.soldBy) ?? { name: o.soldBy, total: 0, cash: 0, mpesa: 0, card: 0, orders: 0 }
+        c.total += o.total
+        c[m] += o.total
+        c.orders += 1
+        byCollector.set(o.soldBy, c)
+      }
+    } else {
+      byMethod.online.amount += o.total
+      byMethod.online.count += 1
+    }
   }
 
   const netProfit = totalSales - cogs
@@ -96,6 +120,8 @@ export async function GET(request: NextRequest) {
       topLocations: top(byLocation),
       topProducts: [...byProduct.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 8),
       topSellers: top(bySeller),
+      byMethod,
+      collectors: [...byCollector.values()].sort((a, b) => b.total - a.total),
       hourly,
     },
     { headers: { "Cache-Control": "no-store" } }
