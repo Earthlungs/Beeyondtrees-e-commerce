@@ -22,43 +22,30 @@ export default function AdminDashboard() {
     products: 0, orders: 0, pending: 0, delivered: 0, revenue: 0, customers: 0
   })
   const [recentOrders, setRecentOrders] = useState<any[]>([])
-  const [lowStock, setLowStock] = useState<any[]>([])
+  const lowStock = products.filter((p) => p.stock <= 5)
 
   useEffect(() => { loadProducts() }, [loadProducts])
 
   useEffect(() => {
-    // Orders come from the database (newest first). Guard against a non-array
-    // response so the dashboard can't crash if the API errors.
+    // Aggregated summary (counts/revenue/recent) computed in the DB — far
+    // lighter than pulling every order. Guard against a bad response.
     let cancelled = false
-    fetch('/api/orders')
-      .then((r) => (r.ok ? r.json() : []))
-      .then((raw) => {
-        if (cancelled) return
-        const orders: any[] = Array.isArray(raw) ? raw : []
-
-        const pending = orders.filter((o) => o.status === 'pending').length
-        const delivered = orders.filter((o) => o.status === 'delivered').length
-        // Only count revenue from orders that were actually paid.
-        const revenue = orders
-          .filter((o) => o.paymentStatus === 'paid')
-          .reduce((s: number, o) => s + (o.total || 0), 0)
-        const uniqueCustomers = new Set(orders.map((o) => o.customerPhone)).size
-
+    fetch('/api/orders/stats')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (cancelled || !d) return
         setStats({
           products: products.length,
-          orders: orders.length,
-          pending,
-          delivered,
-          revenue,
-          customers: uniqueCustomers,
+          orders: d.orders ?? 0,
+          pending: d.pending ?? 0,
+          delivered: d.delivered ?? 0,
+          revenue: d.revenue ?? 0,
+          customers: d.customers ?? 0,
         })
-
-        // API already returns newest-first, so take the first five.
-        setRecentOrders(orders.slice(0, 5))
+        setRecentOrders(Array.isArray(d.recent) ? d.recent : [])
       })
       .catch(() => { if (!cancelled) setRecentOrders([]) })
 
-    setLowStock(products.filter((p) => p.stock <= 5))
     return () => { cancelled = true }
   }, [products])
 
@@ -124,7 +111,7 @@ export default function AdminDashboard() {
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', backgroundColor: '#F5F1E8', borderRadius: '8px' }}>
                     <div>
                       <p style={{ fontWeight: '500', color: '#4A3F2F', fontSize: '14px' }}>{order.customerName}</p>
-                      <p style={{ fontSize: '12px', color: '#A89F91' }}>{order.items?.length} items - {new Date(order.createdAt).toLocaleDateString()}</p>
+                      <p style={{ fontSize: '12px', color: '#A89F91' }}>{order.itemCount} items - {new Date(order.createdAt).toLocaleDateString()}</p>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <span style={{ fontWeight: 'bold', color: '#4A3F2F', fontSize: '14px' }}>KSh {order.total?.toLocaleString()}</span>
