@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Lock, User, Shield, Store } from "lucide-react"
+import { Lock, User, Shield, Store, Eye, EyeOff } from "lucide-react"
 
 export default function AdminLoginPage() {
   const router = useRouter()
@@ -14,6 +14,7 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const [selectedRole, setSelectedRole] = useState<"admin" | "merchant">("admin")
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -133,9 +134,14 @@ export default function AdminLoginPage() {
               <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500', color: '#4A3F2F' }}>Password</label>
               <div style={{ position: 'relative' }}>
                 <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#A89F91' }} />
-                <Input type="password" value={password} onChange={e => setPassword(e.target.value)}
+                <Input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
                   placeholder="Enter password"
-                  style={{ paddingLeft: '40px', height: '44px' }} required />
+                  style={{ paddingLeft: '40px', paddingRight: '40px', height: '44px' }} required />
+                <button type="button" onClick={() => setShowPassword(s => !s)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#A89F91', padding: 4, display: 'flex' }}>
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
             </div>
             <Button type="submit" disabled={loading}
