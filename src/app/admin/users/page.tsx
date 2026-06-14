@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Users, Plus, X, Loader2, Ban, CheckCircle2, ShieldAlert } from "lucide-react"
+import { Users, Plus, X, Loader2, Ban, CheckCircle2, ShieldAlert, Eye, EyeOff } from "lucide-react"
 
 const TEXT = "#4A3F2F"
 const MUTED = "#A89F91"
@@ -22,6 +22,7 @@ export default function UsersPage() {
   const [notice, setNotice] = useState<{ text: string; tone: "error" | "success" } | null>(null)
 
   const [f, setF] = useState({ username: "", name: "", password: "", role: "merchant" })
+  const [showPw, setShowPw] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const load = async () => {
@@ -87,7 +88,15 @@ export default function UsersPage() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
             <Field label="Username *"><Input value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} /></Field>
             <Field label="Full name *"><Input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
-            <Field label="Password * (min 6)"><Input type="text" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></Field>
+            <Field label="Password * (min 6)">
+              <div style={{ position: "relative" }}>
+                <Input type={showPw ? "text" : "password"} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} style={{ paddingRight: 38 }} />
+                <button type="button" onClick={() => setShowPw((s) => !s)} aria-label={showPw ? "Hide password" : "Show password"}
+                  style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: MUTED, padding: 4, display: "flex" }}>
+                  {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </Field>
             <Field label="Role">
               <select value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })} style={{ width: "100%", height: 40, borderRadius: 8, border: "1px solid #E5E7EB", padding: "0 10px", color: TEXT }}>
                 <option value="merchant">Merchant</option>
