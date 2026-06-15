@@ -36,8 +36,10 @@
   /* Alert/status surfaces (so warning cards stay readable in dark too). */
   --admin-warn-bg: #FFFBF0;
   --admin-warn-border: #E6D3A3;
+  --admin-warn-fg: #B8860B;
   --admin-error-bg: #FFF5F5;
   --admin-error-border: #8C6A4A;
+  --admin-error-fg: #B0492E;
   --admin-success-bg: #F1F7EE;
 }
 
@@ -72,8 +74,10 @@
   --admin-sidebar: #000000;
   --admin-warn-bg: #2A2410;
   --admin-warn-border: #6B5A1E;
+  --admin-warn-fg: #E6B84D;
   --admin-error-bg: #2A1614;
   --admin-error-border: #7A3A2E;
+  --admin-error-fg: #E8896B;
   --admin-success-bg: #14241A;
 }
 
