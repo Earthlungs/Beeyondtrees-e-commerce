@@ -119,7 +119,7 @@ export default function AdminProductsPage() {
     <div>
       {/* Custom toast (replaces browser alert) */}
       {notice && (
-        <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 1000, maxWidth: '360px', display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px 14px', backgroundColor: notice.tone === 'success' ? '#F1F7EE' : '#FFF5F5', border: `1px solid ${notice.tone === 'success' ? '#6B7D5C' : '#8C6A4A'}`, borderRadius: '8px', boxShadow: '0 4px 14px rgba(0,0,0,0.12)' }}>
+        <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 1000, maxWidth: '360px', display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px 14px', backgroundColor: notice.tone === 'success' ? 'var(--admin-success-bg)' : 'var(--admin-error-bg)', border: `1px solid ${notice.tone === 'success' ? '#6B7D5C' : '#8C6A4A'}`, borderRadius: '8px', boxShadow: '0 4px 14px rgba(0,0,0,0.12)' }}>
           {notice.tone === 'success'
             ? <CheckCircle2 size={18} style={{ color: '#6B7D5C', flexShrink: 0, marginTop: '1px' }} />
             : <AlertTriangle size={18} style={{ color: '#8C6A4A', flexShrink: 0, marginTop: '1px' }} />}
@@ -140,7 +140,7 @@ export default function AdminProductsPage() {
 
       {/* Alerts */}
       {outOfStock.length > 0 && (
-        <Card style={{ borderColor: '#8C6A4A', backgroundColor: '#FFF5F5', marginBottom: '12px' }}>
+        <Card style={{ borderColor: 'var(--admin-error-border)', backgroundColor: 'var(--admin-error-bg)', marginBottom: '12px' }}>
           <CardContent style={{ padding: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <AlertTriangle style={{ color: '#8C6A4A', flexShrink: 0 }} />
             <span style={{ fontSize: '13px', color: "var(--admin-text)" }}><strong>Out of Stock:</strong> {outOfStock.map(p => p.name).join(', ')}</span>
@@ -148,7 +148,7 @@ export default function AdminProductsPage() {
         </Card>
       )}
       {lowStockProducts.length > 0 && (
-        <Card style={{ borderColor: '#E6D3A3', backgroundColor: '#FFFBF0', marginBottom: '12px' }}>
+        <Card style={{ borderColor: 'var(--admin-warn-border)', backgroundColor: 'var(--admin-warn-bg)', marginBottom: '12px' }}>
           <CardContent style={{ padding: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <AlertTriangle style={{ color: '#E6A817', flexShrink: 0 }} />
             <span style={{ fontSize: '13px', color: "var(--admin-text)" }}><strong>Low Stock:</strong> {lowStockProducts.map(p => `${p.name} (${p.stock})`).join(', ')}</span>
@@ -199,7 +199,7 @@ export default function AdminProductsPage() {
                 <label style={{ fontSize: '12px', fontWeight: '500', color: "var(--admin-text)", marginBottom: '6px', display: 'block' }}>Images</label>
                 <input ref={fileInputRef} type="file" multiple accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} id="product-images" />
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
-                  <label htmlFor="product-images" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px', backgroundColor: uploading ? '#C9BE9A' : '#E6D3A3', color: "var(--admin-text)", borderRadius: '6px', cursor: uploading ? 'wait' : 'pointer', fontSize: '13px', fontWeight: '500', pointerEvents: uploading ? 'none' : 'auto' }}><Upload size={14} /> {uploading ? 'Uploading…' : 'Upload'}</label>
+                  <label htmlFor="product-images" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px', backgroundColor: uploading ? '#C9BE9A' : '#E6D3A3', color: '#4A3F2F', borderRadius: '6px', cursor: uploading ? 'wait' : 'pointer', fontSize: '13px', fontWeight: '500', pointerEvents: uploading ? 'none' : 'auto' }}><Upload size={14} /> {uploading ? 'Uploading…' : 'Upload'}</label>
                   <Input value={newImageUrl} onChange={e => setNewImageUrl(e.target.value)} placeholder="Image URL" style={{ flex: 1 }} />
                   <Button variant="outline" onClick={addImageUrl} style={{ borderColor: '#6B7D5C', color: '#6B7D5C', fontSize: '13px' }}>Add URL</Button>
                 </div>
@@ -244,7 +244,7 @@ export default function AdminProductsPage() {
               {products.map(p => (
                 <tr key={p.id} style={{ borderBottom: '1px solid #A89F91' }}>
                   <td style={{ padding: '10px 14px' }}><div style={{ fontWeight: '500', color: "var(--admin-text)", fontSize: '13px' }}>{p.name}</div></td>
-                  <td style={{ padding: '10px 14px' }}><Badge style={{ backgroundColor: '#E6D3A3', color: "var(--admin-text)", border: 'none', fontSize: '11px' }}>{p.category}</Badge></td>
+                  <td style={{ padding: '10px 14px' }}><Badge style={{ backgroundColor: '#E6D3A3', color: '#4A3F2F', border: 'none', fontSize: '11px' }}>{p.category}</Badge></td>
                   <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: '500', color: "var(--admin-text)", fontSize: '13px' }}>KSh {p.retailPrice}</td>
                   <td style={{ padding: '10px 14px', textAlign: 'right', color: "var(--admin-muted)", fontSize: '12px' }}>KSh {p.wholesalePrice}</td>
                   <td style={{ padding: '10px 14px', textAlign: 'right', color: "var(--admin-muted)", fontSize: '12px' }}>KSh {p.distributorPrice}</td>

@@ -33,6 +33,12 @@
   --admin-muted: #A89F91;
   --admin-border: #E5E7EB;
   --admin-sidebar: #3D3226;
+  /* Alert/status surfaces (so warning cards stay readable in dark too). */
+  --admin-warn-bg: #FFFBF0;
+  --admin-warn-border: #E6D3A3;
+  --admin-error-bg: #FFF5F5;
+  --admin-error-border: #8C6A4A;
+  --admin-success-bg: #F1F7EE;
 }
 
 /* Dark theme — black & white. Toggled by adding `.dark` to <html> (ThemeScript). */
@@ -64,6 +70,11 @@
   --admin-muted: #A3A3A3;
   --admin-border: #2E2E2E;
   --admin-sidebar: #000000;
+  --admin-warn-bg: #2A2410;
+  --admin-warn-border: #6B5A1E;
+  --admin-error-bg: #2A1614;
+  --admin-error-border: #7A3A2E;
+  --admin-success-bg: #14241A;
 }
 
 @theme inline {
