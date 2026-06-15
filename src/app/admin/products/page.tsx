@@ -4,8 +4,8 @@ import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Plus, Trash2, Edit, X, Upload, AlertTriangle, CheckCircle2, Package, Image } from "lucide-react"
-import { useProductStore, Product } from "@/store/product-store"
+import { Plus, Trash2, Edit, X, Upload, AlertTriangle, CheckCircle2, Package, Image, Search } from "lucide-react"
+import { useProductStore, Product, fuzzyMatch } from "@/store/product-store"
 import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary"
 
 export default function AdminProductsPage() {
@@ -15,6 +15,7 @@ export default function AdminProductsPage() {
   const [stockBase, setStockBase] = useState<number | null>(null) // current stock when editing (add-only)
   const [imageUrls, setImageUrls] = useState<string[]>([])
   const [newImageUrl, setNewImageUrl] = useState("")
+  const [productSearch, setProductSearch] = useState("")
   const [uploading, setUploading] = useState(false)
   const [notice, setNotice] = useState<{ text: string; tone: "error" | "success" } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -119,6 +120,10 @@ export default function AdminProductsPage() {
   const lowStockProducts = products.filter(p => p.stock <= 5 && p.stock > 0)
   const outOfStock = products.filter(p => p.stock === 0)
   const totalStockValue = products.reduce((s, p) => s + (Number(p.retailPrice) || 0) * (Number(p.stock) || 0), 0)
+  // De-dupe by id (guards the React key warning from any stray duplicate/blank
+  // id) and apply the admin product search.
+  const visibleProducts = Array.from(new Map(products.filter(p => p.id).map(p => [p.id, p])).values())
+    .filter(p => fuzzyMatch(productSearch, `${p.name} ${p.category}`))
 
   return (
     <div>
@@ -243,6 +248,18 @@ export default function AdminProductsPage() {
         </Card>
       )}
 
+      {/* Search */}
+      {products.length > 0 && (
+        <div style={{ position: 'relative', marginBottom: '14px', maxWidth: '420px' }}>
+          <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: "var(--admin-muted)" }} />
+          <input value={productSearch} onChange={e => setProductSearch(e.target.value)} placeholder="Search products by name or category…"
+            style={{ width: '100%', height: '40px', borderRadius: '8px', border: '1px solid var(--admin-border)', background: 'var(--admin-card)', padding: '0 36px', fontSize: '14px', color: "var(--admin-text)", outline: 'none' }} />
+          {productSearch && (
+            <button onClick={() => setProductSearch("")} aria-label="Clear" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: "var(--admin-muted)", display: 'flex' }}><X size={15} /></button>
+          )}
+        </div>
+      )}
+
       {/* Products Table */}
       {products.length > 0 ? (
         <Card><CardContent style={{ padding: 0, overflowX: 'auto' }}>
@@ -258,7 +275,10 @@ export default function AdminProductsPage() {
               <th style={{ padding: '10px 14px', textAlign: 'right', fontSize: '12px', fontWeight: '600' }}>Actions</th>
             </tr></thead>
             <tbody>
-              {products.map(p => (
+              {visibleProducts.length === 0 && (
+                <tr><td colSpan={8} style={{ padding: '24px', textAlign: 'center', color: "var(--admin-muted)", fontSize: '14px' }}>No products match “{productSearch}”.</td></tr>
+              )}
+              {visibleProducts.map(p => (
                 <tr key={p.id} style={{ borderBottom: '1px solid #A89F91' }}>
                   <td style={{ padding: '10px 14px' }}><div style={{ fontWeight: '500', color: "var(--admin-text)", fontSize: '13px' }}>{p.name}</div></td>
                   <td style={{ padding: '10px 14px' }}><span style={{ display: 'inline-block', backgroundColor: '#E6D3A3', color: '#4A3F2F', fontSize: '11px', fontWeight: 600, lineHeight: 1.6, padding: '3px 10px', borderRadius: '999px', whiteSpace: 'nowrap' }}>{p.category}</span></td>
