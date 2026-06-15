@@ -25,8 +25,15 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${geist.variable} ${fraunces.variable}`}>
+    <html lang="en" className={`${geist.variable} ${fraunces.variable}`} suppressHydrationWarning>
       <head>
+        {/* Apply the saved theme (or the OS preference when "system") before
+            paint, so there's no light flash. Default is "system". */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('theme')||'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme:dark)').matches);document.documentElement.classList.toggle('dark',!!d);}catch(e){}})();`,
+          }}
+        />
         {/* One-time self-heal: a previous PWA service worker cached stale HTML
             and served mismatched JS chunks ("e.filter is not a function" /
             "This page couldn't load"). Unregister any SW + clear caches, then
