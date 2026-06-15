@@ -72,7 +72,7 @@ export default function ImageUploader({
 
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <Button type="button" onClick={() => uploadRef.current?.click()} disabled={uploading}
-          style={{ background: "#E6D3A3", color: TEXT, height: 40, gap: 8, padding: "0 18px", width: "auto", whiteSpace: "nowrap", fontSize: 13, fontWeight: 600 }}>
+          style={{ background: "#E6D3A3", color: "#4A3F2F", height: 40, gap: 8, padding: "0 18px", width: "auto", whiteSpace: "nowrap", fontSize: 13, fontWeight: 600 }}>
           {uploading ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />} Upload
         </Button>
         <Button type="button" onClick={() => cameraRef.current?.click()} disabled={uploading}
