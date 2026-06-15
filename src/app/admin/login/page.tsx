@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Leaf, Lock, User, Shield, Store, ChevronRight } from "lucide-react"
+import { Lock, User, Shield, Store, Eye, EyeOff } from "lucide-react"
 
 export default function AdminLoginPage() {
   const router = useRouter()
@@ -14,6 +14,7 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const [selectedRole, setSelectedRole] = useState<"admin" | "merchant">("admin")
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -38,8 +39,6 @@ export default function AdminLoginPage() {
 
   const quickLogin = (role: "admin" | "merchant") => {
     setSelectedRole(role)
-    setUsername(role)
-    setPassword(role === "admin" ? "beeyond2024" : "merchant2024")
   }
 
   return (
@@ -51,18 +50,10 @@ export default function AdminLoginPage() {
       background: 'linear-gradient(135deg, #6B7D5C 0%, #4A5A3F 50%, #2D3626 100%)',
       padding: '20px'
     }}>
-      <div style={{ position: 'absolute', top: '40px', left: '50%', transform: 'translateX(-50%)', textAlign: 'center', color: 'white' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '8px' }}>
-          <Leaf size={32} />
-          <h1 style={{ fontSize: '28px', fontWeight: 'bold', margin: 0 }}>BEEyond Trees</h1>
-        </div>
-        <p style={{ color: '#E6D3A3', fontSize: '14px' }}>Admin & Merchant Portal</p>
-      </div>
-
-      <Card style={{ 
+      <Card style={{
         width: '440px', 
         maxWidth: '90vw',
-        backgroundColor: 'white', 
+        backgroundColor: "var(--admin-card)", 
         border: 'none',
         boxShadow: '0 25px 50px rgba(0,0,0,0.15)',
         borderRadius: '16px',
@@ -71,7 +62,7 @@ export default function AdminLoginPage() {
         <CardHeader style={{ textAlign: 'center', paddingBottom: '8px' }}>
           <div style={{ 
             width: '56px', height: '56px', 
-            backgroundColor: '#F5F1E8', 
+            backgroundColor: 'var(--admin-bg)', 
             borderRadius: '16px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             margin: '0 auto 16px'
@@ -82,16 +73,16 @@ export default function AdminLoginPage() {
               <Store size={28} style={{ color: '#8C6A4A' }} />
             )}
           </div>
-          <CardTitle style={{ fontSize: '22px', color: '#4A3F2F' }}>
+          <CardTitle style={{ fontSize: '22px', color: "var(--admin-text)" }}>
             {selectedRole === "admin" ? 'Administrator Login' : 'Merchant Login'}
           </CardTitle>
-          <p style={{ color: '#A89F91', fontSize: '14px', marginTop: '4px' }}>
+          <p style={{ color: "var(--admin-muted)", fontSize: '14px', marginTop: '4px' }}>
             Sign in to manage {selectedRole === "admin" ? 'the entire platform' : 'your products and orders'}
           </p>
         </CardHeader>
         <CardContent>
           {/* Role Toggle */}
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', backgroundColor: '#F5F1E8', borderRadius: '10px', padding: '4px' }}>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', backgroundColor: 'var(--admin-bg)', borderRadius: '10px', padding: '4px' }}>
             <button
               onClick={() => quickLogin("admin")}
               style={{
@@ -131,21 +122,26 @@ export default function AdminLoginPage() {
           
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500', color: '#4A3F2F' }}>Username</label>
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500', color: "var(--admin-text)" }}>Username</label>
               <div style={{ position: 'relative' }}>
-                <User size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#A89F91' }} />
+                <User size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: "var(--admin-muted)" }} />
                 <Input value={username} onChange={e => setUsername(e.target.value)}
                   placeholder={selectedRole === "admin" ? "admin" : "merchant"}
                   style={{ paddingLeft: '40px', height: '44px' }} required />
               </div>
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500', color: '#4A3F2F' }}>Password</label>
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500', color: "var(--admin-text)" }}>Password</label>
               <div style={{ position: 'relative' }}>
-                <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#A89F91' }} />
-                <Input type="password" value={password} onChange={e => setPassword(e.target.value)}
+                <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: "var(--admin-muted)" }} />
+                <Input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
                   placeholder="Enter password"
-                  style={{ paddingLeft: '40px', height: '44px' }} required />
+                  style={{ paddingLeft: '40px', paddingRight: '40px', height: '44px' }} required />
+                <button type="button" onClick={() => setShowPassword(s => !s)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: "var(--admin-muted)", padding: 4, display: 'flex' }}>
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
             </div>
             <Button type="submit" disabled={loading}
@@ -158,9 +154,6 @@ export default function AdminLoginPage() {
             </Button>
           </form>
 
-          <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#F5F1E8', borderRadius: '8px', fontSize: '12px', color: '#A89F91', textAlign: 'center' }}>
-            <strong>Admin:</strong> admin / beeyond2024 &nbsp;|&nbsp; <strong>Merchant:</strong> merchant / merchant2024
-          </div>
         </CardContent>
       </Card>
     </div>

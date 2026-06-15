@@ -24,6 +24,46 @@
   --input: #D4C9B8;
   --ring: #6B7D5C;
   --radius: 0.625rem;
+
+  /* Admin surfaces (used by the inline-styled admin pages so they can theme). */
+  --admin-bg: #F5F1E8;
+  --admin-card: #FFFFFF;
+  --admin-card-2: #F8F6F1;
+  --admin-text: #4A3F2F;
+  --admin-muted: #A89F91;
+  --admin-border: #E5E7EB;
+  --admin-sidebar: #3D3226;
+}
+
+/* Dark theme — black & white. Toggled by adding `.dark` to <html> (ThemeScript). */
+.dark {
+  --background: #0B0B0B;
+  --foreground: #F5F5F5;
+  --card: #181818;
+  --card-foreground: #F5F5F5;
+  --popover: #181818;
+  --popover-foreground: #F5F5F5;
+  --primary: #8FA67C;
+  --primary-foreground: #0B0B0B;
+  --secondary: #242424;
+  --secondary-foreground: #F5F5F5;
+  --muted: #1F1F1F;
+  --muted-foreground: #A3A3A3;
+  --accent: #C9A98A;
+  --accent-foreground: #0B0B0B;
+  --destructive: #E0795A;
+  --destructive-foreground: #0B0B0B;
+  --border: #2E2E2E;
+  --input: #2E2E2E;
+  --ring: #8FA67C;
+
+  --admin-bg: #0B0B0B;
+  --admin-card: #181818;
+  --admin-card-2: #242424;
+  --admin-text: #F5F5F5;
+  --admin-muted: #A3A3A3;
+  --admin-border: #2E2E2E;
+  --admin-sidebar: #000000;
 }
 
 @theme inline {
@@ -58,9 +98,79 @@
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   background-color: var(--background);
   color: var(--foreground);
   font-feature-settings: "rlig" 1, "calt" 1;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Premium serif display face for headlines */
+.font-display {
+  font-family: var(--font-display), "Times New Roman", Georgia, serif;
+  letter-spacing: -0.01em;
+}
+
+::selection {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* Refined scrollbar */
+::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+::-webkit-scrollbar-track {
+  background: var(--muted);
+}
+::-webkit-scrollbar-thumb {
+  background: #c2b7a3;
+  border-radius: 999px;
+  border: 3px solid var(--muted);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+/* Reusable premium motion/utility helpers */
+@keyframes byt-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.byt-float { animation: byt-float 3.5s ease-in-out infinite; }
+
+@keyframes byt-shimmer {
+  100% { transform: translateX(100%); }
+}
+
+@keyframes byt-bob {
+  0%, 100% { transform: translateY(0); opacity: 0.8; }
+  50% { transform: translateY(7px); opacity: 1; }
+}
+.byt-bob { animation: byt-bob 1.8s ease-in-out infinite; }
+
+.byt-card {
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+.byt-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 28px 50px -24px rgba(74, 63, 47, 0.45);
+}
+.byt-zoom {
+  transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.byt-card:hover .byt-zoom {
+  transform: scale(1.07);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .byt-float, .byt-bob { animation: none; }
 }

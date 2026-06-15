@@ -2,7 +2,7 @@ import { NextRequest } from "next/server"
 import { prisma } from "@/lib/db"
 
 // Returns one product image as raw binary so cards can <img loading="lazy">
-// them individually — keeping the catalog JSON tiny. `?i=N` selects the Nth
+// them individually, keeping the catalog JSON tiny. `?i=N` selects the Nth
 // image (default 0). Cached aggressively since image bytes never change.
 export async function GET(
   _req: NextRequest,
@@ -19,14 +19,14 @@ export async function GET(
   const image = images[i]
   if (!image) return new Response(null, { status: 404 })
 
-  // Cloudinary (or any hosted) URL — redirect so the browser/CDN serves it
+  // Cloudinary (or any hosted) URL, redirect so the browser/CDN serves it
   // directly. Legacy base64 data-URIs are decoded to binary inline.
   if (/^https?:\/\//.test(image)) {
     return new Response(null, {
       status: 308,
       headers: {
         Location: image,
-        "Cache-Control": "public, max-age=31536000, immutable",
+        "Cache-Control": "public, max-age=31536000, s-maxage=31536000, immutable",
       },
     })
   }

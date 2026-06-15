@@ -16,49 +16,49 @@ import { useProductStore } from "@/store/product-store"
 export default function AdminDashboard() {
   const { data: session } = useSession()
   const role = (session?.user as any)?.role || "merchant"
+  const isAdmin = role === "admin" || role === "it_specialist" // IT has full control
   const products = useProductStore((s) => s.products)
   const loadProducts = useProductStore((s) => s.loadProducts)
   const [stats, setStats] = useState({
     products: 0, orders: 0, pending: 0, delivered: 0, revenue: 0, customers: 0
   })
   const [recentOrders, setRecentOrders] = useState<any[]>([])
-  const [lowStock, setLowStock] = useState<any[]>([])
+  const lowStock = products.filter((p) => p.stock <= 5)
 
   useEffect(() => { loadProducts() }, [loadProducts])
 
   useEffect(() => {
-    // Orders aren't backed by a store yet; read defensively (guard against a
-    // non-array, e.g. legacy/corrupt localStorage) so the dashboard can't crash.
-    const raw = JSON.parse(localStorage.getItem('beeyond-trees-orders') || '[]')
-    const orders: any[] = Array.isArray(raw) ? raw : []
+    // Aggregated summary (counts/revenue/recent) computed in the DB — far
+    // lighter than pulling every order. Guard against a bad response.
+    let cancelled = false
+    fetch('/api/orders/stats')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (cancelled || !d) return
+        setStats({
+          products: products.length,
+          orders: d.orders ?? 0,
+          pending: d.pending ?? 0,
+          delivered: d.delivered ?? 0,
+          revenue: d.revenue ?? 0,
+          customers: d.customers ?? 0,
+        })
+        setRecentOrders(Array.isArray(d.recent) ? d.recent : [])
+      })
+      .catch(() => { if (!cancelled) setRecentOrders([]) })
 
-    const pending = orders.filter((o) => o.status === 'pending').length
-    const delivered = orders.filter((o) => o.status === 'delivered').length
-    const revenue = orders.reduce((s: number, o) => s + (o.total || 0), 0)
-    const uniqueCustomers = new Set(orders.map((o) => o.customer?.phone)).size
-
-    setStats({
-      products: products.length,
-      orders: orders.length,
-      pending,
-      delivered,
-      revenue,
-      customers: uniqueCustomers,
-    })
-
-    setRecentOrders(orders.slice(-5).reverse())
-    setLowStock(products.filter((p) => p.stock <= 5))
+    return () => { cancelled = true }
   }, [products])
 
   return (
     <div>
       {/* Welcome */}
       <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#4A3F2F', marginBottom: '4px' }}>
+        <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: "var(--admin-text)", marginBottom: '4px' }}>
           Welcome back, {session?.user?.name}
         </h1>
-        <p style={{ color: '#A89F91', fontSize: '14px' }}>
-          {role === "admin" ? "Full platform overview" : "Manage your products and orders"}
+        <p style={{ color: "var(--admin-muted)", fontSize: '14px' }}>
+          {isAdmin ? "Full platform overview" : "Manage your products and orders"}
         </p>
       </div>
 
@@ -69,8 +69,8 @@ export default function AdminDashboard() {
           { label: 'Total Orders', value: stats.orders, icon: ShoppingCart, color: '#8C6A4A', href: '/admin/deliveries' },
           { label: 'Pending Orders', value: stats.pending, icon: Clock, color: '#E6A817', href: '/admin/deliveries?status=pending' },
           { label: 'Revenue', value: `KSh ${stats.revenue.toLocaleString()}`, icon: DollarSign, color: '#6B7D5C', href: '/admin/analytics' },
-          ...(role === "admin" ? [
-            { label: 'Customers', value: stats.customers, icon: Users, color: '#A89F91', href: '/admin/customers' },
+          ...(isAdmin ? [
+            { label: 'Customers', value: stats.customers, icon: Users, color: "var(--admin-muted)", href: '/admin/customers' },
             { label: 'Delivered', value: stats.delivered, icon: CheckCircle, color: '#4A90D9', href: '/admin/deliveries?status=delivered' },
           ] : []),
         ].map((stat, i) => (
@@ -79,10 +79,10 @@ export default function AdminDashboard() {
               <CardContent style={{ padding: '20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
-                    <p style={{ fontSize: '12px', color: '#A89F91', marginBottom: '4px' }}>{stat.label}</p>
-                    <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#4A3F2F' }}>{stat.value}</p>
+                    <p style={{ fontSize: '12px', color: "var(--admin-muted)", marginBottom: '4px' }}>{stat.label}</p>
+                    <p style={{ fontSize: '24px', fontWeight: 'bold', color: "var(--admin-text)" }}>{stat.value}</p>
                   </div>
-                  <div style={{ width: '40px', height: '40px', backgroundColor: '#F5F1E8', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: '40px', height: '40px', backgroundColor: 'var(--admin-bg)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <stat.icon size={20} style={{ color: stat.color }} />
                   </div>
                 </div>
@@ -97,7 +97,7 @@ export default function AdminDashboard() {
         <Card style={{ borderColor: '#A89F91' }}>
           <CardHeader style={{ paddingBottom: '8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <CardTitle style={{ fontSize: '16px', color: '#4A3F2F', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <CardTitle style={{ fontSize: '16px', color: "var(--admin-text)", display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Truck size={18} /> Recent Orders
               </CardTitle>
               <Link href="/admin/deliveries" style={{ fontSize: '13px', color: '#6B7D5C', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -109,13 +109,13 @@ export default function AdminDashboard() {
             {recentOrders.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {recentOrders.map((order, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', backgroundColor: '#F5F1E8', borderRadius: '8px' }}>
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', backgroundColor: 'var(--admin-bg)', borderRadius: '8px' }}>
                     <div>
-                      <p style={{ fontWeight: '500', color: '#4A3F2F', fontSize: '14px' }}>{order.customer?.fullName}</p>
-                      <p style={{ fontSize: '12px', color: '#A89F91' }}>{order.items?.length} items - {new Date(order.date).toLocaleDateString()}</p>
+                      <p style={{ fontWeight: '500', color: "var(--admin-text)", fontSize: '14px' }}>{order.customerName}</p>
+                      <p style={{ fontSize: '12px', color: "var(--admin-muted)" }}>{order.itemCount} items - {new Date(order.createdAt).toLocaleDateString()}</p>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <span style={{ fontWeight: 'bold', color: '#4A3F2F', fontSize: '14px' }}>KSh {order.total?.toLocaleString()}</span>
+                      <span style={{ fontWeight: 'bold', color: "var(--admin-text)", fontSize: '14px' }}>KSh {order.total?.toLocaleString()}</span>
                       <Badge style={{ 
                         backgroundColor: order.status === 'pending' ? '#FFFBF0' : order.status === 'delivered' ? '#E8F5E9' : '#F0F8FF',
                         color: order.status === 'pending' ? '#E6A817' : order.status === 'delivered' ? '#6B7D5C' : '#4A90D9',
@@ -128,7 +128,7 @@ export default function AdminDashboard() {
                 ))}
               </div>
             ) : (
-              <p style={{ color: '#A89F91', textAlign: 'center', padding: '20px', fontSize: '14px' }}>No orders yet</p>
+              <p style={{ color: "var(--admin-muted)", textAlign: 'center', padding: '20px', fontSize: '14px' }}>No orders yet</p>
             )}
           </CardContent>
         </Card>
@@ -137,7 +137,7 @@ export default function AdminDashboard() {
         <Card style={{ borderColor: '#A89F91' }}>
           <CardHeader style={{ paddingBottom: '8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <CardTitle style={{ fontSize: '16px', color: '#4A3F2F', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <CardTitle style={{ fontSize: '16px', color: "var(--admin-text)", display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <AlertTriangle size={18} style={{ color: '#8C6A4A' }} /> Stock Alerts
               </CardTitle>
               <Link href="/admin/products" style={{ fontSize: '13px', color: '#6B7D5C', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -151,8 +151,8 @@ export default function AdminDashboard() {
                 {lowStock.map((product, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', backgroundColor: '#FFFBF0', borderRadius: '8px', border: '1px solid #E6D3A3' }}>
                     <div>
-                      <p style={{ fontWeight: '500', color: '#4A3F2F', fontSize: '14px' }}>{product.name}</p>
-                      <p style={{ fontSize: '12px', color: '#A89F91' }}>{product.category}</p>
+                      <p style={{ fontWeight: '500', color: "var(--admin-text)", fontSize: '14px' }}>{product.name}</p>
+                      <p style={{ fontSize: '12px', color: "var(--admin-muted)" }}>{product.category}</p>
                     </div>
                     <Badge style={{ backgroundColor: '#8C6A4A', color: 'white', border: 'none', fontSize: '12px' }}>
                       {product.stock} left
@@ -161,7 +161,7 @@ export default function AdminDashboard() {
                 ))}
               </div>
             ) : (
-              <p style={{ color: '#A89F91', textAlign: 'center', padding: '20px', fontSize: '14px' }}>All products well stocked</p>
+              <p style={{ color: "var(--admin-muted)", textAlign: 'center', padding: '20px', fontSize: '14px' }}>All products well stocked</p>
             )}
           </CardContent>
         </Card>

@@ -14,8 +14,66 @@ model User {
   password  String
   name      String
   role      String   @default("merchant")
+  active    Boolean  @default(true) // blocked/deactivated users can't log in
+  // Staff provisioning (IT Specialist): value-chain users log in with their
+  // first name as username and their phone as the initial password, then must
+  // change it. email is auto-filled firstname@earthlungs.org.
+  email              String?  @unique
+  phone              String?
+  image              String?  // profile picture URL (Cloudinary)
+  mustChangePassword Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// In-app 1:1 chat between staff. Polled (~4s) by the chat UI; no FK to User to
+// stay light, matching the read-only-link convention used elsewhere.
+model Message {
+  id         String    @id @default(cuid())
+  fromUserId String
+  toUserId   String
+  body       String    @db.Text
+  readAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([fromUserId, toUserId, createdAt])
+}
+
+// Customer invoice (branded printable doc, matches templates/Invoice). Line
+// items are stored as JSON: [{ description, qty, unitPrice, taxRate, amount }].
+model Invoice {
+  id              String    @id @default(cuid())
+  number          String    @unique // e.g. INV-0001
+  date            DateTime  @default(now())
+  dueDate         DateTime?
+  customerName    String
+  customerContact String? // phone / email
+  items           Json      @default("[]")
+  subtotal        Float     @default(0)
+  vat             Float     @default(0)
+  total           Float     @default(0)
+  notes           String?   @db.Text // payment details
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+// Local Purchase Order to a supplier (branded printable doc, matches
+// templates/Purchase Order). Same JSON line-item shape as Invoice.
+model Lpo {
+  id              String    @id @default(cuid())
+  number          String    @unique // e.g. LPO-0001
+  orderDate       DateTime  @default(now())
+  expectedArrival DateTime?
+  supplierName    String
+  shippingAddress String?   @db.Text
+  purchaseRep     String?
+  items           Json      @default("[]")
+  subtotal        Float     @default(0)
+  vat             Float     @default(0)
+  total           Float     @default(0)
+  notes           String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }
 
 model Product {
@@ -26,6 +84,7 @@ model Product {
   retailPrice      Float
   wholesalePrice   Float
   distributorPrice Float
+  costPrice        Float       @default(0) // buying/production cost, for profit calc (admin-only, never in public catalog)
   stock            Int         @default(0)
   images           Json        @default("[]")
   isOnOffer        Boolean     @default(false)
@@ -50,6 +109,15 @@ model Order {
   paymentRef           String?
   paymentStatus        String?
   transactionRef       String?
+  // Sales channel: "online" (web checkout) or "pos" (physical shop till).
+  // Both decrement the same Product.stock, so the two storefronts stay in sync.
+  channel              String      @default("online")
+  // POS-only fields. paymentMethod is "cash" | "mpesa" | "card".
+  paymentMethod        String?
+  cashReceived         Float?      // amount tendered for cash sales (for change)
+  mpesaCode            String?     // M-Pesa confirmation code
+  cardRef              String?     // card/terminal reference
+  soldBy               String?     // name of the cashier who rang up the sale
   createdAt            DateTime    @default(now())
   updatedAt            DateTime    @updatedAt
   items                OrderItem[]
@@ -80,4 +148,188 @@ model Dispatch {
   estimatedDelivery DateTime?
   createdAt         DateTime @default(now())
   order             Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+// ── Traceability subsystem ─────────────────────────────────────────────────
+// Tracks a product from raw material → finished, received goods through a
+// strictly-sequential 9-stage, role-gated pipeline, then reconciles the
+// rolled-up production cost against the live website selling price (read-only —
+// this subsystem NEVER writes to Product). `stage` is the one open stage; the
+// matching role can only act when batch.stage === their stage (see lib/tracing).
+model Batch {
+  id                   String   @id @default(cuid())
+  code                 String   @unique // BTR-0001
+  stage                String   @default("bulk_request") // current open stage (STAGES in lib/tracing)
+  status               String   @default("in_progress")  // in_progress | rejected | completed
+  productName          String? // finished good, used to fuzzy-match the catalog
+  matchedProductId     String? // resolved catalog Product.id (read-only link, no FK)
+  sellingPriceSnapshot Float? // price captured at reconcile time
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  bulkRequest  BulkRequest?
+  approval     Approval?
+  sourcing     Sourcing?
+  inspection   Inspection?
+  requisitions Requisition[] // 1:many — multi-user requisition officers
+  issuance     Issuance?
+  production   Production?
+  dispatch     BatchDispatch?
+  receiving    Receiving?
+}
+
+// Stage 1 — Factory manager
+model BulkRequest {
+  id                 String   @id @default(cuid())
+  batchId            String   @unique
+  requestId          String   @unique // BTR-REQ-0001
+  sector             String
+  materialCategory   String
+  materialName       String
+  quantityRequested  Float
+  unitOfMeasure      String
+  expectedDate       DateTime?
+  estimatedUnitCost  Float    @default(0)
+  estimatedTotalCost Float    @default(0)
+  purpose            String?  @db.Text
+  requestedBy        String
+  approvedBy         String? // filled at the approval stage
+  status             String   @default("pending")
+  createdAt          DateTime @default(now())
+  batch              Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+}
+
+// Stage 2 — Executive (accept / reject)
+model Approval {
+  id         String   @id @default(cuid())
+  batchId    String   @unique
+  decision   String // accepted | rejected
+  reason     String?  @db.Text // required on reject; surfaced to the Factory manager
+  approvedBy String
+  decidedAt  DateTime @default(now())
+  batch      Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+}
+
+// Stage 3 — Procurement officer (harvest / sourcing)
+model Sourcing {
+  id               String   @id @default(cuid())
+  batchId          String   @unique
+  harvestId        String   @unique // HRV-0001
+  materialName     String
+  sourceLocation   String
+  gps              String?
+  quantityHarvested Float   @default(0)
+  laborCost        Float    @default(0)
+  transportCost    Float    @default(0)
+  otherCosts       Float    @default(0)
+  totalHarvestCost Float    @default(0)
+  supervisor       String?
+  images           Json     @default("[]")
+  remarks          String?  @db.Text
+  createdAt        DateTime @default(now())
+  batch            Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+}
+
+// Stage 4 — Quality inspector (receiving inspection)
+model Inspection {
+  id               String   @id @default(cuid())
+  batchId          String   @unique
+  receivingId      String   @unique // RCV-0001
+  harvestId        String?
+  materialName     String
+  quantityDelivered Float   @default(0)
+  quantityAccepted Float    @default(0)
+  quantityRejected Float    @default(0)
+  qualityGrade     String?
+  inspector        String
+  storeLocation    String?
+  images           Json     @default("[]")
+  createdAt        DateTime @default(now())
+  batch            Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+}
+
+// Stage 5 — Requisition officer (internal requisition, multi-user → 1:many)
+model Requisition {
+  id              String   @id @default(cuid())
+  batchId         String
+  requisitionId   String   @unique // REQ-0001
+  department      String
+  product         String
+  quantityRequired Float   @default(0)
+  purpose         String?  @db.Text
+  requestedBy     String // the logged-in requisition officer
+  status          String   @default("pending")
+  createdAt       DateTime @default(now())
+  batch           Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+}
+
+// Stage 6 — Agribusiness manager (issuance)
+model Issuance {
+  id                    String   @id @default(cuid())
+  batchId               String   @unique
+  requisitionId         String? // human ref to a Requisition.requisitionId
+  department            String
+  product               String
+  customProductOrSample String?
+  numberToManufacture   Int      @default(0)
+  productImage          Json     @default("[]")
+  material              String
+  quantityRequired      Float    @default(0)
+  purpose               String?  @db.Text
+  requestedBy           String
+  jobCardNumber         String?
+  approvedBy            String?
+  status                String   @default("pending")
+  createdAt             DateTime @default(now())
+  batch                 Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+}
+
+// Stage 7 — Production officer
+model Production {
+  id            String   @id @default(cuid())
+  batchId       String   @unique
+  issueId       String   @unique // ISS-0001
+  requisitionId String?
+  material      String
+  quantityIssued Float   @default(0)
+  unitCost      Float    @default(0)
+  totalCost     Float    @default(0)
+  issuedBy      String
+  receivedBy    String?
+  date          DateTime?
+  createdAt     DateTime @default(now())
+  batch         Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+}
+
+// Stage 8 — Dispatch officer (named BatchDispatch to avoid clashing with Dispatch)
+model BatchDispatch {
+  id             String   @id @default(cuid())
+  batchId        String   @unique
+  dispatchId     String   @unique // DSP-0001
+  product        String
+  quantity       Float    @default(0)
+  sourceLocation String?
+  destination    String?
+  transportCost  Float    @default(0)
+  dispatchedBy   String
+  toBeReceivedBy String?
+  date           DateTime?
+  createdAt      DateTime @default(now())
+  batch          Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+}
+
+// Stage 9 — Receiving officer
+model Receiving {
+  id              String   @id @default(cuid())
+  batchId         String   @unique
+  dispatchId      String?
+  product         String
+  quantityReceived Float   @default(0)
+  condition       String?
+  variance        Float    @default(0)
+  receiver        String
+  images          Json     @default("[]")
+  remarks         String?  @db.Text
+  createdAt       DateTime @default(now())
+  batch           Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
 }
