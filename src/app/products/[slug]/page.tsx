@@ -9,7 +9,7 @@ import { Reveal, RevealGroup, RevealItem } from "@/components/motion/Reveal"
 import { ProductCard } from "@/components/shared/ProductCard"
 import { ShoppingCart, Leaf, ArrowLeft, ChevronLeft, ChevronRight, Truck, ShieldCheck } from "lucide-react"
 import Link from "next/link"
-import { useProductStore, slugify, productImageUrl, cldUrl, effectivePrice, regularPrice } from "@/store/product-store"
+import { useProductStore, slugify, productImageUrl, cldUrl, effectivePrice, regularPrice, discountPercent } from "@/store/product-store"
 import { useCartStore } from "@/store/cart-store"
 
 const SAGE = "#6B7D5C"
@@ -173,7 +173,7 @@ export default function ProductDetailPage() {
               <h1 className="font-display" style={{ fontSize: "clamp(28px, 4vw, 42px)", fontWeight: 600, color: DARK, lineHeight: 1.1, margin: "0 0 14px" }}>{product.name}</h1>
 
               <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
-                {tierOnOffer(selectedTier) && <span className="byt-blink" style={{ background: "#C2452D", color: "white", fontSize: 12, fontWeight: 800, letterSpacing: "0.04em", padding: "4px 11px", borderRadius: 999, alignSelf: "center" }}>★ OFFER</span>}
+                {tierOnOffer(selectedTier) && <span className="byt-blink" style={{ background: "#C2452D", color: "white", fontSize: 12, fontWeight: 800, letterSpacing: "0.04em", padding: "4px 11px", borderRadius: 999, alignSelf: "center" }}>{discountPercent(product, selectedTier)}% OFF</span>}
                 <span className="font-display" style={{ fontSize: 34, fontWeight: 600, color: tierOnOffer(selectedTier) ? "#C2452D" : DARK }}>KSh {prices[selectedTier].toLocaleString()}</span>
                 {tierOnOffer(selectedTier) && <span style={{ color: "#A89F91", fontSize: 18, textDecoration: "line-through" }}>KSh {regular[selectedTier].toLocaleString()}</span>}
                 <span style={{ color: "#A89F91", fontSize: 14 }}>/ unit · {limit.label}</span>
@@ -199,7 +199,7 @@ export default function ProductDetailPage() {
                       <div style={{ fontWeight: 700, fontSize: 13.5 }}>{t.label}</div>
                       <div style={{ fontSize: 11, opacity: 0.85, marginTop: 3 }}>{t.range}</div>
                       <div className="font-display" style={{ fontSize: 15, fontWeight: 600, marginTop: 6 }}>KSh {prices[tier].toLocaleString()}</div>
-                      {tierOnOffer(tier) && <div style={{ fontSize: 10.5, opacity: 0.7, textDecoration: "line-through", marginTop: 1 }}>KSh {regular[tier].toLocaleString()}</div>}
+                      {tierOnOffer(tier) && <div style={{ fontSize: 10.5, opacity: 0.7, marginTop: 1 }}><span style={{ textDecoration: "line-through" }}>KSh {regular[tier].toLocaleString()}</span> · {discountPercent(product, tier)}% off</div>}
                     </button>
                   )
                 })}
