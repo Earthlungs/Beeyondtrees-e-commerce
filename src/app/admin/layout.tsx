@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import {
   LayoutDashboard, Package, Truck, LogOut, Menu, X, Users, TrendingUp,
   Settings, Store, ShoppingCart, FileText, ClipboardList, UserCog, Workflow,
-  BarChart3, MessageSquare,
+  BarChart3, MessageSquare, Code2,
 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { ROLE_LABELS } from "@/lib/tracing-stages"
@@ -95,6 +95,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         title: "System",
         items: [
           { href: "/admin/users", label: "Users", icon: UserCog },
+          { href: "/admin/developers", label: "Developers", icon: Code2 },
           { href: "/admin/settings", label: "Settings", icon: Settings },
         ],
       }] : []),
