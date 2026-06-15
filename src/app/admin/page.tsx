@@ -138,7 +138,7 @@ export default function AdminDashboard() {
           <CardHeader style={{ paddingBottom: '8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <CardTitle style={{ fontSize: '16px', color: "var(--admin-text)", display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <AlertTriangle size={18} style={{ color: '#8C6A4A' }} /> Stock Alerts
+                <AlertTriangle size={18} style={{ color: 'var(--admin-warn-fg)' }} /> Stock Alerts
               </CardTitle>
               <Link href="/admin/products" style={{ fontSize: '13px', color: '#6B7D5C', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
                 Manage <ArrowRight size={14} />
@@ -149,7 +149,7 @@ export default function AdminDashboard() {
             {lowStock.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {lowStock.map((product, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', backgroundColor: '#FFFBF0', borderRadius: '8px', border: '1px solid #E6D3A3' }}>
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', backgroundColor: 'var(--admin-warn-bg)', borderRadius: '8px', border: '1px solid var(--admin-warn-border)' }}>
                     <div>
                       <p style={{ fontWeight: '500', color: "var(--admin-text)", fontSize: '14px' }}>{product.name}</p>
                       <p style={{ fontSize: '12px', color: "var(--admin-muted)" }}>{product.category}</p>
