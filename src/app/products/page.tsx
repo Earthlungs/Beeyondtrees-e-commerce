@@ -9,8 +9,8 @@ import { ScrollProgress } from "@/components/motion/ScrollProgress"
 import { ProductGrid } from "@/components/products/ProductGrid"
 import { PaginatedGrid } from "@/components/products/PaginatedGrid"
 import { ProductFilters, priceRanges } from "@/components/products/ProductFilters"
-import { useProductStore } from "@/store/product-store"
-import { SlidersHorizontal, X, ChevronDown } from "lucide-react"
+import { useProductStore, fuzzyMatch } from "@/store/product-store"
+import { SlidersHorizontal, X, ChevronDown, Search } from "lucide-react"
 
 const DARK = "#4A3F2F"
 const SAGE = "#6B7D5C"
@@ -55,7 +55,7 @@ function ProductsContent() {
     let list = products.filter((p) => {
       if (selectedCategory !== "All" && p.category !== selectedCategory) return false
       if (range && (p.retailPrice < range.min || p.retailPrice > range.max)) return false
-      if (q && !(`${p.name} ${p.category} ${p.description}`.toLowerCase().includes(q))) return false
+      if (q && !fuzzyMatch(q, `${p.name} ${p.category} ${p.description}`)) return false
       return true
     })
     if (sort === "price-asc") list = [...list].sort((a, b) => a.retailPrice - b.retailPrice)
@@ -104,6 +104,24 @@ function ProductsContent() {
       </section>
 
       <main style={{ maxWidth: 1280, margin: "0 auto", padding: "28px 20px 72px" }}>
+        {/* Prominent search (always visible, fuzzy) */}
+        <div style={{ position: "relative", marginBottom: 20, maxWidth: 560 }}>
+          <Search size={18} style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)", color: "#A89F91" }} />
+          <input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search products…"
+            aria-label="Search products"
+            style={{ width: "100%", height: 48, borderRadius: 999, border: "1px solid #D4C9B8", background: "white", padding: "0 44px", fontSize: 15, color: DARK, outline: "none" }}
+          />
+          {searchTerm && (
+            <button onClick={() => setSearchTerm("")} aria-label="Clear search"
+              style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#A89F91", display: "flex" }}>
+              <X size={17} />
+            </button>
+          )}
+        </div>
+
         {/* Toolbar */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
           <p style={{ color: "#8a8170", fontSize: 14 }}>
