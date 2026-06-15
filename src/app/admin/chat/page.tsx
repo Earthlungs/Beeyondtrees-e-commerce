@@ -41,6 +41,7 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
+  const restoredRef = useRef(false) // restore last thread once, not on every poll
 
   // Broadcast (bulk message to many users) — admin / IT only.
   const [bcOpen, setBcOpen] = useState(false)
@@ -80,7 +81,8 @@ export default function ChatPage() {
   // Re-open the last conversation after a reload/re-login so history is visible
   // immediately (it's stored server-side; we just remember which thread was open).
   useEffect(() => {
-    if (active || contacts.length === 0) return
+    if (restoredRef.current || active || contacts.length === 0) return
+    restoredRef.current = true // only ever restore once (first load), never on a poll
     const last = typeof window !== "undefined" ? localStorage.getItem("chat-active") : null
     const c = last && contacts.find((x) => x.id === last)
     if (c) open(c)
