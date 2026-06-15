@@ -1,6 +1,6 @@
 "use client"
 
-import { Settings as SettingsIcon, Monitor, Sun, Moon, Check } from "lucide-react"
+import { Settings as SettingsIcon, Monitor, Moon, Check } from "lucide-react"
 import { useTheme, type Theme } from "@/lib/theme"
 
 const TEXT = "var(--admin-text)"
@@ -10,9 +10,8 @@ const BORDER = "var(--admin-border)"
 const GREEN = "#6B7D5C"
 
 const OPTIONS: { value: Theme; label: string; desc: string; icon: typeof Monitor }[] = [
-  { value: "system", label: "System", desc: "Match your device (default)", icon: Monitor },
-  { value: "light", label: "Light", desc: "Always light", icon: Sun },
-  { value: "dark", label: "Dark", desc: "Always dark", icon: Moon },
+  { value: "system", label: "System", desc: "Match your device — the default look", icon: Monitor },
+  { value: "dark", label: "Dark", desc: "Black & white dark mode", icon: Moon },
 ]
 
 export default function SettingsPage() {

@@ -10,7 +10,7 @@ import {
 
 const SAGE = "#6B7D5C"
 const DARK = "#4A3F2F"
-const MUTED = "#A89F91"
+const MUTED = "var(--admin-muted)"
 
 type Order = {
   customerName: string; customerPhone: string; customerEmail?: string | null
@@ -97,7 +97,7 @@ export default function CustomersPage() {
           </h1>
           <p style={{ color: MUTED, fontSize: 14 }}>Everyone who has placed an order, ranked by spend.</p>
         </div>
-        <button onClick={load} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, border: `1px solid ${MUTED}`, background: "white", color: DARK, fontSize: 13, cursor: "pointer" }}>
+        <button onClick={load} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, border: `1px solid ${MUTED}`, background: "var(--admin-card)", color: DARK, fontSize: 13, cursor: "pointer" }}>
           <RefreshCw size={14} /> Refresh
         </button>
       </div>
@@ -115,7 +115,7 @@ export default function CustomersPage() {
                 <p style={{ fontSize: 12, color: MUTED, marginBottom: 4 }}>{s.label}</p>
                 <p style={{ fontSize: 22, fontWeight: "bold", color: DARK }}>{s.value}</p>
               </div>
-              <div style={{ width: 40, height: 40, borderRadius: 10, background: "#F5F1E8", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--admin-bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <s.icon size={20} style={{ color: SAGE }} />
               </div>
             </CardContent>

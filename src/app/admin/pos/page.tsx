@@ -25,9 +25,9 @@ interface Line {
 
 const DARK = "#3D3226"
 const GREEN = "#6B7D5C"
-const CREAM = "#F5F1E8"
-const TEXT = "#4A3F2F"
-const MUTED = "#A89F91"
+const CREAM = "var(--admin-bg)"
+const TEXT = "var(--admin-text)"
+const MUTED = "var(--admin-muted)"
 const BROWN = "#8C6A4A"
 
 const ksh = (n: number) => `KSh ${n.toLocaleString()}`
@@ -191,7 +191,7 @@ export default function PosPage() {
             const out = p.stock <= 0
             return (
               <button key={p.id} onClick={() => addProduct(p)} disabled={out} style={{
-                textAlign: "left", background: "white", border: "1px solid #E5E7EB", borderRadius: 12, padding: 10,
+                textAlign: "left", background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, padding: 10,
                 cursor: out ? "not-allowed" : "pointer", opacity: out ? 0.5 : 1, display: "flex", flexDirection: "column", gap: 6,
               }}>
                 <div style={{ width: "100%", aspectRatio: "1 / 1", borderRadius: 8, overflow: "hidden", background: CREAM, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -232,11 +232,11 @@ export default function PosPage() {
         <div style={{ position: "fixed", inset: 0, zIndex: 65, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div onClick={() => setCartOpen(false)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)" }} />
           <div style={{
-            position: "relative", zIndex: 1, background: "white", borderRadius: 16, width: 420, maxWidth: "100%",
+            position: "relative", zIndex: 1, background: "var(--admin-card)", borderRadius: 16, width: 420, maxWidth: "100%",
             maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
           }}>
             {/* Modal header */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", borderBottom: "1px solid #F0EDE6" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", borderBottom: "1px solid var(--admin-border)" }}>
               <span style={{ fontSize: 16, fontWeight: 700, color: TEXT }}>Current Sale</span>
               <button onClick={() => setCartOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: MUTED }}><X size={20} /></button>
             </div>
@@ -249,13 +249,13 @@ export default function PosPage() {
                 lines.map((l) => {
                   const k = keyOf(l.productId, l.tier)
                   return (
-                    <div key={k} style={{ borderBottom: "1px solid #F0EDE6", paddingBottom: 10 }}>
+                    <div key={k} style={{ borderBottom: "1px solid var(--admin-border)", paddingBottom: 10 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
                         <span style={{ fontSize: 13, fontWeight: 600, color: TEXT, lineHeight: 1.3 }}>{l.name}</span>
                         <button onClick={() => removeLine(k)} style={{ background: "none", border: "none", cursor: "pointer", color: BROWN, flexShrink: 0 }}><Trash2 size={15} /></button>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8, gap: 8 }}>
-                        <select value={l.tier} onChange={(e) => setTier(k, e.target.value as Tier)} style={{ fontSize: 12, padding: "5px 6px", borderRadius: 6, border: "1px solid #E5E7EB", color: TEXT, background: CREAM }}>
+                        <select value={l.tier} onChange={(e) => setTier(k, e.target.value as Tier)} style={{ fontSize: 12, padding: "5px 6px", borderRadius: 6, border: "1px solid var(--admin-border)", color: TEXT, background: CREAM }}>
                           <option value="retail">Retail · {ksh(l.prices.retail)}</option>
                           <option value="wholesale">Wholesale · {ksh(l.prices.wholesale)}</option>
                           <option value="distributor">Distributor · {ksh(l.prices.distributor)}</option>
@@ -287,7 +287,7 @@ export default function PosPage() {
                   <button key={m} onClick={() => setMethod(m)} style={{
                     flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "8px 4px",
                     borderRadius: 8, cursor: "pointer", fontSize: 11.5, fontWeight: 600,
-                    border: method === m ? `2px solid ${GREEN}` : "1px solid #E5E7EB",
+                    border: method === m ? `2px solid ${GREEN}` : "1px solid var(--admin-border)",
                     background: method === m ? "#EAF3EA" : "white", color: method === m ? GREEN : TEXT,
                   }}>
                     <Icon size={18} /> {label}
@@ -311,7 +311,7 @@ export default function PosPage() {
             </div>
 
             {/* Pinned footer — total + complete, no scrolling needed */}
-            <div style={{ borderTop: "1px solid #F0EDE6", padding: "14px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ borderTop: "1px solid var(--admin-border)", padding: "14px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontSize: 14, color: TEXT }}>Total</span>
                 <span style={{ fontSize: 24, fontWeight: 800, color: DARK }}>{ksh(total)}</span>
@@ -331,6 +331,6 @@ export default function PosPage() {
 }
 
 const stepBtn: React.CSSProperties = {
-  width: 28, height: 28, borderRadius: 6, border: "1px solid #E5E7EB",
-  background: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: TEXT,
+  width: 28, height: 28, borderRadius: 6, border: "1px solid var(--admin-border)",
+  background: "var(--admin-card)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: TEXT,
 }

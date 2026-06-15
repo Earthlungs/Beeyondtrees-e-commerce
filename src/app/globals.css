@@ -35,35 +35,35 @@
   --admin-sidebar: #3D3226;
 }
 
-/* Dark theme — toggled by adding `.dark` to <html> (see ThemeScript). */
+/* Dark theme — black & white. Toggled by adding `.dark` to <html> (ThemeScript). */
 .dark {
-  --background: #16130F;
-  --foreground: #ECE6DC;
-  --card: #221C16;
-  --card-foreground: #ECE6DC;
-  --popover: #221C16;
-  --popover-foreground: #ECE6DC;
-  --primary: #88A074;
-  --primary-foreground: #16130F;
-  --secondary: #3A3327;
-  --secondary-foreground: #ECE6DC;
-  --muted: #2A241D;
-  --muted-foreground: #B3A998;
-  --accent: #C19A73;
-  --accent-foreground: #16130F;
+  --background: #0B0B0B;
+  --foreground: #F5F5F5;
+  --card: #181818;
+  --card-foreground: #F5F5F5;
+  --popover: #181818;
+  --popover-foreground: #F5F5F5;
+  --primary: #8FA67C;
+  --primary-foreground: #0B0B0B;
+  --secondary: #242424;
+  --secondary-foreground: #F5F5F5;
+  --muted: #1F1F1F;
+  --muted-foreground: #A3A3A3;
+  --accent: #C9A98A;
+  --accent-foreground: #0B0B0B;
   --destructive: #E0795A;
-  --destructive-foreground: #16130F;
-  --border: #39322A;
-  --input: #39322A;
-  --ring: #88A074;
+  --destructive-foreground: #0B0B0B;
+  --border: #2E2E2E;
+  --input: #2E2E2E;
+  --ring: #8FA67C;
 
-  --admin-bg: #16130F;
-  --admin-card: #221C16;
-  --admin-card-2: #2A241D;
-  --admin-text: #ECE6DC;
-  --admin-muted: #B3A998;
-  --admin-border: #39322A;
-  --admin-sidebar: #100D0A;
+  --admin-bg: #0B0B0B;
+  --admin-card: #181818;
+  --admin-card-2: #242424;
+  --admin-text: #F5F5F5;
+  --admin-muted: #A3A3A3;
+  --admin-border: #2E2E2E;
+  --admin-sidebar: #000000;
 }
 
 @theme inline {

@@ -6,9 +6,9 @@ import { Input } from "@/components/ui/input"
 import { Upload, Camera, Loader2, Trash2 } from "lucide-react"
 import { uploadToCloudinary } from "@/lib/cloudinary"
 
-const TEXT = "#4A3F2F"
+const TEXT = "var(--admin-text)"
 const RED = "#C0392B"
-const field: React.CSSProperties = { width: "100%", height: 40, borderRadius: 8, border: "1px solid #E5E7EB", padding: "0 10px", color: TEXT }
+const field: React.CSSProperties = { width: "100%", height: 40, borderRadius: 8, border: "1px solid var(--admin-border)", padding: "0 10px", color: TEXT }
 const isHttp = (s: unknown) => typeof s === "string" && /^https?:\/\//.test(s)
 
 // Cloudinary image uploader with an Upload button (gallery, multi) AND a Take
@@ -57,7 +57,7 @@ export default function ImageUploader({
           {value.map((u, i) => (
             <div key={i} style={{ position: "relative" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={u} alt="" style={{ width: single ? 88 : 64, height: single ? 88 : 64, objectFit: "cover", borderRadius: single ? "50%" : 8, border: "1px solid #E5E7EB" }} />
+              <img src={u} alt="" style={{ width: single ? 88 : 64, height: single ? 88 : 64, objectFit: "cover", borderRadius: single ? "50%" : 8, border: "1px solid var(--admin-border)" }} />
               <button type="button" onClick={() => onChange(value.filter((_, j) => j !== i))}
                 style={{ position: "absolute", top: -6, right: -6, background: RED, color: "white", border: "none", borderRadius: "50%", width: 18, height: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <Trash2 size={10} />
