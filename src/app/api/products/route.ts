@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     select: {
       id: true, name: true, description: true, category: true,
       retailPrice: true, wholesalePrice: true, distributorPrice: true,
-      stock: true, isOnOffer: true, offerPrice: true, isFeatured: true,
+      stock: true, isOnOffer: true, offerPrice: true, offerWholesalePrice: true, offerDistributorPrice: true, isFeatured: true,
       createdAt: true, updatedAt: true, images: true,
     },
   })

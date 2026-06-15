@@ -13,13 +13,33 @@ export interface Product {
   stock: number
   images?: string[] // omitted from the catalog list; loaded on the detail page
   isOnOffer: boolean
-  offerPrice: number | null
+  offerPrice: number | null // retail offer price
+  offerWholesalePrice?: number | null
+  offerDistributorPrice?: number | null
   isFeatured?: boolean
   createdAt?: string
   updatedAt?: string
 }
 
 export const slugify = (name: string) => name.toLowerCase().replace(/\s+/g, "-")
+
+export type PricingTier = "retail" | "wholesale" | "distributor"
+
+// The price a customer actually pays for a tier: the offer price when the
+// product is on offer (and a valid offer price is set for that tier), otherwise
+// the normal tier price. Untick the offer → everything falls back to normal.
+export const regularPrice = (p: Product, tier: PricingTier) =>
+  tier === "wholesale" ? p.wholesalePrice : tier === "distributor" ? p.distributorPrice : p.retailPrice
+
+export const offerPriceFor = (p: Product, tier: PricingTier): number | null => {
+  const o = tier === "wholesale" ? p.offerWholesalePrice : tier === "distributor" ? p.offerDistributorPrice : p.offerPrice
+  return o != null && o > 0 ? o : null
+}
+
+export const effectivePrice = (p: Product, tier: PricingTier): number => {
+  const offer = p.isOnOffer ? offerPriceFor(p, tier) : null
+  return offer ?? regularPrice(p, tier)
+}
 
 // Keep only hosted (Cloudinary) URLs for the lightweight cached copy; base64
 // data-URIs are dropped (kept out of localStorage) and rendered via the
