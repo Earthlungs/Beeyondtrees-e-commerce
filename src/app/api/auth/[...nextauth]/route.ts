@@ -28,6 +28,7 @@ const handler = NextAuth({
           role: user.role,
           image: user.image || null,
           mustChangePassword: user.mustChangePassword,
+          theme: user.theme,
         }
       },
     }),
@@ -35,26 +36,28 @@ const handler = NextAuth({
   callbacks: {
     async jwt({ token, user, trigger, session }) {
       if (user) {
-        const u = user as { role?: string; image?: string | null; mustChangePassword?: boolean }
+        const u = user as { role?: string; image?: string | null; mustChangePassword?: boolean; theme?: string }
         token.role = u.role
         token.picture = u.image ?? null
         token.mustChangePassword = u.mustChangePassword ?? false
+        token.theme = u.theme ?? "system"
       }
-      // Account page calls update() to clear the force-change flag / refresh the
-      // avatar without forcing a re-login.
+      // Account/Settings call update() to refresh flags without a re-login.
       if (trigger === "update" && session) {
-        const s = session as { mustChangePassword?: boolean; image?: string | null }
+        const s = session as { mustChangePassword?: boolean; image?: string | null; theme?: string }
         if (typeof s.mustChangePassword === "boolean") token.mustChangePassword = s.mustChangePassword
         if (s.image !== undefined) token.picture = s.image
+        if (typeof s.theme === "string") token.theme = s.theme
       }
       return token
     },
     async session({ session, token }) {
       if (session.user) {
-        const su = session.user as { role?: string; image?: string | null; mustChangePassword?: boolean }
+        const su = session.user as { role?: string; image?: string | null; mustChangePassword?: boolean; theme?: string }
         su.role = token.role as string
         su.image = (token.picture as string | null) ?? null
         su.mustChangePassword = (token.mustChangePassword as boolean) ?? false
+        su.theme = (token.theme as string) ?? "system"
       }
       return session
     },

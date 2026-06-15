@@ -1,7 +1,9 @@
 "use client"
 
+import { useState, useEffect } from "react"
+import { useSession } from "next-auth/react"
 import { Settings as SettingsIcon, Monitor, Moon, Check } from "lucide-react"
-import { useTheme, type Theme } from "@/lib/theme"
+import { applyTheme, type Theme } from "@/lib/theme"
 
 const TEXT = "var(--admin-text)"
 const MUTED = "var(--admin-muted)"
@@ -15,7 +17,23 @@ const OPTIONS: { value: Theme; label: string; desc: string; icon: typeof Monitor
 ]
 
 export default function SettingsPage() {
-  const [theme, setTheme] = useTheme()
+  const { data: session, update } = useSession()
+  const [theme, setThemeState] = useState<Theme>("system")
+
+  // The theme is per-user (stored on the account), so one user's choice never
+  // changes another user's theme on the same browser.
+  useEffect(() => {
+    const t = (session?.user as { theme?: string } | undefined)?.theme
+    if (t === "dark" || t === "light" || t === "system") setThemeState(t)
+  }, [session])
+
+  const setTheme = async (t: Theme) => {
+    setThemeState(t)
+    applyTheme(t)
+    try { localStorage.setItem("theme", t) } catch {}
+    await fetch("/api/account", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ theme: t }) }).catch(() => {})
+    await update({ theme: t })
+  }
 
   return (
     <div style={{ maxWidth: 720 }}>

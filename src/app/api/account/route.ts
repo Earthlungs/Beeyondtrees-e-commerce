@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   if (!id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = await prisma.user.findUnique({
     where: { id },
-    select: { id: true, username: true, name: true, email: true, phone: true, image: true, role: true, mustChangePassword: true },
+    select: { id: true, username: true, name: true, email: true, phone: true, image: true, role: true, mustChangePassword: true, theme: true },
   })
   if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 })
   return NextResponse.json(user, { headers: { "Cache-Control": "no-store" } })
@@ -32,7 +32,11 @@ export async function PATCH(request: NextRequest) {
   const user = await prisma.user.findUnique({ where: { id } })
   if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-  const data: { password?: string; mustChangePassword?: boolean; image?: string | null } = {}
+  const data: { password?: string; mustChangePassword?: boolean; image?: string | null; theme?: string } = {}
+
+  if (body.theme === "system" || body.theme === "dark" || body.theme === "light") {
+    data.theme = body.theme
+  }
 
   if (body.newPassword) {
     if (String(body.newPassword).length < 6) {
@@ -57,7 +61,7 @@ export async function PATCH(request: NextRequest) {
   const updated = await prisma.user.update({
     where: { id },
     data,
-    select: { id: true, image: true, mustChangePassword: true },
+    select: { id: true, image: true, mustChangePassword: true, theme: true },
   })
   return NextResponse.json(updated)
 }

@@ -40,6 +40,17 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   const { id, ...data } = await request.json()
+  // Stock can only be ADDED here (restocking). Reductions must come from a sale
+  // (web checkout / POS), never a manual edit — so block any decrease.
+  if (typeof data.stock === "number") {
+    const current = await prisma.product.findUnique({ where: { id }, select: { stock: true } })
+    if (current && data.stock < current.stock) {
+      return NextResponse.json(
+        { error: `Stock can only be increased here (current: ${current.stock}). Stock goes down only through sales.` },
+        { status: 400 }
+      )
+    }
+  }
   const product = await prisma.product.update({ where: { id }, data })
   return NextResponse.json(product)
 }
