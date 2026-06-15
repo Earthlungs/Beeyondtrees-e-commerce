@@ -24,6 +24,46 @@
   --input: #D4C9B8;
   --ring: #6B7D5C;
   --radius: 0.625rem;
+
+  /* Admin surfaces (used by the inline-styled admin pages so they can theme). */
+  --admin-bg: #F5F1E8;
+  --admin-card: #FFFFFF;
+  --admin-card-2: #F8F6F1;
+  --admin-text: #4A3F2F;
+  --admin-muted: #A89F91;
+  --admin-border: #E5E7EB;
+  --admin-sidebar: #3D3226;
+}
+
+/* Dark theme — toggled by adding `.dark` to <html> (see ThemeScript). */
+.dark {
+  --background: #16130F;
+  --foreground: #ECE6DC;
+  --card: #221C16;
+  --card-foreground: #ECE6DC;
+  --popover: #221C16;
+  --popover-foreground: #ECE6DC;
+  --primary: #88A074;
+  --primary-foreground: #16130F;
+  --secondary: #3A3327;
+  --secondary-foreground: #ECE6DC;
+  --muted: #2A241D;
+  --muted-foreground: #B3A998;
+  --accent: #C19A73;
+  --accent-foreground: #16130F;
+  --destructive: #E0795A;
+  --destructive-foreground: #16130F;
+  --border: #39322A;
+  --input: #39322A;
+  --ring: #88A074;
+
+  --admin-bg: #16130F;
+  --admin-card: #221C16;
+  --admin-card-2: #2A241D;
+  --admin-text: #ECE6DC;
+  --admin-muted: #B3A998;
+  --admin-border: #39322A;
+  --admin-sidebar: #100D0A;
 }
 
 @theme inline {

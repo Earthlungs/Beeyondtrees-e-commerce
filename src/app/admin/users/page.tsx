@@ -3,16 +3,29 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Users, Plus, X, Loader2, Ban, CheckCircle2, ShieldAlert, Eye, EyeOff } from "lucide-react"
+import { Users, Plus, X, Loader2, Ban, CheckCircle2, ShieldAlert } from "lucide-react"
+import { ROLE_LABELS } from "@/lib/tracing-stages"
 
-const TEXT = "#4A3F2F"
-const MUTED = "#A89F91"
+const TEXT = "var(--admin-text)"
+const MUTED = "var(--admin-muted)"
 const GREEN = "#6B7D5C"
 const BROWN = "#8C6A4A"
 
 interface U {
   id: string; username: string; name: string; role: string; active: boolean; createdAt: string
 }
+
+// Selectable roles. The 9 *_officer/manager/executive roles drive the product
+// tracing pipeline (src/lib/tracing-stages.ts); cashier is till-only.
+const ROLE_OPTIONS: [string, string][] = [
+  ["merchant", "Merchant"], ["cashier", "Cashier (till only)"], ["admin", "Admin"],
+  ["it_specialist", "IT Specialist (full control)"],
+  ["factory_manager", "Factory Manager"], ["executive", "Executive"],
+  ["procurement_officer", "Procurement Officer"], ["quality_inspector", "Quality Inspector"],
+  ["requisition_officer", "Requisition Officer"], ["agribusiness_manager", "Agribusiness Manager"],
+  ["production_officer", "Production Officer"], ["dispatch_officer", "Dispatch Officer"],
+  ["receiving_officer", "Receiving Officer"],
+]
 
 export default function UsersPage() {
   const [users, setUsers] = useState<U[]>([])
@@ -21,9 +34,12 @@ export default function UsersPage() {
   const [busyId, setBusyId] = useState<string | null>(null)
   const [notice, setNotice] = useState<{ text: string; tone: "error" | "success" } | null>(null)
 
-  const [f, setF] = useState({ username: "", name: "", password: "", role: "merchant" })
-  const [showPw, setShowPw] = useState(false)
-  const [saving, setSaving] = useState(false)
+  // Single creation flow: first name + phone + role. The username and the
+  // @earthlungs.org email are derived; the phone is the initial password (the
+  // user is forced to change it on first login).
+  const [showAdd, setShowAdd] = useState(false)
+  const [pv, setPv] = useState({ firstName: "", phone: "", role: "merchant" })
+  const [provisioning, setProvisioning] = useState(false)
 
   const load = async () => {
     try {
@@ -35,18 +51,18 @@ export default function UsersPage() {
   useEffect(() => { load() }, [])
   useEffect(() => { if (!notice) return; const t = setTimeout(() => setNotice(null), 5000); return () => clearTimeout(t) }, [notice])
 
-  const create = async () => {
-    setSaving(true)
+  const provision = async () => {
+    setProvisioning(true)
     try {
-      const res = await fetch("/api/users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(f) })
+      const res = await fetch("/api/users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(pv) })
       const data = await res.json()
       if (!res.ok) { setNotice({ text: data.error || "Could not create user.", tone: "error" }); return }
-      setNotice({ text: `Created ${data.username}`, tone: "success" })
-      setF({ username: "", name: "", password: "", role: "merchant" })
-      setShowForm(false)
+      setNotice({ text: `Created ${data.username} (${data.email}) — login password = phone, must change on first login.`, tone: "success" })
+      setPv({ firstName: "", phone: "", role: "merchant" })
+      setShowAdd(false)
       load()
     } catch { setNotice({ text: "Network error.", tone: "error" }) }
-    finally { setSaving(false) }
+    finally { setProvisioning(false) }
   }
 
   const patch = async (id: string, body: Record<string, unknown>) => {
@@ -61,8 +77,8 @@ export default function UsersPage() {
   }
 
   const roleBadge = (role: string) => {
-    const c = role === "admin" ? GREEN : role === "cashier" ? "#7A6AA3" : BROWN
-    return <span style={{ background: c, color: "white", fontSize: 11, fontWeight: 600, padding: "2px 9px", borderRadius: 999, textTransform: "capitalize" }}>{role}</span>
+    const c = role === "admin" ? GREEN : role === "it_specialist" ? "#2C5282" : role === "cashier" ? "#7A6AA3" : BROWN
+    return <span style={{ background: c, color: "white", fontSize: 11, fontWeight: 600, padding: "2px 9px", borderRadius: 999 }}>{ROLE_LABELS[role] ?? role}</span>
   }
 
   return (
@@ -72,8 +88,8 @@ export default function UsersPage() {
           <Users size={22} color={GREEN} />
           <h1 style={{ fontSize: 22, fontWeight: "bold", color: TEXT }}>User Management</h1>
         </div>
-        <Button onClick={() => setShowForm((s) => !s)} style={{ background: GREEN, color: "white", gap: 6 }}>
-          {showForm ? <><X size={16} /> Close</> : <><Plus size={16} /> New User</>}
+        <Button onClick={() => setShowAdd((s) => !s)} style={{ background: GREEN, color: "white", gap: 6 }}>
+          {showAdd ? <><X size={16} /> Close</> : <><Plus size={16} /> Add User</>}
         </Button>
       </div>
 
@@ -83,59 +99,62 @@ export default function UsersPage() {
         </div>
       )}
 
-      {showForm && (
-        <div style={{ background: "white", border: "1px solid #E5E7EB", borderRadius: 12, padding: 20, marginBottom: 24 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
-            <Field label="Username *"><Input value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} /></Field>
-            <Field label="Full name *"><Input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
-            <Field label="Password * (min 6)">
-              <div style={{ position: "relative" }}>
-                <Input type={showPw ? "text" : "password"} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} style={{ paddingRight: 38 }} />
-                <button type="button" onClick={() => setShowPw((s) => !s)} aria-label={showPw ? "Hide password" : "Show password"}
-                  style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: MUTED, padding: 4, display: "flex" }}>
-                  {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
+      {showAdd && (
+        <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, padding: 20, marginBottom: 24 }}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, color: TEXT, marginBottom: 4 }}>Add User</h2>
+          <p style={{ fontSize: 12, color: MUTED, marginBottom: 14 }}>
+            Enter the <b>first name only</b> — it becomes the login username and the <b>@earthlungs.org</b> email is auto-completed. The <b>phone number is the initial password</b>; the user must change it on first login.
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+            <Field label="First name *">
+              {/* email suffix shown inline so it's clear the domain is auto-completed */}
+              <div style={{ display: "flex", alignItems: "stretch", border: "1px solid var(--admin-border)", borderRadius: 8, overflow: "hidden" }}>
+                <input value={pv.firstName} onChange={(e) => setPv({ ...pv, firstName: e.target.value.toLowerCase().replace(/\s+/g, "") })} placeholder="john"
+                  style={{ flex: 1, minWidth: 0, height: 40, border: "none", padding: "0 10px", color: TEXT, outline: "none" }} />
+                <span style={{ display: "flex", alignItems: "center", padding: "0 10px", background: "var(--admin-card-2)", color: MUTED, fontSize: 13, whiteSpace: "nowrap" }}>@earthlungs.org</span>
               </div>
             </Field>
+            <Field label="Phone number * (initial password)"><Input value={pv.phone} onChange={(e) => setPv({ ...pv, phone: e.target.value })} placeholder="e.g. 0712345678" /></Field>
             <Field label="Role">
-              <select value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })} style={{ width: "100%", height: 40, borderRadius: 8, border: "1px solid #E5E7EB", padding: "0 10px", color: TEXT }}>
-                <option value="merchant">Merchant</option>
-                <option value="cashier">Cashier (till only)</option>
-                <option value="admin">Admin</option>
+              <select value={pv.role} onChange={(e) => setPv({ ...pv, role: e.target.value })} style={{ width: "100%", height: 40, borderRadius: 8, border: "1px solid var(--admin-border)", padding: "0 10px", color: TEXT }}>
+                {ROLE_OPTIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
             </Field>
           </div>
+          {pv.firstName.trim() && (
+            <p style={{ fontSize: 12, color: GREEN, marginTop: 10 }}>
+              → login username <b>{pv.firstName.trim()}</b> · email <b>{pv.firstName.trim()}@earthlungs.org</b> · password = phone
+            </p>
+          )}
           <div style={{ marginTop: 14, display: "flex", justifyContent: "flex-end" }}>
-            <Button onClick={create} disabled={saving || !f.username || !f.name || !f.password} style={{ background: GREEN, color: "white", gap: 8 }}>
-              {saving ? <><Loader2 size={16} className="animate-spin" /> Creating…</> : "Create User"}
+            <Button onClick={provision} disabled={provisioning || !pv.firstName.trim() || pv.phone.trim().length < 6} style={{ background: GREEN, color: "white", gap: 8 }}>
+              {provisioning ? <><Loader2 size={16} className="animate-spin" /> Creating…</> : "Create User"}
             </Button>
           </div>
         </div>
       )}
 
-      <div style={{ background: "white", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden" }}>
+      <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, overflow: "hidden" }}>
         {loading ? (
           <p style={{ padding: 24, color: MUTED }}>Loading…</p>
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr style={{ background: "#FAF8F3", fontSize: 12, color: MUTED, textAlign: "left" }}>
+              <tr style={{ background: "var(--admin-card-2)", fontSize: 12, color: MUTED, textAlign: "left" }}>
                 <th style={th}>User</th><th style={th}>Role</th><th style={th}>Status</th><th style={{ ...th, textAlign: "right" }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {users.map((u) => (
-                <tr key={u.id} style={{ borderTop: "1px solid #F0EDE6", opacity: u.active ? 1 : 0.6 }}>
+                <tr key={u.id} style={{ borderTop: "1px solid var(--admin-border)", opacity: u.active ? 1 : 0.6 }}>
                   <td style={td}>
                     <div style={{ fontWeight: 600 }}>{u.name}</div>
                     <div style={{ fontSize: 12, color: MUTED }}>@{u.username}</div>
                   </td>
                   <td style={td}>
                     <select value={u.role} disabled={busyId === u.id} onChange={(e) => patch(u.id, { role: e.target.value })}
-                      style={{ border: "1px solid #E5E7EB", borderRadius: 6, padding: "4px 6px", fontSize: 12, color: TEXT, background: "white" }}>
-                      <option value="merchant">Merchant</option>
-                      <option value="cashier">Cashier</option>
-                      <option value="admin">Admin</option>
+                      style={{ border: "1px solid var(--admin-border)", borderRadius: 6, padding: "4px 6px", fontSize: 12, color: TEXT, background: "var(--admin-card)" }}>
+                      {ROLE_OPTIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                     </select>{" "}
                     {roleBadge(u.role)}
                   </td>

@@ -24,19 +24,38 @@ const handler = NextAuth({
         return {
           id: user.id,
           name: user.name,
-          email: `${user.username}@beeyondtrees.com`,
+          email: user.email || `${user.username}@beeyondtrees.com`,
           role: user.role,
+          image: user.image || null,
+          mustChangePassword: user.mustChangePassword,
         }
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) token.role = (user as { role?: string }).role
+    async jwt({ token, user, trigger, session }) {
+      if (user) {
+        const u = user as { role?: string; image?: string | null; mustChangePassword?: boolean }
+        token.role = u.role
+        token.picture = u.image ?? null
+        token.mustChangePassword = u.mustChangePassword ?? false
+      }
+      // Account page calls update() to clear the force-change flag / refresh the
+      // avatar without forcing a re-login.
+      if (trigger === "update" && session) {
+        const s = session as { mustChangePassword?: boolean; image?: string | null }
+        if (typeof s.mustChangePassword === "boolean") token.mustChangePassword = s.mustChangePassword
+        if (s.image !== undefined) token.picture = s.image
+      }
       return token
     },
     async session({ session, token }) {
-      if (session.user) (session.user as { role?: string }).role = token.role as string
+      if (session.user) {
+        const su = session.user as { role?: string; image?: string | null; mustChangePassword?: boolean }
+        su.role = token.role as string
+        su.image = (token.picture as string | null) ?? null
+        su.mustChangePassword = (token.mustChangePassword as boolean) ?? false
+      }
       return session
     },
   },

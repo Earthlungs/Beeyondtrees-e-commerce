@@ -16,6 +16,7 @@ import { useProductStore } from "@/store/product-store"
 export default function AdminDashboard() {
   const { data: session } = useSession()
   const role = (session?.user as any)?.role || "merchant"
+  const isAdmin = role === "admin" || role === "it_specialist" // IT has full control
   const products = useProductStore((s) => s.products)
   const loadProducts = useProductStore((s) => s.loadProducts)
   const [stats, setStats] = useState({
@@ -57,7 +58,7 @@ export default function AdminDashboard() {
           Welcome back, {session?.user?.name}
         </h1>
         <p style={{ color: '#A89F91', fontSize: '14px' }}>
-          {role === "admin" ? "Full platform overview" : "Manage your products and orders"}
+          {isAdmin ? "Full platform overview" : "Manage your products and orders"}
         </p>
       </div>
 
@@ -68,7 +69,7 @@ export default function AdminDashboard() {
           { label: 'Total Orders', value: stats.orders, icon: ShoppingCart, color: '#8C6A4A', href: '/admin/deliveries' },
           { label: 'Pending Orders', value: stats.pending, icon: Clock, color: '#E6A817', href: '/admin/deliveries?status=pending' },
           { label: 'Revenue', value: `KSh ${stats.revenue.toLocaleString()}`, icon: DollarSign, color: '#6B7D5C', href: '/admin/analytics' },
-          ...(role === "admin" ? [
+          ...(isAdmin ? [
             { label: 'Customers', value: stats.customers, icon: Users, color: '#A89F91', href: '/admin/customers' },
             { label: 'Delivered', value: stats.delivered, icon: CheckCircle, color: '#4A90D9', href: '/admin/deliveries?status=delivered' },
           ] : []),
