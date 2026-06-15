@@ -154,6 +154,7 @@ export default function ChatPage() {
                 return (
                   <label key={c.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderBottom: "1px solid var(--admin-border)", cursor: "pointer", background: on ? "var(--admin-card-2)" : "var(--admin-card)" }}>
                     <input type="checkbox" checked={on} onChange={() => { const n = new Set(bcSel); on ? n.delete(c.id) : n.add(c.id); setBcSel(n) }} />
+                    <Avatar c={c} size={28} />
                     <span style={{ fontSize: 13, color: TEXT, fontWeight: 600 }}>{c.name}</span>
                     <span style={{ fontSize: 11, color: MUTED }}>{ROLE_LABELS[c.role] ?? c.role}</span>
                   </label>
