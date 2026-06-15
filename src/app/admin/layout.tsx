@@ -27,6 +27,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname()
   const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+
+  // Sidebar is open by default on desktop, collapsed on mobile. The header
+  // hamburger toggles it on EVERY screen size (so it collapses on desktop too).
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)")
+    const apply = () => { setIsMobile(mq.matches); setSidebarOpen(!mq.matches) }
+    apply()
+    mq.addEventListener("change", apply)
+    return () => mq.removeEventListener("change", apply)
+  }, [])
 
   // Force a password change on first login (provisioned staff) before they can
   // use anything else.
@@ -112,14 +123,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--admin-bg)' }}>
-      {sidebarOpen && <div className="md:hidden" onClick={() => setSidebarOpen(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 40 }} />}
+      {sidebarOpen && isMobile && <div onClick={() => setSidebarOpen(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 40 }} />}
 
       <aside style={{
         width: '260px', backgroundColor: 'var(--admin-sidebar)', color: 'white',
         display: 'flex', flexDirection: 'column', flexShrink: 0,
         position: 'fixed', top: 0, left: sidebarOpen ? 0 : -260, bottom: 0, zIndex: 50,
         transition: 'left 0.3s',
-      }} className="md:relative md:left-0">
+      }}>
         <div style={{ padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Link href={isTracing ? "/admin/tracing" : "/admin"} style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', color: 'white' }}>
@@ -130,7 +141,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <div style={{ fontSize: '10px', color: '#A89F91', textTransform: 'uppercase', letterSpacing: '1px' }}>{roleLabel} Panel</div>
               </div>
             </Link>
-            <button onClick={() => setSidebarOpen(false)} className="md:hidden" style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>
+            <button onClick={() => setSidebarOpen(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>
               <X size={20} />
             </button>
           </div>
@@ -146,7 +157,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 const Icon = item.icon
                 const active = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href))
                 return (
-                  <Link key={item.href} href={item.href} onClick={() => setSidebarOpen(false)} style={linkStyle(active)}>
+                  <Link key={item.href} href={item.href} onClick={() => { if (isMobile) setSidebarOpen(false) }} style={linkStyle(active)}>
                     <Icon size={18} /> {item.label}
                   </Link>
                 )
@@ -156,7 +167,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </nav>
 
         <div style={{ padding: '16px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-          <Link href="/admin/account" onClick={() => setSidebarOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px', padding: '10px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '10px', textDecoration: 'none', color: 'white' }}>
+          <Link href="/admin/account" onClick={() => { if (isMobile) setSidebarOpen(false) }} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px', padding: '10px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '10px', textDecoration: 'none', color: 'white' }}>
             {avatar ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={avatar} alt="" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
@@ -182,10 +193,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </aside>
 
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <header style={{ backgroundColor: 'var(--admin-card)', borderBottom: '1px solid var(--admin-border)', padding: '0 20px', height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <button onClick={() => setSidebarOpen(true)} className="md:hidden" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#4A3F2F' }}>
-            <Menu size={20} />
+      <div style={{ flex: 1, minWidth: 0, marginLeft: (sidebarOpen && !isMobile) ? 260 : 0, transition: 'margin-left 0.3s' }}>
+        <header style={{ backgroundColor: 'var(--admin-card)', borderBottom: '1px solid var(--admin-border)', padding: '0 20px', height: '56px', display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'space-between' }}>
+          <button onClick={() => setSidebarOpen((o) => !o)} aria-label="Toggle menu" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--admin-text)', display: 'flex', padding: 4 }}>
+            <Menu size={22} />
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: 'auto' }}>
             <span style={{ fontSize: '12px', color: '#A89F91' }}>{session.user?.name} ({roleLabel})</span>
