@@ -8,7 +8,7 @@ import {
   Search, Plus, Minus, Trash2, ShoppingCart, X,
   Banknote, Smartphone, CreditCard, AlertTriangle, Loader2, CheckCircle2,
 } from "lucide-react"
-import { useProductStore, productImageUrl, type Product } from "@/store/product-store"
+import { useProductStore, productImageUrl, fuzzyMatch, type Product } from "@/store/product-store"
 
 type Tier = "retail" | "wholesale" | "distributor"
 type Method = "cash" | "mpesa" | "card"
@@ -30,7 +30,7 @@ const TEXT = "var(--admin-text)"
 const MUTED = "var(--admin-muted)"
 const BROWN = "#8C6A4A"
 
-const ksh = (n: number) => `KSh ${n.toLocaleString()}`
+const ksh = (n: number | null | undefined) => `KSh ${(Number(n) || 0).toLocaleString()}`
 const tierPrice = (l: Pick<Line, "prices" | "tier">) => l.prices[l.tier]
 const keyOf = (productId: string, tier: Tier) => `${productId}::${tier}`
 
@@ -59,10 +59,18 @@ export default function PosPage() {
   // Match on name OR SKU — SKUs live inside the product name, e.g.
   // "THE TERRA DOT (BYT-CLY-PLN-007-S)", so a substring search covers both.
   const results = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    const list = q
-      ? products.filter((p) => p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q))
-      : products
+    // Drop any malformed/duplicate cached entries (missing id/name/price) so a
+    // bad row can't crash the till; then fuzzy-search.
+    const valid = Array.from(
+      new Map(
+        products
+          .filter((p) => p && p.id && p.name != null && p.retailPrice != null)
+          .map((p) => [p.id, p])
+      ).values()
+    )
+    const list = query.trim()
+      ? valid.filter((p) => fuzzyMatch(query, `${p.name} ${p.category ?? ""}`))
+      : valid
     return list.slice(0, 60)
   }, [products, query])
 
