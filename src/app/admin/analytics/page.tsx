@@ -6,7 +6,7 @@ import {
   MapPin, Package, Clock, Loader2, Banknote, Smartphone, CreditCard, Receipt,
 } from "lucide-react"
 
-const TEXT = "#4A3F2F", MUTED = "#A89F91", GREEN = "#6B7D5C", BROWN = "#8C6A4A", DARK = "#3D3226", CREAM = "#FAF8F3"
+const TEXT = "var(--admin-text)", MUTED = "#A89F91", GREEN = "#6B7D5C", BROWN = "#8C6A4A", DARK = "#3D3226", CREAM = "var(--admin-card-2)"
 const ksh = (n: number) => `KSh ${Math.round(n).toLocaleString()}`
 const EAT = 3 * 60 * 60 * 1000
 const eatToday = () => new Date(Date.now() + EAT).toISOString().slice(0, 10)
@@ -70,7 +70,7 @@ export default function AnalyticsPage() {
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 20 }}>
         {(["today", "7d", "30d"] as Preset[]).map((p) => (
           <button key={p} onClick={() => applyPreset(p)} style={{
-            padding: "8px 14px", borderRadius: 999, border: preset === p ? `2px solid ${GREEN}` : "1px solid #E5E7EB",
+            padding: "8px 14px", borderRadius: 999, border: preset === p ? `2px solid ${GREEN}` : "1px solid var(--admin-border)",
             background: preset === p ? "#EAF3EA" : "white", color: preset === p ? GREEN : TEXT, cursor: "pointer", fontSize: 13, fontWeight: 600,
           }}>{p === "today" ? "Today" : p === "7d" ? "7 days" : "30 days"}</button>
         ))}
@@ -139,7 +139,7 @@ export default function AnalyticsPage() {
                   </thead>
                   <tbody>
                     {data.collectors.map((c, i) => (
-                      <tr key={i} style={{ borderTop: "1px solid #F0EDE6" }}>
+                      <tr key={i} style={{ borderTop: "1px solid var(--admin-border)" }}>
                         <td style={{ padding: "9px 8px", fontSize: 13, fontWeight: 600, color: TEXT }}>{c.name}</td>
                         <td style={cellR}>{ksh(c.cash)}</td>
                         <td style={cellR}>{ksh(c.mpesa)}</td>
@@ -192,11 +192,11 @@ export default function AnalyticsPage() {
 }
 
 const pct = (part: number, whole: number) => (whole > 0 ? `${Math.round((part / whole) * 100)}%` : "0%")
-const dateInput: React.CSSProperties = { border: "1px solid #E5E7EB", borderRadius: 8, padding: "6px 8px", fontSize: 13, color: TEXT }
+const dateInput: React.CSSProperties = { border: "1px solid var(--admin-border)", borderRadius: 8, padding: "6px 8px", fontSize: 13, color: TEXT }
 
 function Kpi({ icon, label, value, sub, accent }: { icon: React.ReactNode; label: string; value: string; sub: string; accent: string }) {
   return (
-    <div style={{ background: "white", border: "1px solid #E5E7EB", borderRadius: 14, padding: 16 }}>
+    <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 14, padding: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, color: accent, marginBottom: 8 }}>{icon}<span style={{ fontSize: 12.5, color: MUTED, fontWeight: 500 }}>{label}</span></div>
       <div style={{ fontSize: 24, fontWeight: 800, color: DARK }}>{value}</div>
       <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>{sub}</div>
@@ -208,7 +208,7 @@ const cellR: React.CSSProperties = { padding: "9px 8px", fontSize: 12.5, color: 
 
 function MethodCard({ icon, label, m, accent }: { icon: React.ReactNode; label: string; m?: { amount: number; count: number }; accent: string }) {
   return (
-    <div style={{ background: "white", border: "1px solid #E5E7EB", borderRadius: 14, padding: 14 }}>
+    <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 14, padding: 14 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, color: accent, marginBottom: 6 }}>{icon}<span style={{ fontSize: 12, color: MUTED, fontWeight: 500 }}>{label}</span></div>
       <div style={{ fontSize: 20, fontWeight: 800, color: DARK }}>{ksh(m?.amount ?? 0)}</div>
       <div style={{ fontSize: 11.5, color: MUTED, marginTop: 2 }}>{m?.count ?? 0} payments</div>
@@ -218,7 +218,7 @@ function MethodCard({ icon, label, m, accent }: { icon: React.ReactNode; label: 
 
 function Panel({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div style={{ background: "white", border: "1px solid #E5E7EB", borderRadius: 14, padding: 16 }}>
+    <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 14, padding: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, color: TEXT, fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{icon}{title}</div>
       {children}
     </div>
@@ -234,7 +234,7 @@ function RankTable({ rows, empty }: { rows: { a: string; b: string; c: string }[
   return (
     <div style={{ marginTop: 6 }}>
       {rows.map((r, i) => (
-        <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderTop: i ? "1px solid #F0EDE6" : "none" }}>
+        <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderTop: i ? "1px solid var(--admin-border)" : "none" }}>
           <span style={{ width: 20, height: 20, borderRadius: 6, background: CREAM, color: MUTED, fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{i + 1}</span>
           <span style={{ flex: 1, fontSize: 13, color: TEXT, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.a}</span>
           <span style={{ fontSize: 11.5, color: MUTED, flexShrink: 0 }}>{r.b}</span>

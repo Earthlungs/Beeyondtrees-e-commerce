@@ -183,7 +183,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <header style={{ backgroundColor: 'var(--admin-card)', borderBottom: '1px solid var(--admin-border)', padding: '0 20px', height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <button onClick={() => setSidebarOpen(true)} className="md:hidden" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--admin-text)' }}>
+          <button onClick={() => setSidebarOpen(true)} className="md:hidden" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#4A3F2F' }}>
             <Menu size={20} />
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: 'auto' }}>

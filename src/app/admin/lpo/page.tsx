@@ -8,8 +8,8 @@ import { Input } from "@/components/ui/input"
 import { ClipboardList, Plus, X, Loader2, Printer } from "lucide-react"
 import DocLineItems, { EditLine, emptyLine } from "@/components/admin/DocLineItems"
 
-const TEXT = "#4A3F2F"
-const MUTED = "#A89F91"
+const TEXT = "var(--admin-text)"
+const MUTED = "var(--admin-muted)"
 const GREEN = "#6B7D5C"
 const ksh = (n: number) => `KSh ${n.toLocaleString()}`
 
@@ -73,7 +73,7 @@ export default function LpoPage() {
       </div>
 
       {showForm && (
-        <div style={{ background: "white", border: "1px solid #E5E7EB", borderRadius: 12, padding: 20, marginBottom: 24 }}>
+        <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, padding: 20, marginBottom: 24 }}>
           {error && <div style={{ background: "#FBEAEA", color: "#9B2C2C", padding: "8px 12px", borderRadius: 8, fontSize: 13, marginBottom: 12 }}>{error}</div>}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginBottom: 16 }}>
             <Field label="Supplier name *"><Input value={supplierName} onChange={(e) => setSupplierName(e.target.value)} /></Field>
@@ -94,7 +94,7 @@ export default function LpoPage() {
         </div>
       )}
 
-      <div style={{ background: "white", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden" }}>
+      <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, overflow: "hidden" }}>
         {loading ? (
           <p style={{ padding: 24, color: MUTED }}>Loading…</p>
         ) : lpos.length === 0 ? (
@@ -102,14 +102,14 @@ export default function LpoPage() {
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr style={{ background: "#FAF8F3", fontSize: 12, color: MUTED, textAlign: "left" }}>
+              <tr style={{ background: "var(--admin-card-2)", fontSize: 12, color: MUTED, textAlign: "left" }}>
                 <th style={th}>Number</th><th style={th}>Supplier</th><th style={th}>Order Date</th>
                 <th style={{ ...th, textAlign: "right" }}>Total</th><th style={th} />
               </tr>
             </thead>
             <tbody>
               {lpos.map((l) => (
-                <tr key={l.id} style={{ borderTop: "1px solid #F0EDE6" }}>
+                <tr key={l.id} style={{ borderTop: "1px solid var(--admin-border)" }}>
                   <td style={{ ...td, fontWeight: 600 }}>{l.number}</td>
                   <td style={td}>{l.supplierName}</td>
                   <td style={td}>{new Date(l.orderDate).toLocaleDateString("en-KE")}</td>

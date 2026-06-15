@@ -13,7 +13,7 @@ import {
 
 const SAGE = "#6B7D5C"
 const DARK = "#4A3F2F"
-const MUTED = "#A89F91"
+const MUTED = "var(--admin-muted)"
 
 type OrderItem = {
   id: string; productName: string; price: number; quantity: number

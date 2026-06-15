@@ -53,7 +53,7 @@ export default function AdminLoginPage() {
       <Card style={{
         width: '440px', 
         maxWidth: '90vw',
-        backgroundColor: 'white', 
+        backgroundColor: "var(--admin-card)", 
         border: 'none',
         boxShadow: '0 25px 50px rgba(0,0,0,0.15)',
         borderRadius: '16px',
@@ -62,7 +62,7 @@ export default function AdminLoginPage() {
         <CardHeader style={{ textAlign: 'center', paddingBottom: '8px' }}>
           <div style={{ 
             width: '56px', height: '56px', 
-            backgroundColor: '#F5F1E8', 
+            backgroundColor: 'var(--admin-bg)', 
             borderRadius: '16px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             margin: '0 auto 16px'
@@ -73,16 +73,16 @@ export default function AdminLoginPage() {
               <Store size={28} style={{ color: '#8C6A4A' }} />
             )}
           </div>
-          <CardTitle style={{ fontSize: '22px', color: '#4A3F2F' }}>
+          <CardTitle style={{ fontSize: '22px', color: "var(--admin-text)" }}>
             {selectedRole === "admin" ? 'Administrator Login' : 'Merchant Login'}
           </CardTitle>
-          <p style={{ color: '#A89F91', fontSize: '14px', marginTop: '4px' }}>
+          <p style={{ color: "var(--admin-muted)", fontSize: '14px', marginTop: '4px' }}>
             Sign in to manage {selectedRole === "admin" ? 'the entire platform' : 'your products and orders'}
           </p>
         </CardHeader>
         <CardContent>
           {/* Role Toggle */}
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', backgroundColor: '#F5F1E8', borderRadius: '10px', padding: '4px' }}>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', backgroundColor: 'var(--admin-bg)', borderRadius: '10px', padding: '4px' }}>
             <button
               onClick={() => quickLogin("admin")}
               style={{
@@ -122,24 +122,24 @@ export default function AdminLoginPage() {
           
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500', color: '#4A3F2F' }}>Username</label>
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500', color: "var(--admin-text)" }}>Username</label>
               <div style={{ position: 'relative' }}>
-                <User size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#A89F91' }} />
+                <User size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: "var(--admin-muted)" }} />
                 <Input value={username} onChange={e => setUsername(e.target.value)}
                   placeholder={selectedRole === "admin" ? "admin" : "merchant"}
                   style={{ paddingLeft: '40px', height: '44px' }} required />
               </div>
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500', color: '#4A3F2F' }}>Password</label>
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500', color: "var(--admin-text)" }}>Password</label>
               <div style={{ position: 'relative' }}>
-                <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#A89F91' }} />
+                <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: "var(--admin-muted)" }} />
                 <Input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
                   placeholder="Enter password"
                   style={{ paddingLeft: '40px', paddingRight: '40px', height: '44px' }} required />
                 <button type="button" onClick={() => setShowPassword(s => !s)}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#A89F91', padding: 4, display: 'flex' }}>
+                  style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: "var(--admin-muted)", padding: 4, display: 'flex' }}>
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>

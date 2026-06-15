@@ -8,8 +8,8 @@ import { Input } from "@/components/ui/input"
 import { FileText, Plus, X, Loader2, Printer } from "lucide-react"
 import DocLineItems, { EditLine, emptyLine } from "@/components/admin/DocLineItems"
 
-const TEXT = "#4A3F2F"
-const MUTED = "#A89F91"
+const TEXT = "var(--admin-text)"
+const MUTED = "var(--admin-muted)"
 const GREEN = "#6B7D5C"
 const ksh = (n: number) => `KSh ${n.toLocaleString()}`
 
@@ -72,7 +72,7 @@ export default function InvoicingPage() {
       </div>
 
       {showForm && (
-        <div style={{ background: "white", border: "1px solid #E5E7EB", borderRadius: 12, padding: 20, marginBottom: 24 }}>
+        <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, padding: 20, marginBottom: 24 }}>
           {error && <div style={{ background: "#FBEAEA", color: "#9B2C2C", padding: "8px 12px", borderRadius: 8, fontSize: 13, marginBottom: 12 }}>{error}</div>}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginBottom: 16 }}>
             <Field label="Customer name *"><Input value={customerName} onChange={(e) => setCustomerName(e.target.value)} /></Field>
@@ -92,7 +92,7 @@ export default function InvoicingPage() {
         </div>
       )}
 
-      <div style={{ background: "white", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden" }}>
+      <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, overflow: "hidden" }}>
         {loading ? (
           <p style={{ padding: 24, color: MUTED }}>Loading…</p>
         ) : invoices.length === 0 ? (
@@ -100,14 +100,14 @@ export default function InvoicingPage() {
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr style={{ background: "#FAF8F3", fontSize: 12, color: MUTED, textAlign: "left" }}>
+              <tr style={{ background: "var(--admin-card-2)", fontSize: 12, color: MUTED, textAlign: "left" }}>
                 <th style={th}>Number</th><th style={th}>Customer</th><th style={th}>Date</th>
                 <th style={{ ...th, textAlign: "right" }}>Total</th><th style={th} />
               </tr>
             </thead>
             <tbody>
               {invoices.map((inv) => (
-                <tr key={inv.id} style={{ borderTop: "1px solid #F0EDE6" }}>
+                <tr key={inv.id} style={{ borderTop: "1px solid var(--admin-border)" }}>
                   <td style={{ ...td, fontWeight: 600 }}>{inv.number}</td>
                   <td style={td}>{inv.customerName}</td>
                   <td style={td}>{new Date(inv.date).toLocaleDateString("en-KE")}</td>
