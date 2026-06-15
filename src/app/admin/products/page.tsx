@@ -12,6 +12,7 @@ export default function AdminProductsPage() {
   const { products, addProduct, updateProduct, deleteProduct, loadProducts } = useProductStore()
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [stockBase, setStockBase] = useState<number | null>(null) // current stock when editing (add-only)
   const [imageUrls, setImageUrls] = useState<string[]>([])
   const [newImageUrl, setNewImageUrl] = useState("")
   const [uploading, setUploading] = useState(false)
@@ -35,7 +36,7 @@ export default function AdminProductsPage() {
 
   const resetForm = () => {
     setForm({ name: "", description: "", category: "Furniture", retailPrice: "", wholesalePrice: "", distributorPrice: "", costPrice: "", stock: "", isOnOffer: false, offerPrice: "" })
-    setImageUrls([]); setNewImageUrl(""); setEditingId(null); setShowForm(false)
+    setImageUrls([]); setNewImageUrl(""); setEditingId(null); setStockBase(null); setShowForm(false)
   }
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -70,7 +71,8 @@ export default function AdminProductsPage() {
       name: form.name, description: form.description, category: form.category,
       retailPrice: Number(form.retailPrice), wholesalePrice: Number(form.wholesalePrice),
       distributorPrice: Number(form.distributorPrice), costPrice: Number(form.costPrice) || 0,
-      stock: Number(form.stock),
+      // Edit adds to current stock; create sets the initial stock.
+      stock: stockBase != null ? stockBase + (Number(form.stock) || 0) : Number(form.stock),
       images: imageUrls, isOnOffer: form.isOnOffer,
       offerPrice: form.isOnOffer ? Number(form.offerPrice) : null,
     }
@@ -89,11 +91,12 @@ export default function AdminProductsPage() {
 
   const handleEdit = async (product: Product) => {
     setEditingId(product.id)
+    setStockBase(product.stock) // edit = add to current stock, never reduce
     setForm({
       name: product.name, description: product.description, category: product.category,
       retailPrice: product.retailPrice.toString(), wholesalePrice: product.wholesalePrice.toString(),
       distributorPrice: product.distributorPrice.toString(), costPrice: (product.costPrice ?? 0).toString(),
-      stock: product.stock.toString(),
+      stock: "", // "add stock" amount, blank = add nothing
       isOnOffer: product.isOnOffer, offerPrice: product.offerPrice?.toString() || "",
     })
     setImageUrls(product.images ?? [])
@@ -184,7 +187,13 @@ export default function AdminProductsPage() {
               <div><label style={{ fontSize: '12px', fontWeight: '500', color: "var(--admin-text)", marginBottom: '4px', display: 'block' }}>Wholesale Price (KSh) *</label><Input type="number" value={form.wholesalePrice} onChange={e => setForm({...form, wholesalePrice: e.target.value})} /></div>
               <div><label style={{ fontSize: '12px', fontWeight: '500', color: "var(--admin-text)", marginBottom: '4px', display: 'block' }}>Distributor Price (KSh) *</label><Input type="number" value={form.distributorPrice} onChange={e => setForm({...form, distributorPrice: e.target.value})} /></div>
               <div><label style={{ fontSize: '12px', fontWeight: '500', color: "var(--admin-text)", marginBottom: '4px', display: 'block' }}>Cost Price (KSh) <span style={{ color: "var(--admin-muted)", fontWeight: 400 }}>— for profit</span></label><Input type="number" value={form.costPrice} onChange={e => setForm({...form, costPrice: e.target.value})} placeholder="What it costs you" /></div>
-              <div><label style={{ fontSize: '12px', fontWeight: '500', color: "var(--admin-text)", marginBottom: '4px', display: 'block' }}>Stock *</label><Input type="number" value={form.stock} onChange={e => setForm({...form, stock: e.target.value})} /></div>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: '500', color: "var(--admin-text)", marginBottom: '4px', display: 'block' }}>
+                  {editingId ? `Add Stock (current: ${stockBase ?? 0})` : 'Stock *'}
+                </label>
+                <Input type="number" min={0} value={form.stock} onChange={e => setForm({...form, stock: e.target.value})} placeholder={editingId ? 'Qty to add' : ''} />
+                {editingId && <p style={{ fontSize: '11px', color: "var(--admin-muted)", marginTop: '4px' }}>Stock can only be added. It goes down only through sales.</p>}
+              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px' }}><input type="checkbox" checked={form.isOnOffer} onChange={e => setForm({...form, isOnOffer: e.target.checked})} /> On Offer</label>
                 {form.isOnOffer && <Input type="number" value={form.offerPrice} onChange={e => setForm({...form, offerPrice: e.target.value})} placeholder="Offer price" style={{ width: '160px' }} />}
@@ -214,7 +223,7 @@ export default function AdminProductsPage() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
-              <Button onClick={handleSave} style={{ backgroundColor: '#6B7D5C', color: 'white' }} disabled={!form.name || !form.retailPrice || !form.stock || uploading || saving}>{saving ? 'Saving…' : editingId ? 'Update' : 'Save'}</Button>
+              <Button onClick={handleSave} style={{ backgroundColor: '#6B7D5C', color: 'white' }} disabled={!form.name || !form.retailPrice || (!editingId && !form.stock) || uploading || saving}>{saving ? 'Saving…' : editingId ? 'Update' : 'Save'}</Button>
               <Button variant="outline" onClick={resetForm}>Cancel</Button>
             </div>
           </CardContent>

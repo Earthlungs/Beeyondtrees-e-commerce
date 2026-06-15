@@ -11,7 +11,7 @@ import {
 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { ROLE_LABELS } from "@/lib/tracing-stages"
-import { applyTheme, getStoredTheme } from "@/lib/theme"
+import { applyTheme, getStoredTheme, type Theme } from "@/lib/theme"
 
 const TRACING_ROLES = [
   "factory_manager", "executive", "procurement_officer", "quality_inspector",
@@ -45,6 +45,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (mustChange && !pathname.startsWith("/admin/account")) router.replace("/admin/account")
   }, [mustChange, pathname, router])
+
+  // Apply THIS user's saved theme on login — overrides any theme another user
+  // left in this browser's localStorage, so themes are per-account.
+  const userTheme = (session?.user as { theme?: string } | undefined)?.theme
+  useEffect(() => {
+    if (userTheme === "dark" || userTheme === "light" || userTheme === "system") {
+      try { localStorage.setItem("theme", userTheme) } catch {}
+      applyTheme(userTheme as Theme)
+    }
+  }, [userTheme])
 
   // Keep "system" theme in sync with the OS while the app is open.
   useEffect(() => {
