@@ -89,7 +89,9 @@ model Product {
   stock            Int         @default(0)
   images           Json        @default("[]")
   isOnOffer        Boolean     @default(false)
-  offerPrice       Float?
+  offerPrice       Float? // retail offer price (when isOnOffer)
+  offerWholesalePrice   Float? // wholesale offer price
+  offerDistributorPrice Float? // distributor offer price
   isFeatured       Boolean     @default(false)
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt

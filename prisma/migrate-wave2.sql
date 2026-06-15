@@ -7,6 +7,10 @@ ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "phone" TEXT;
 ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "image" TEXT;
 ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "mustChangePassword" BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "theme" TEXT NOT NULL DEFAULT 'system';
+
+-- Per-tier offer prices (offerPrice already exists = retail offer)
+ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "offerWholesalePrice" DOUBLE PRECISION;
+ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "offerDistributorPrice" DOUBLE PRECISION;
 CREATE UNIQUE INDEX IF NOT EXISTS "User_email_key" ON "User"("email");
 
 -- Chat

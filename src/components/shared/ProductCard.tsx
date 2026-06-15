@@ -3,7 +3,7 @@
 import { motion } from "motion/react"
 import Link from "next/link"
 import { ShoppingBag, TreePine, Heart } from "lucide-react"
-import { Product, slugify, productImageUrl } from "@/store/product-store"
+import { Product, slugify, productImageUrl, effectivePrice, regularPrice } from "@/store/product-store"
 import { useCartStore } from "@/store/cart-store"
 import { useWishlistStore } from "@/store/wishlist-store"
 
@@ -18,12 +18,14 @@ export function ProductCard({ product }: { product: Product }) {
   const toggleWish = useWishlistStore((s) => s.toggle)
   const slug = slugify(product.name)
   const out = product.stock === 0
+  const retail = effectivePrice(product, "retail")
+  const onOffer = product.isOnOffer && retail < regularPrice(product, "retail")
 
   const add = () =>
     addItem({
       id: `${product.id}-retail`,
       name: product.name,
-      price: product.retailPrice,
+      price: retail,
       image: productImageUrl(product, 0, 200),
       pricingTier: "retail",
       maxQuantity: product.stock,
@@ -50,7 +52,7 @@ export function ProductCard({ product }: { product: Product }) {
               <span style={{ background: "rgba(230,168,23,0.95)", color: "white", fontSize: 11, fontWeight: 700, padding: "5px 10px", borderRadius: 999 }}>Only {product.stock} left</span>
             ) : null}
             {product.isOnOffer && (
-              <span style={{ background: "#8C6A4A", color: "white", fontSize: 11, fontWeight: 700, padding: "5px 10px", borderRadius: 999, alignSelf: "flex-start" }}>Offer</span>
+              <span className="byt-blink" style={{ background: "#C2452D", color: "white", fontSize: 11, fontWeight: 800, letterSpacing: "0.04em", padding: "5px 10px", borderRadius: 999, alignSelf: "flex-start", boxShadow: "0 2px 8px rgba(194,69,45,0.45)" }}>★ OFFER</span>
             )}
           </div>
         </div>
@@ -68,7 +70,8 @@ export function ProductCard({ product }: { product: Product }) {
         </Link>
         <div style={{ marginTop: "auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
           <div>
-            <span className="font-display" style={{ fontSize: 19, fontWeight: 600, color: DARK }}>KSh {product.retailPrice?.toLocaleString()}</span>
+            <span className="font-display" style={{ fontSize: 19, fontWeight: 600, color: onOffer ? "#C2452D" : DARK }}>KSh {retail.toLocaleString()}</span>
+            {onOffer && <span style={{ fontSize: 12, color: "#A89F91", textDecoration: "line-through", marginLeft: 6 }}>KSh {regularPrice(product, "retail").toLocaleString()}</span>}
             <span style={{ display: "block", fontSize: 11, color: "#A89F91" }}>retail · tiers inside</span>
           </div>
           <motion.button

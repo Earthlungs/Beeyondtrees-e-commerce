@@ -164,6 +164,13 @@ body {
   100% { transform: translateX(100%); }
 }
 
+/* Blinking offer tag on the storefront. */
+@keyframes byt-blink {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.94); }
+}
+.byt-blink { animation: byt-blink 1s ease-in-out infinite; }
+
 @keyframes byt-bob {
   0%, 100% { transform: translateY(0); opacity: 0.8; }
   50% { transform: translateY(7px); opacity: 1; }
