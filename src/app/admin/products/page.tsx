@@ -118,12 +118,12 @@ export default function AdminProductsPage() {
     <div>
       {/* Custom toast (replaces browser alert) */}
       {notice && (
-        <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 1000, maxWidth: '360px', display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px 14px', backgroundColor: notice.tone === 'success' ? 'var(--admin-success-bg)' : 'var(--admin-error-bg)', border: `1px solid ${notice.tone === 'success' ? '#6B7D5C' : '#8C6A4A'}`, borderRadius: '8px', boxShadow: '0 4px 14px rgba(0,0,0,0.12)' }}>
+        <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 1000, maxWidth: '360px', display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px 14px', backgroundColor: notice.tone === 'success' ? 'var(--admin-success-bg)' : 'var(--admin-error-bg)', border: `1px solid ${notice.tone === 'success' ? '#6B7D5C' : 'var(--admin-error-fg)'}`, borderRadius: '8px', boxShadow: '0 4px 14px rgba(0,0,0,0.12)' }}>
           {notice.tone === 'success'
             ? <CheckCircle2 size={18} style={{ color: '#6B7D5C', flexShrink: 0, marginTop: '1px' }} />
-            : <AlertTriangle size={18} style={{ color: '#8C6A4A', flexShrink: 0, marginTop: '1px' }} />}
+            : <AlertTriangle size={18} style={{ color: 'var(--admin-error-fg)', flexShrink: 0, marginTop: '1px' }} />}
           <span style={{ fontSize: '13px', color: "var(--admin-text)", lineHeight: 1.4 }}>{notice.text}</span>
-          <button onClick={() => setNotice(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: notice.tone === 'success' ? '#6B7D5C' : '#8C6A4A', flexShrink: 0, padding: 0, lineHeight: 0 }}><X size={14} /></button>
+          <button onClick={() => setNotice(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: notice.tone === 'success' ? '#6B7D5C' : 'var(--admin-error-fg)', flexShrink: 0, padding: 0, lineHeight: 0 }}><X size={14} /></button>
         </div>
       )}
 
@@ -139,20 +139,16 @@ export default function AdminProductsPage() {
 
       {/* Alerts */}
       {outOfStock.length > 0 && (
-        <Card style={{ borderColor: 'var(--admin-error-border)', backgroundColor: 'var(--admin-error-bg)', marginBottom: '12px' }}>
-          <CardContent style={{ padding: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <AlertTriangle style={{ color: '#8C6A4A', flexShrink: 0 }} />
-            <span style={{ fontSize: '13px', color: "var(--admin-text)" }}><strong>Out of Stock:</strong> {outOfStock.map(p => p.name).join(', ')}</span>
-          </CardContent>
-        </Card>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '11px 14px', marginBottom: '12px', borderRadius: '10px', background: 'var(--admin-error-bg)', border: '1px solid var(--admin-error-border)', borderLeft: '4px solid var(--admin-error-fg)' }}>
+          <AlertTriangle size={18} style={{ color: 'var(--admin-error-fg)', flexShrink: 0 }} />
+          <span style={{ fontSize: '13px', color: 'var(--admin-text)' }}><strong>Out of Stock:</strong> {outOfStock.map(p => p.name).join(', ')}</span>
+        </div>
       )}
       {lowStockProducts.length > 0 && (
-        <Card style={{ borderColor: 'var(--admin-warn-border)', backgroundColor: 'var(--admin-warn-bg)', marginBottom: '12px' }}>
-          <CardContent style={{ padding: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <AlertTriangle style={{ color: '#E6A817', flexShrink: 0 }} />
-            <span style={{ fontSize: '13px', color: "var(--admin-text)" }}><strong>Low Stock:</strong> {lowStockProducts.map(p => `${p.name} (${p.stock})`).join(', ')}</span>
-          </CardContent>
-        </Card>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '11px 14px', marginBottom: '12px', borderRadius: '10px', background: 'var(--admin-warn-bg)', border: '1px solid var(--admin-warn-border)', borderLeft: '4px solid var(--admin-warn-fg)' }}>
+          <AlertTriangle size={18} style={{ color: 'var(--admin-warn-fg)', flexShrink: 0 }} />
+          <span style={{ fontSize: '13px', color: 'var(--admin-text)' }}><strong>Low Stock:</strong> {lowStockProducts.map(p => `${p.name} (${p.stock})`).join(', ')}</span>
+        </div>
       )}
 
       {/* Stats Bar */}
