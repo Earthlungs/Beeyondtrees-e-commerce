@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import { Plus, Trash2, Edit, X, Upload, AlertTriangle, CheckCircle2, Package, Image } from "lucide-react"
 import { useProductStore, Product } from "@/store/product-store"
 import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary"
@@ -244,7 +243,7 @@ export default function AdminProductsPage() {
               {products.map(p => (
                 <tr key={p.id} style={{ borderBottom: '1px solid #A89F91' }}>
                   <td style={{ padding: '10px 14px' }}><div style={{ fontWeight: '500', color: "var(--admin-text)", fontSize: '13px' }}>{p.name}</div></td>
-                  <td style={{ padding: '10px 14px' }}><Badge style={{ backgroundColor: '#E6D3A3', color: '#4A3F2F', border: 'none', fontSize: '11px' }}>{p.category}</Badge></td>
+                  <td style={{ padding: '10px 14px' }}><span style={{ display: 'inline-block', backgroundColor: '#E6D3A3', color: '#4A3F2F', fontSize: '11px', fontWeight: 600, lineHeight: 1.6, padding: '3px 10px', borderRadius: '999px', whiteSpace: 'nowrap' }}>{p.category}</span></td>
                   <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: '500', color: "var(--admin-text)", fontSize: '13px' }}>KSh {p.retailPrice}</td>
                   <td style={{ padding: '10px 14px', textAlign: 'right', color: "var(--admin-muted)", fontSize: '12px' }}>KSh {p.wholesalePrice}</td>
                   <td style={{ padding: '10px 14px', textAlign: 'right', color: "var(--admin-muted)", fontSize: '12px' }}>KSh {p.distributorPrice}</td>
