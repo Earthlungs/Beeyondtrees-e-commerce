@@ -3,7 +3,7 @@
 import { motion } from "motion/react"
 import Link from "next/link"
 import { ShoppingBag, TreePine, Heart } from "lucide-react"
-import { Product, slugify, productImageUrl, effectivePrice, regularPrice } from "@/store/product-store"
+import { Product, slugify, productImageUrl, effectivePrice, regularPrice, discountPercent } from "@/store/product-store"
 import { useCartStore } from "@/store/cart-store"
 import { useWishlistStore } from "@/store/wishlist-store"
 
@@ -20,6 +20,7 @@ export function ProductCard({ product }: { product: Product }) {
   const out = product.stock === 0
   const retail = effectivePrice(product, "retail")
   const onOffer = product.isOnOffer && retail < regularPrice(product, "retail")
+  const pct = discountPercent(product, "retail")
 
   const add = () =>
     addItem({
@@ -52,7 +53,7 @@ export function ProductCard({ product }: { product: Product }) {
               <span style={{ background: "rgba(230,168,23,0.95)", color: "white", fontSize: 11, fontWeight: 700, padding: "5px 10px", borderRadius: 999 }}>Only {product.stock} left</span>
             ) : null}
             {product.isOnOffer && (
-              <span className="byt-blink" style={{ background: "#C2452D", color: "white", fontSize: 11, fontWeight: 800, letterSpacing: "0.04em", padding: "5px 10px", borderRadius: 999, alignSelf: "flex-start", boxShadow: "0 2px 8px rgba(194,69,45,0.45)" }}>★ OFFER</span>
+              <span className="byt-blink" style={{ background: "#C2452D", color: "white", fontSize: 11, fontWeight: 800, letterSpacing: "0.04em", padding: "5px 10px", borderRadius: 999, alignSelf: "flex-start", boxShadow: "0 2px 8px rgba(194,69,45,0.45)" }}>{pct > 0 ? `${pct}% OFF` : "★ OFFER"}</span>
             )}
           </div>
         </div>

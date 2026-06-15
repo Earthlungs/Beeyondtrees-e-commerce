@@ -41,6 +41,31 @@ export const effectivePrice = (p: Product, tier: PricingTier): number => {
   return offer ?? regularPrice(p, tier)
 }
 
+// Discount as a whole-number percent for a tier (0 if not a real discount).
+export const discountPercent = (p: Product, tier: PricingTier): number => {
+  const offer = p.isOnOffer ? offerPriceFor(p, tier) : null
+  const reg = regularPrice(p, tier)
+  if (!offer || reg <= 0 || offer >= reg) return 0
+  return Math.round((1 - offer / reg) * 100)
+}
+
+// Typo/partial-tolerant search: matches if the query is a substring, or every
+// query word is a substring OR an in-order subsequence of the text (e.g.
+// "cofee mug" → "Coffee Mug").
+export const fuzzyMatch = (query: string, text: string): boolean => {
+  const q = query.trim().toLowerCase()
+  if (!q) return true
+  const t = text.toLowerCase()
+  if (t.includes(q)) return true
+  return q.split(/\s+/).every((word) => {
+    if (t.includes(word)) return true
+    if (word.length < 3) return false
+    let i = 0
+    for (const ch of t) { if (ch === word[i] && ++i === word.length) return true }
+    return false
+  })
+}
+
 // Keep only hosted (Cloudinary) URLs for the lightweight cached copy; base64
 // data-URIs are dropped (kept out of localStorage) and rendered via the
 // /api/products/[id]/image fallback instead. Positions are preserved with "".
