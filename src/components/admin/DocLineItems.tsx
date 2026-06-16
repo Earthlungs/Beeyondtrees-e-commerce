@@ -134,16 +134,16 @@ export default function DocLineItems({ lines, setLines }: { lines: EditLine[]; s
         </div>
       )}
 
-      <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 580 }}>
+      <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" } as React.CSSProperties}>
+        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 520 }}>
           <thead>
             <tr style={{ fontSize: 12, color: MUTED, textAlign: "left" }}>
-              <th style={{ padding: "4px 8px" }}>Description</th>
-              <th style={{ padding: "4px 8px", width: 70 }}>Qty</th>
-              <th style={{ padding: "4px 8px", width: 110 }}>Unit Price</th>
-              <th style={{ padding: "4px 8px", width: 80 }}>Tax %</th>
-              <th style={{ padding: "4px 8px", width: 110, textAlign: "right" }}>Amount</th>
-              <th style={{ width: 32 }} />
+              <th style={{ padding: "4px 8px", minWidth: 140 }}>Description</th>
+              <th style={{ padding: "4px 8px", width: 60 }}>Qty</th>
+              <th style={{ padding: "4px 8px", width: 100 }}>Unit Price</th>
+              <th style={{ padding: "4px 8px", width: 60 }}>Tax %</th>
+              <th style={{ padding: "4px 8px", width: 100, textAlign: "right" }}>Amount</th>
+              <th style={{ width: 28 }} />
             </tr>
           </thead>
           <tbody>
