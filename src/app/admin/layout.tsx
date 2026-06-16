@@ -112,6 +112,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           { href: "/admin/products", label: "Products", icon: Package },
           { href: "/admin/deliveries", label: "Deliveries", icon: Truck },
           ...(isAdmin ? [
+            { href: "/admin/lpo", label: "LPO", icon: ClipboardList },
+            { href: "/admin/invoicing", label: "Invoicing", icon: FileText },
             { href: "/admin/analytics", label: "Analytics", icon: TrendingUp },
             { href: "/admin/customers", label: "Customers", icon: Users },
           ] : [chat]),
