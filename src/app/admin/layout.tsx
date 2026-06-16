@@ -77,6 +77,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const avatar = (session.user as { image?: string | null })?.image || null
   const isAdmin = role === "admin" || role === "it_specialist" // full control
   const isTracing = TRACING_ROLES.includes(role)
+  const canDoc = role === "procurement_officer" || role === "executive" // LPO + invoicing
 
   const chat: NavItem = { href: "/admin/chat", label: "Chat", icon: MessageSquare }
 
@@ -85,8 +86,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   let groups: NavGroup[]
   if (role === "cashier") {
     groups = [{ items: [{ href: "/admin/pos", label: "Point of Sale", icon: ShoppingCart }, chat] }]
-  } else if (isTracing) {
+  } else if (isTracing && !canDoc) {
     groups = [{ title: "Value Chain", items: [{ href: "/admin/tracing", label: "Tracing Board", icon: Workflow }, chat] }]
+  } else if (isTracing && canDoc) {
+    groups = [
+      {
+        title: "Documents",
+        items: [
+          { href: "/admin/lpo", label: "LPO", icon: ClipboardList },
+          { href: "/admin/invoicing", label: "Invoicing", icon: FileText },
+        ],
+      },
+      {
+        title: "Value Chain",
+        items: [{ href: "/admin/tracing", label: "Tracing Board", icon: Workflow }, chat],
+      },
+    ]
   } else {
     groups = [
       {
