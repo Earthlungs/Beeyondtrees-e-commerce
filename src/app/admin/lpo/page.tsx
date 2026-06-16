@@ -182,13 +182,13 @@ export default function LpoPage() {
                           </Button>
                         </>
                       )}
-                      {(!l.status || l.status === "approved") ? (
+                      {l.status === "approved" ? (
                         <Link href={`/admin/lpo/${l.id}`} style={{ color: GREEN, fontWeight: 600, fontSize: 13, textDecoration: "none" }}>View / Print</Link>
                       ) : l.status === "rejected" ? (
                         <span style={{ color: RED, fontSize: 12.5 }}>Rejected</span>
-                      ) : !isAdmin ? (
+                      ) : (
                         <span style={{ color: AMBER, fontSize: 12.5 }}>Awaiting approval</span>
-                      ) : null}
+                      )}
                     </div>
                   </td>
                 </tr>
