@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
-import { requireRole } from "@/lib/authz"
+import { requireRole, isAdminish } from "@/lib/authz"
 import { createNumbered, parseDate } from "@/lib/docs"
 import { TRACING_ROLES, computeReconciliation } from "@/lib/tracing"
 
 // Anyone in the pipeline (or admin) can see the board.
-const VIEW_ROLES = [...TRACING_ROLES, "admin"]
+const VIEW_ROLES = [...TRACING_ROLES, "admin", "it_specialist"]
 
 export async function GET(request: NextRequest) {
   const auth = await requireRole(request, VIEW_ROLES)
   if (auth instanceof NextResponse) return auth
+  // Cost summary (cost-per-unit + profit/loss verdict) is admin-only.
+  const canSeeCosts = isAdminish((auth.token as { role?: string }).role)
 
   const batches = await prisma.batch.findMany({
     orderBy: { createdAt: "desc" },
@@ -28,7 +30,7 @@ export async function GET(request: NextRequest) {
   const rows = await Promise.all(
     batches.map(async (b) => {
       let summary: { costPerUnit: number; verdict: string } | null = null
-      if (b.status === "completed") {
+      if (canSeeCosts && b.status === "completed") {
         const r = await computeReconciliation(b)
         const worst = r.tiers.find((t) => t.verdict === "loss") ?? r.tiers[0]
         summary = worst ? { costPerUnit: r.costPerUnit, verdict: worst.verdict } : null

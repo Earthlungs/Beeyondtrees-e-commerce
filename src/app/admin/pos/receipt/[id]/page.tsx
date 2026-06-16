@@ -1,27 +1,21 @@
 import { Suspense } from "react"
 import Link from "next/link"
 import { prisma } from "@/lib/db"
+import BrandedDoc, { DOC_GREEN } from "@/components/admin/BrandedDoc"
 import PrintControls from "./print-controls"
 
-const ksh = (n: number) => `KSh ${n.toLocaleString()}`
+const ksh = (n: number) => `KSh ${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+const fmtDate = (d: Date) => new Date(d).toLocaleString("en-KE", { dateStyle: "medium", timeStyle: "short" })
 const methodLabel: Record<string, string> = { cash: "Cash", mpesa: "M-Pesa", card: "Card" }
 
-// In-store sale receipt. Server component: reads the order straight from the DB
-// (it lives under /admin/pos, so proxy.ts already gated access). A narrow,
-// thermal-printer-friendly layout; the print stylesheet hides the admin chrome
-// so only the receipt prints.
 export default async function ReceiptPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const order = await prisma.order.findUnique({
-    where: { id },
-    include: { items: true },
-  })
+  const order = await prisma.order.findUnique({ where: { id }, include: { items: true } })
 
   if (!order) {
     return (
       <div style={{ padding: 40, textAlign: "center", color: "#A89F91" }}>
-        Receipt not found.{" "}
-        <Link href="/admin/pos" style={{ color: "#6B7D5C" }}>Back to till</Link>
+        Receipt not found. <Link href="/admin/pos" style={{ color: DOC_GREEN }}>Back to till</Link>
       </div>
     )
   }
@@ -33,93 +27,91 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
 
   return (
     <>
-      {/* Print only the receipt — hide the sidebar, header and on-screen buttons. */}
-      <style>{`
-        @media print {
-          body * { visibility: hidden !important; }
-          #receipt, #receipt * { visibility: visible !important; }
-          #receipt { position: absolute; left: 0; top: 0; width: 100%; margin: 0; box-shadow: none; border: none; }
-          .no-print { display: none !important; }
-          @page { margin: 8mm; }
-        }
-      `}</style>
-
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-        <div
-          id="receipt"
-          style={{
-            width: 320, background: "white", border: "1px solid #E5E7EB", borderRadius: 12,
-            padding: "24px 22px", fontFamily: "monospace", color: "#2A2A2A",
-          }}
-        >
-          {/* Header */}
-          <div style={{ textAlign: "center", marginBottom: 14 }}>
-            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: 1 }}>BEEYOND TREES</div>
-            <div style={{ fontSize: 11, color: "#777", marginTop: 2 }}>Sales Receipt</div>
-          </div>
-
-          <div style={{ fontSize: 11, color: "#555", lineHeight: 1.7, borderBottom: "1px dashed #CCC", paddingBottom: 10 }}>
-            <div>Receipt: {order.id.slice(-8).toUpperCase()}</div>
-            <div>{new Date(order.createdAt).toLocaleString("en-KE")}</div>
-            {order.soldBy && <div>Served by: {order.soldBy}</div>}
-            {order.customerName && order.customerName !== "Walk-in customer" && (
-              <div>Customer: {order.customerName}</div>
+      <BrandedDoc title="RECEIPT">
+        {/* Receipt meta */}
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20, fontSize: 13, flexWrap: "wrap", gap: 12 }}>
+          <div style={{ lineHeight: 1.9 }}>
+            {order.customerName && order.customerName !== "Walk-in customer" ? (
+              <>
+                <div style={{ fontWeight: 800, fontSize: 14 }}>Received by</div>
+                <div>{order.customerName}</div>
+                {order.customerPhone && <div>{order.customerPhone}</div>}
+              </>
+            ) : (
+              <div style={{ color: "#888", fontSize: 13 }}>Walk-in customer</div>
             )}
           </div>
-
-          {/* Items */}
-          <div style={{ padding: "10px 0", borderBottom: "1px dashed #CCC" }}>
-            {order.items.map((it) => (
-              <div key={it.id} style={{ marginBottom: 8, fontSize: 12 }}>
-                <div style={{ fontWeight: 600 }}>{it.productName}</div>
-                <div style={{ display: "flex", justifyContent: "space-between", color: "#555" }}>
-                  <span>{it.quantity} × {ksh(it.price)} <span style={{ color: "#999" }}>({it.pricingTier})</span></span>
-                  <span style={{ fontWeight: 600, color: "#2A2A2A" }}>{ksh(it.subtotal)}</span>
-                </div>
-              </div>
-            ))}
+          <div style={{ lineHeight: 1.9, textAlign: "right" }}>
+            <div><strong>Receipt No:</strong> {order.id.slice(-8).toUpperCase()}</div>
+            <div><strong>Date:</strong> {fmtDate(order.createdAt)}</div>
+            {order.soldBy && <div><strong>Served by:</strong> {order.soldBy}</div>}
           </div>
+        </div>
 
-          {/* Totals */}
-          <div style={{ padding: "10px 0", fontSize: 13 }}>
-            <Row label="TOTAL" value={ksh(order.total)} bold big />
-            <Row label="Payment" value={methodLabel[order.paymentMethod ?? ""] ?? order.paymentMethod ?? "—"} />
+        {/* Line items */}
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <thead>
+            <tr style={{ borderBottom: `2px solid ${DOC_GREEN}`, textAlign: "left" }}>
+              <th style={{ padding: "8px 6px" }}>Item</th>
+              <th style={{ padding: "8px 6px", width: 60 }}>Qty</th>
+              <th style={{ padding: "8px 6px", width: 110 }}>Unit Price</th>
+              <th style={{ padding: "8px 6px", width: 80 }}>Tier</th>
+              <th style={{ padding: "8px 6px", width: 120, textAlign: "right" }}>Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {order.items.map((it) => (
+              <tr key={it.id} style={{ borderBottom: "1px solid #EEE" }}>
+                <td style={{ padding: "8px 6px" }}>{it.productName}</td>
+                <td style={{ padding: "8px 6px" }}>{it.quantity}</td>
+                <td style={{ padding: "8px 6px" }}>{ksh(it.price)}</td>
+                <td style={{ padding: "8px 6px", textTransform: "capitalize", color: "#777" }}>{it.pricingTier}</td>
+                <td style={{ padding: "8px 6px", textAlign: "right" }}>{ksh(it.subtotal)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {/* Payment + totals */}
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 36, gap: 24, flexWrap: "wrap" }}>
+          <div style={{ maxWidth: 280 }}>
+            <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 6 }}>Payment Method</div>
+            <div style={{ fontSize: 13, color: "#555" }}>{methodLabel[order.paymentMethod ?? ""] ?? order.paymentMethod ?? "—"}</div>
+            {order.paymentMethod === "mpesa" && order.mpesaCode && (
+              <div style={{ fontSize: 13, color: "#555", marginTop: 4 }}>M-Pesa code: <strong>{order.mpesaCode}</strong></div>
+            )}
+            {order.paymentMethod === "card" && order.cardRef && (
+              <div style={{ fontSize: 13, color: "#555", marginTop: 4 }}>Card ref: <strong>{order.cardRef}</strong></div>
+            )}
+          </div>
+          <div style={{ width: 240, fontSize: 14 }}>
+            <Row label="Total" value={ksh(order.total)} bold />
             {order.paymentMethod === "cash" && order.cashReceived != null && (
               <>
+                <div style={{ borderTop: `1px solid #EEE`, margin: "6px 0" }} />
                 <Row label="Cash received" value={ksh(order.cashReceived)} />
                 {change != null && <Row label="Change" value={ksh(change)} />}
               </>
             )}
-            {order.paymentMethod === "mpesa" && order.mpesaCode && (
-              <Row label="M-Pesa code" value={order.mpesaCode} />
-            )}
-            {order.paymentMethod === "card" && order.cardRef && (
-              <Row label="Card ref" value={order.cardRef} />
-            )}
-          </div>
-
-          <div style={{ textAlign: "center", fontSize: 11, color: "#777", borderTop: "1px dashed #CCC", paddingTop: 12 }}>
-            Asante sana! Thank you for shopping with us.
-            <div style={{ marginTop: 6, fontSize: 10, lineHeight: 1.6 }}>
-              www.beeyondtrees.org · +254 790 279 826<br />
-              Palm Court, Waiyaki Way
-            </div>
           </div>
         </div>
 
-        <Suspense fallback={null}>
-          <PrintControls />
-        </Suspense>
-      </div>
+        <div style={{ marginTop: 24, textAlign: "center", fontSize: 12, color: "#888" }}>
+          Asante sana! Thank you for shopping with us.
+        </div>
+      </BrandedDoc>
+
+      <Suspense fallback={null}>
+        <PrintControls />
+      </Suspense>
     </>
   )
 }
 
-function Row({ label, value, bold, big }: { label: string; value: string; bold?: boolean; big?: boolean }) {
+function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", margin: "3px 0" }}>
-      <span style={{ color: "#555", fontWeight: bold ? 700 : 400, fontSize: big ? 14 : 12 }}>{label}</span>
-      <span style={{ fontWeight: bold ? 800 : 600, fontSize: big ? 15 : 12 }}>{value}</span>
+    <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontWeight: bold ? 800 : 600, fontSize: bold ? 16 : 14 }}>
+      <span>{label}</span><span>{value}</span>
     </div>
   )
 }

@@ -14,12 +14,43 @@ export default async function LpoDocPage({ params }: { params: Promise<{ id: str
   if (!lpo) {
     return <div style={{ padding: 40, textAlign: "center", color: "#A89F91" }}>Purchase order not found. <Link href="/admin/lpo" style={{ color: DOC_GREEN }}>Back</Link></div>
   }
+
+  // Fetch extra columns via raw SQL (not in Prisma model — applied by migration).
+  let status: string | null = null
+  let rejectionReason: string | null = null
+  let destinationOfGoods: string | null = null
+  try {
+    const rows = await prisma.$queryRaw<{ status: string; rejectionReason: string | null; destinationOfGoods: string | null }[]>`
+      SELECT status, "rejectionReason", "destinationOfGoods" FROM "Lpo" WHERE id = ${id}
+    `
+    if (rows[0]) { status = rows[0].status; rejectionReason = rows[0].rejectionReason; destinationOfGoods = rows[0].destinationOfGoods }
+  } catch { /* pre-migration — treat as approved */ }
+
+  // Gate: only approved LPOs can be generated/printed. null status (pre-migration)
+  // is treated as approved so existing LPOs remain accessible.
+  if (status && status !== "approved") {
+    const rejected = status === "rejected"
+    return (
+      <div style={{ maxWidth: 560, margin: "60px auto", textAlign: "center", padding: 24 }}>
+        <div style={{ fontSize: 18, fontWeight: 800, color: rejected ? "#C0392B" : "#8a6d00", marginBottom: 8 }}>
+          {rejected ? "This LPO was rejected" : "Awaiting admin approval"}
+        </div>
+        <p style={{ color: "#6b6353", fontSize: 14 }}>
+          {rejected
+            ? rejectionReason || "An admin rejected this purchase order."
+            : "This purchase order must be approved by an admin before it can be generated or printed."}
+        </p>
+        <Link href="/admin/lpo" style={{ display: "inline-block", marginTop: 18, color: DOC_GREEN, fontWeight: 600, textDecoration: "none" }}>← Back to LPOs</Link>
+      </div>
+    )
+  }
+
   const items = (lpo.items as unknown as DocLine[]) ?? []
 
   return (
     <>
       <BrandedDoc title="PURCHASE ORDER">
-        {/* Two-column meta block (matches template) */}
+        {/* Two-column meta block */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "18px 24px", marginBottom: 24, fontSize: 13 }}>
           <div>
             <div style={{ fontWeight: 800, fontSize: 14 }}>Shipping Address</div>
@@ -40,6 +71,12 @@ export default async function LpoDocPage({ params }: { params: Promise<{ id: str
           <div>
             <div style={{ fontWeight: 800, fontSize: 14 }}>Expected Arrival</div>
             <div style={{ color: "#555" }}>{fmtDate(lpo.expectedArrival)}</div>
+            {destinationOfGoods && (
+              <>
+                <div style={{ fontWeight: 800, fontSize: 14, marginTop: 12 }}>Destination of Goods</div>
+                <div style={{ color: "#555", whiteSpace: "pre-wrap" }}>{destinationOfGoods}</div>
+              </>
+            )}
           </div>
         </div>
 

@@ -73,6 +73,9 @@ model Lpo {
   vat             Float     @default(0)
   total           Float     @default(0)
   notes           String?   @db.Text
+  // Approval, destination, and rejection fields are NOT in the Prisma schema —
+  // they live as raw DB columns applied via migration. Using raw SQL for them
+  // keeps Prisma queries working before and after the migration runs.
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 }
