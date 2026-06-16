@@ -1,8 +1,11 @@
 import { Suspense } from "react"
 import Link from "next/link"
+import { getServerSession } from "next-auth/next"
 import { prisma } from "@/lib/db"
 import BrandedDoc, { DOC_GREEN } from "@/components/admin/BrandedDoc"
 import DocPrintControls from "@/components/admin/DocPrintControls"
+import { authOptions } from "@/lib/auth"
+import { isAdminish } from "@/lib/authz"
 import type { DocLine } from "@/lib/docs"
 
 const ksh = (n: number) => `KSh ${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
@@ -15,20 +18,28 @@ export default async function LpoDocPage({ params }: { params: Promise<{ id: str
     return <div style={{ padding: 40, textAlign: "center", color: "#A89F91" }}>Purchase order not found. <Link href="/admin/lpo" style={{ color: DOC_GREEN }}>Back</Link></div>
   }
 
-  // Fetch extra columns via raw SQL (not in Prisma model — applied by migration).
+  const session = await getServerSession(authOptions)
+  const userRole = (session?.user as { role?: string })?.role
+  const isAdmin = isAdminish(userRole)
+
   let status: string | null = null
   let rejectionReason: string | null = null
   let destinationOfGoods: string | null = null
+  let amended = false
   try {
-    const rows = await prisma.$queryRaw<{ status: string; rejectionReason: string | null; destinationOfGoods: string | null }[]>`
-      SELECT status, "rejectionReason", "destinationOfGoods" FROM "Lpo" WHERE id = ${id}
+    const rows = await prisma.$queryRaw<{ status: string; rejectionReason: string | null; destinationOfGoods: string | null; amended: boolean }[]>`
+      SELECT status, "rejectionReason", "destinationOfGoods", "amended" FROM "Lpo" WHERE id = ${id}
     `
-    if (rows[0]) { status = rows[0].status; rejectionReason = rows[0].rejectionReason; destinationOfGoods = rows[0].destinationOfGoods }
+    if (rows[0]) {
+      status = rows[0].status
+      rejectionReason = rows[0].rejectionReason
+      destinationOfGoods = rows[0].destinationOfGoods
+      amended = rows[0].amended ?? false
+    }
   } catch { /* pre-migration — treat as approved */ }
 
-  // Gate: only approved LPOs can be generated/printed. null status (pre-migration)
-  // is treated as approved so existing LPOs remain accessible.
-  if (status && status !== "approved") {
+  // Non-admins: gate on approval status
+  if (!isAdmin && status && status !== "approved") {
     const rejected = status === "rejected"
     return (
       <div style={{ maxWidth: 560, margin: "60px auto", textAlign: "center", padding: 24 }}>
@@ -47,10 +58,41 @@ export default async function LpoDocPage({ params }: { params: Promise<{ id: str
 
   const items = (lpo.items as unknown as DocLine[]) ?? []
 
+  // Banner shown when admin is previewing a non-approved LPO
+  const statusBanner = isAdmin && status && status !== "approved" ? (
+    <div style={{
+      background: status === "rejected" ? "#FFF5F5" : "#FFFBEB",
+      border: `1px solid ${status === "rejected" ? "#FED7D7" : "#FBD38D"}`,
+      borderRadius: 10,
+      padding: "12px 18px",
+      marginBottom: 20,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      fontSize: 13,
+      color: status === "rejected" ? "#9B2C2C" : "#744210",
+    }}>
+      <span>
+        <strong>{status === "rejected" ? "Rejected" : "Pending approval"}</strong>
+        {status === "rejected" && rejectionReason ? ` — ${rejectionReason}` : ""}
+        {status === "pending" ? " — this LPO has not been approved yet." : ""}
+      </span>
+      <Link href="/admin/lpo" style={{ color: DOC_GREEN, fontWeight: 600, textDecoration: "none", marginLeft: 16, whiteSpace: "nowrap" }}>← Back</Link>
+    </div>
+  ) : null
+
   return (
     <>
+      {statusBanner}
       <BrandedDoc title="PURCHASE ORDER">
-        {/* Two-column meta block */}
+        {/* Status badges in header area */}
+        {(status === "approved" || amended) && (
+          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+            <span style={{ background: DOC_GREEN, color: "white", fontSize: 11, fontWeight: 700, padding: "3px 11px", borderRadius: 999 }}>Approved</span>
+            {amended && <span style={{ background: "#ccfbf1", color: "#0F766E", fontSize: 11, fontWeight: 700, padding: "3px 11px", borderRadius: 999 }}>Amended</span>}
+          </div>
+        )}
+
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "18px 24px", marginBottom: 24, fontSize: 13 }}>
           <div>
             <div style={{ fontWeight: 800, fontSize: 14 }}>Shipping Address</div>
@@ -80,7 +122,6 @@ export default async function LpoDocPage({ params }: { params: Promise<{ id: str
           </div>
         </div>
 
-        {/* Line items */}
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
             <tr style={{ borderBottom: `2px solid ${DOC_GREEN}`, textAlign: "left" }}>
@@ -104,7 +145,6 @@ export default async function LpoDocPage({ params }: { params: Promise<{ id: str
           </tbody>
         </table>
 
-        {/* Payment details + totals */}
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 36, gap: 24 }}>
           <div style={{ maxWidth: 280 }}>
             <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 6 }}>Payment Details</div>
@@ -119,9 +159,17 @@ export default async function LpoDocPage({ params }: { params: Promise<{ id: str
         </div>
       </BrandedDoc>
 
-      <Suspense fallback={null}>
-        <DocPrintControls backHref="/admin/lpo" backLabel="Back to LPOs" />
-      </Suspense>
+      {/* Print controls only for fully approved LPOs */}
+      {(status === "approved" || status === null) && (
+        <Suspense fallback={null}>
+          <DocPrintControls backHref="/admin/lpo" backLabel="Back to LPOs" />
+        </Suspense>
+      )}
+      {isAdmin && status && status !== "approved" && (
+        <div style={{ textAlign: "center", padding: "20px 0" }}>
+          <Link href="/admin/lpo" style={{ color: DOC_GREEN, fontWeight: 600, textDecoration: "none" }}>← Back to LPOs</Link>
+        </div>
+      )}
     </>
   )
 }

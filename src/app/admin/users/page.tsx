@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Users, Plus, X, Loader2, Ban, CheckCircle2, ShieldAlert, Trash2 } from "lucide-react"
 import { ROLE_LABELS } from "@/lib/tracing-stages"
+import { ConfirmModal } from "@/components/admin/ConfirmModal"
 
 const TEXT = "var(--admin-text)"
 const MUTED = "var(--admin-muted)"
@@ -33,6 +34,7 @@ export default function UsersPage() {
   const [showForm, setShowForm] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [notice, setNotice] = useState<{ text: string; tone: "error" | "success" } | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<U | null>(null)
 
   // Single creation flow: first name + phone + role. The username and the
   // @earthlungs.org email are derived; the phone is the initial password (the
@@ -77,7 +79,6 @@ export default function UsersPage() {
   }
 
   const del = async (u: U) => {
-    if (!window.confirm(`Permanently delete @${u.username} (${u.name})? This cannot be undone.`)) return
     setBusyId(u.id)
     try {
       const res = await fetch("/api/users", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: u.id }) })
@@ -96,6 +97,16 @@ export default function UsersPage() {
 
   return (
     <div>
+      <ConfirmModal
+        open={!!deleteTarget}
+        title={`Delete @${deleteTarget?.username}?`}
+        message={`Permanently delete ${deleteTarget?.name}. This cannot be undone — they will no longer be able to sign in.`}
+        confirmLabel="Delete permanently"
+        danger
+        onConfirm={() => { if (deleteTarget) { del(deleteTarget); setDeleteTarget(null) } }}
+        onCancel={() => setDeleteTarget(null)}
+      />
+
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <Users size={22} color={GREEN} />
@@ -187,7 +198,7 @@ export default function UsersPage() {
                           <CheckCircle2 size={14} /> Reactivate
                         </Button>
                       )}
-                      <Button onClick={() => del(u)} disabled={busyId === u.id} variant="outline" style={{ color: "#C0392B", borderColor: "#C0392B", gap: 6, fontSize: 12, height: 32 }}>
+                      <Button onClick={() => setDeleteTarget(u)} disabled={busyId === u.id} variant="outline" style={{ color: "#C0392B", borderColor: "#C0392B", gap: 6, fontSize: 12, height: 32 }}>
                         <Trash2 size={14} /> Delete
                       </Button>
                     </div>

@@ -14,22 +14,20 @@ type ExtraFields = {
   approvedAt: Date | null
   rejectionReason: string | null
   destinationOfGoods: string | null
+  amended: boolean
 }
 
 async function fetchExtras(ids: string[]): Promise<Map<string, ExtraFields>> {
   if (ids.length === 0) return new Map()
   try {
     const rows = await prisma.$queryRaw<(ExtraFields & { id: string })[]>`
-      SELECT id, status, "approvedBy", "approvedAt", "rejectionReason", "destinationOfGoods"
+      SELECT id, status, "approvedBy", "approvedAt", "rejectionReason", "destinationOfGoods", "amended"
       FROM "Lpo"
       WHERE id = ANY(${ids}::text[])
     `
     return new Map(rows.map((r) => [r.id, r]))
   } catch {
-    // Columns don't exist yet — treat all as approved so existing LPOs remain accessible.
-    // Columns not yet in DB (migration pending) — return null status so the
-    // detail page treats all existing LPOs as accessible (null ≠ "pending").
-    return new Map(ids.map((id) => [id, { status: null as unknown as string, approvedBy: null, approvedAt: null, rejectionReason: null, destinationOfGoods: null }]))
+    return new Map(ids.map((id) => [id, { status: null as unknown as string, approvedBy: null, approvedAt: null, rejectionReason: null, destinationOfGoods: null, amended: false }]))
   }
 }
 
@@ -38,7 +36,7 @@ export async function GET(request: NextRequest) {
   if (auth instanceof NextResponse) return auth
   const lpos = await prisma.lpo.findMany({ orderBy: { createdAt: "desc" } })
   const extras = await fetchExtras(lpos.map((l) => l.id))
-  const result = lpos.map((l) => ({ ...l, ...(extras.get(l.id) ?? { status: "approved", approvedBy: null, approvedAt: null, rejectionReason: null, destinationOfGoods: null }) }))
+  const result = lpos.map((l) => ({ ...l, ...(extras.get(l.id) ?? { status: "approved", approvedBy: null, approvedAt: null, rejectionReason: null, destinationOfGoods: null, amended: false }) }))
   return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } })
 }
 
@@ -99,7 +97,7 @@ export async function POST(request: NextRequest) {
       `
     } catch { /* migration not yet applied — fields applied on deploy */ }
 
-    return NextResponse.json({ ...lpo, status, approvedBy: isAdmin ? approver : null, approvedAt, destinationOfGoods }, { status: 201 })
+    return NextResponse.json({ ...lpo, status, approvedBy: isAdmin ? approver : null, approvedAt, destinationOfGoods, amended: false }, { status: 201 })
   } catch (e) {
     console.error("LPO create failed:", e)
     return NextResponse.json({ error: "Could not save the LPO. Please try again." }, { status: 500 })
