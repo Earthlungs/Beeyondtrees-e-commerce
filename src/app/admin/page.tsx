@@ -63,7 +63,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: '16px', marginBottom: '24px' }}>
         {[
           { label: 'Total Products', value: stats.products, icon: Package, color: '#6B7D5C', href: '/admin/products' },
           { label: 'Total Orders', value: stats.orders, icon: ShoppingCart, color: '#8C6A4A', href: '/admin/deliveries' },
@@ -92,7 +92,7 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: '20px' }}>
         {/* Recent Orders */}
         <Card style={{ borderColor: '#A89F91' }}>
           <CardHeader style={{ paddingBottom: '8px' }}>
@@ -109,17 +109,17 @@ export default function AdminDashboard() {
             {recentOrders.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {recentOrders.map((order, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', backgroundColor: 'var(--admin-bg)', borderRadius: '8px' }}>
-                    <div>
-                      <p style={{ fontWeight: '500', color: "var(--admin-text)", fontSize: '14px' }}>{order.customerName}</p>
-                      <p style={{ fontSize: '12px', color: "var(--admin-muted)" }}>{order.itemCount} items - {new Date(order.createdAt).toLocaleDateString()}</p>
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', padding: '10px', backgroundColor: 'var(--admin-bg)', borderRadius: '8px' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ fontWeight: '500', color: "var(--admin-text)", fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{order.customerName}</p>
+                      <p style={{ fontSize: '12px', color: "var(--admin-muted)" }}>{order.itemCount} items · {new Date(order.createdAt).toLocaleDateString()}</p>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <span style={{ fontWeight: 'bold', color: "var(--admin-text)", fontSize: '14px' }}>KSh {order.total?.toLocaleString()}</span>
-                      <Badge style={{ 
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                      <span style={{ fontWeight: 'bold', color: "var(--admin-text)", fontSize: '13px', whiteSpace: 'nowrap' }}>KSh {order.total?.toLocaleString()}</span>
+                      <Badge style={{
                         backgroundColor: order.status === 'pending' ? '#FFFBF0' : order.status === 'delivered' ? '#E8F5E9' : '#F0F8FF',
                         color: order.status === 'pending' ? '#E6A817' : order.status === 'delivered' ? '#6B7D5C' : '#4A90D9',
-                        border: 'none', fontSize: '11px'
+                        border: 'none', fontSize: '11px', flexShrink: 0
                       }}>
                         {order.status}
                       </Badge>
@@ -149,13 +149,13 @@ export default function AdminDashboard() {
             {lowStock.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {lowStock.map((product, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', backgroundColor: 'var(--admin-warn-bg)', borderRadius: '8px', border: '1px solid var(--admin-warn-border)' }}>
-                    <div>
-                      <p style={{ fontWeight: '500', color: "var(--admin-text)", fontSize: '14px' }}>{product.name}</p>
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', padding: '10px', backgroundColor: 'var(--admin-warn-bg)', borderRadius: '8px', border: '1px solid var(--admin-warn-border)' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ fontWeight: '500', color: "var(--admin-text)", fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{product.name}</p>
                       <p style={{ fontSize: '12px', color: "var(--admin-muted)" }}>{product.category}</p>
                     </div>
-                    <Badge style={{ backgroundColor: '#8C6A4A', color: 'white', border: 'none', fontSize: '12px' }}>
-                      {product.stock} left
+                    <Badge style={{ backgroundColor: product.stock === 0 ? '#C0392B' : '#D97706', color: 'white', border: 'none', fontSize: '12px', fontWeight: 700, flexShrink: 0 }}>
+                      {product.stock === 0 ? 'Out of stock' : `${product.stock} left`}
                     </Badge>
                   </div>
                 ))}
