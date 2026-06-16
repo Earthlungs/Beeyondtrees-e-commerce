@@ -111,8 +111,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           { href: "/admin/pos", label: "Point of Sale", icon: ShoppingCart },
           { href: "/admin/products", label: "Products", icon: Package },
           { href: "/admin/deliveries", label: "Deliveries", icon: Truck },
-          { href: "/admin/lpo", label: "LPO", icon: ClipboardList },
-          { href: "/admin/invoicing", label: "Invoicing", icon: FileText },
           ...(isAdmin ? [
             { href: "/admin/analytics", label: "Analytics", icon: TrendingUp },
             { href: "/admin/customers", label: "Customers", icon: Users },
