@@ -6,18 +6,27 @@ import { useSession } from "next-auth/react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ClipboardList, Plus, X, Loader2, Printer, Check, Ban } from "lucide-react"
+import { ClipboardList, Plus, X, Loader2, Printer, Check, Ban, Eye, Pencil } from "lucide-react"
 import DocLineItems, { EditLine, emptyLine } from "@/components/admin/DocLineItems"
+import { ConfirmModal, PromptModal } from "@/components/admin/ConfirmModal"
 
 const TEXT = "var(--admin-text)"
 const MUTED = "var(--admin-muted)"
 const GREEN = "#6B7D5C"
 const RED = "#C0392B"
 const AMBER = "#B8860B"
+const TEAL = "#0F766E"
 const ksh = (n: number) => `KSh ${n.toLocaleString()}`
 
 interface Lpo {
-  id: string; number: string; supplierName: string; orderDate: string; total: number; status?: string
+  id: string
+  number: string
+  supplierName: string
+  orderDate: string
+  total: number
+  status?: string
+  amended?: boolean
+  rejectionReason?: string | null
 }
 
 export default function LpoPage() {
@@ -33,6 +42,13 @@ export default function LpoPage() {
   const [error, setError] = useState("")
   const [notice, setNotice] = useState("")
 
+  // Modal states
+  const [approveTarget, setApproveTarget] = useState<Lpo | null>(null)
+  const [amendTarget, setAmendTarget] = useState<Lpo | null>(null)
+  const [rejectTarget, setRejectTarget] = useState<Lpo | null>(null)
+  const [rejectReason, setRejectReason] = useState("")
+  const [deleteTarget, setDeleteTarget] = useState<Lpo | null>(null)
+
   const today = new Date().toISOString().slice(0, 10)
   const [supplierName, setSupplierName] = useState("")
   const [shippingAddress, setShippingAddress] = useState("")
@@ -43,7 +59,6 @@ export default function LpoPage() {
   const [notes, setNotes] = useState("")
   const [lines, setLines] = useState<EditLine[]>([emptyLine()])
 
-  // `loading` starts true; don't setState synchronously inside the effect.
   const load = async () => {
     try {
       const res = await fetch("/api/lpos")
@@ -64,8 +79,6 @@ export default function LpoPage() {
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error || "Could not save LPO."); return }
-      // Admin-created LPOs are auto-approved → straight to print. Merchant LPOs
-      // are pending an admin's approval; show a notice and refresh the list.
       if (data.status === "approved") {
         router.push(`/admin/lpo/${data.id}?print=1`)
       } else {
@@ -78,26 +91,30 @@ export default function LpoPage() {
     finally { setSaving(false) }
   }
 
-  const decide = async (l: Lpo, action: "approve" | "reject") => {
-    let reason: string | undefined
-    if (action === "reject") {
-      reason = window.prompt(`Reject ${l.number}? Enter a reason:`) ?? undefined
-      if (!reason || !reason.trim()) return
-    }
-    setBusyId(l.id)
+  const decide = async (lpo: Lpo, action: "approve" | "reject" | "amend", reason?: string) => {
+    setBusyId(lpo.id)
     try {
-      const res = await fetch(`/api/lpos/${l.id}`, {
+      const res = await fetch(`/api/lpos/${lpo.id}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, reason }),
       })
       const data = await res.json()
       if (!res.ok) { setNotice(data.error || "Could not update LPO."); return }
-      setLpos((prev) => prev.map((x) => (x.id === l.id ? { ...x, status: data.status } : x)))
+      setLpos((prev) => prev.map((x) => (x.id === lpo.id ? { ...x, status: data.status, amended: data.amended } : x)))
     } catch { setNotice("Network error. Try again.") }
     finally { setBusyId(null) }
   }
 
-  const statusBadge = (s: string) => {
+  const statusBadge = (l: Lpo) => {
+    const s = l.status
+    if (s === "approved" && l.amended) {
+      return (
+        <span style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
+          <span style={{ background: TEAL, color: "white", fontSize: 11, fontWeight: 600, padding: "2px 9px", borderRadius: 999 }}>Approved</span>
+          <span style={{ background: "#ccfbf1", color: TEAL, fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 999 }}>Amended</span>
+        </span>
+      )
+    }
     const c = s === "approved" ? GREEN : s === "rejected" ? RED : AMBER
     const label = s === "approved" ? "Approved" : s === "rejected" ? "Rejected" : "Pending approval"
     return <span style={{ background: c, color: "white", fontSize: 11, fontWeight: 600, padding: "2px 9px", borderRadius: 999 }}>{label}</span>
@@ -105,6 +122,45 @@ export default function LpoPage() {
 
   return (
     <div>
+      {/* Approve confirm */}
+      <ConfirmModal
+        open={!!approveTarget}
+        title={`Approve ${approveTarget?.number}?`}
+        message={`Approve the purchase order from ${approveTarget?.supplierName}. The submitter will be able to print it.`}
+        confirmLabel="Approve"
+        onConfirm={() => { if (approveTarget) { decide(approveTarget, "approve"); setApproveTarget(null) } }}
+        onCancel={() => setApproveTarget(null)}
+      />
+
+      {/* Amend confirm */}
+      <ConfirmModal
+        open={!!amendTarget}
+        title={`Amend ${amendTarget?.number}?`}
+        message={`Approve this LPO with an "Amended" tag. The submitter will be able to view and print the amended version.`}
+        confirmLabel="Approve (Amended)"
+        onConfirm={() => { if (amendTarget) { decide(amendTarget, "amend"); setAmendTarget(null) } }}
+        onCancel={() => setAmendTarget(null)}
+      />
+
+      {/* Reject prompt */}
+      <PromptModal
+        open={!!rejectTarget}
+        title={`Reject ${rejectTarget?.number}?`}
+        message="Enter a reason for rejection — the submitter will see this."
+        placeholder="Enter rejection reason…"
+        confirmLabel="Reject"
+        value={rejectReason}
+        onChange={setRejectReason}
+        onConfirm={() => {
+          if (rejectTarget && rejectReason.trim()) {
+            decide(rejectTarget, "reject", rejectReason.trim())
+            setRejectTarget(null)
+            setRejectReason("")
+          }
+        }}
+        onCancel={() => { setRejectTarget(null); setRejectReason("") }}
+      />
+
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <ClipboardList size={22} color={GREEN} />
@@ -169,25 +225,46 @@ export default function LpoPage() {
                   <td style={td}>{l.supplierName}</td>
                   <td style={td}>{new Date(l.orderDate).toLocaleDateString("en-KE")}</td>
                   <td style={{ ...td, textAlign: "right", fontWeight: 600 }}>{ksh(l.total)}</td>
-                  <td style={td}>{l.status ? statusBadge(l.status) : null}</td>
+                  <td style={td}>{l.status ? statusBadge(l) : null}</td>
                   <td style={{ ...td, textAlign: "right" }}>
-                    <div style={{ display: "inline-flex", gap: 10, alignItems: "center", justifyContent: "flex-end" }}>
+                    <div style={{ display: "inline-flex", gap: 8, alignItems: "center", justifyContent: "flex-end", flexWrap: "wrap" }}>
+                      {/* View button — always visible for admin; for non-admin only on rejected (to see reason) and approved */}
+                      {(isAdmin || l.status === "approved" || l.status === "rejected") && (
+                        <Link href={`/admin/lpo/${l.id}`} style={{ display: "inline-flex", alignItems: "center", gap: 5, color: "#555", fontWeight: 600, fontSize: 13, textDecoration: "none", padding: "6px 12px", border: "1px solid #ddd", borderRadius: 8 }}>
+                          <Eye size={13} /> View
+                        </Link>
+                      )}
                       {isAdmin && l.status === "pending" && (
                         <>
-                          <Button onClick={() => decide(l, "approve")} disabled={busyId === l.id} style={{ background: GREEN, color: "white", gap: 5, fontSize: 12, height: 30 }}>
-                            <Check size={13} /> Approve
+                          <Button
+                            onClick={() => setApproveTarget(l)}
+                            disabled={busyId === l.id}
+                            style={{ background: GREEN, color: "white", gap: 6, fontSize: 13, height: 36, padding: "0 16px" }}>
+                            <Check size={14} /> Approve
                           </Button>
-                          <Button onClick={() => decide(l, "reject")} disabled={busyId === l.id} variant="outline" style={{ color: RED, borderColor: RED, gap: 5, fontSize: 12, height: 30 }}>
-                            <Ban size={13} /> Reject
+                          <Button
+                            onClick={() => { setAmendTarget(l) }}
+                            disabled={busyId === l.id}
+                            style={{ background: TEAL, color: "white", gap: 6, fontSize: 13, height: 36, padding: "0 16px" }}>
+                            <Pencil size={14} /> Amend
+                          </Button>
+                          <Button
+                            onClick={() => { setRejectTarget(l); setRejectReason("") }}
+                            disabled={busyId === l.id}
+                            variant="outline"
+                            style={{ color: RED, borderColor: RED, gap: 6, fontSize: 13, height: 36, padding: "0 16px" }}>
+                            <Ban size={14} /> Reject
                           </Button>
                         </>
                       )}
-                      {l.status === "approved" ? (
-                        <Link href={`/admin/lpo/${l.id}`} style={{ color: GREEN, fontWeight: 600, fontSize: 13, textDecoration: "none" }}>View / Print</Link>
-                      ) : l.status === "rejected" ? (
-                        <span style={{ color: RED, fontSize: 12.5 }}>Rejected</span>
-                      ) : (
+                      {!isAdmin && !l.status && (
                         <span style={{ color: AMBER, fontSize: 12.5 }}>Awaiting approval</span>
+                      )}
+                      {!isAdmin && l.status === "pending" && (
+                        <span style={{ color: AMBER, fontSize: 12.5 }}>Awaiting approval</span>
+                      )}
+                      {l.status === "rejected" && !isAdmin && (
+                        <span style={{ color: RED, fontSize: 12.5 }}>Rejected</span>
                       )}
                     </div>
                   </td>
