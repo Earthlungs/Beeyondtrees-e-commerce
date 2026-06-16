@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
-import { requireDocRole } from "@/lib/docs"
+import { requireDocRole, normalizeLines, parseDate } from "@/lib/docs"
 import { requireRole } from "@/lib/authz"
 
 async function fetchExtras(id: string) {
@@ -26,6 +27,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 // Approve / reject / amend an LPO — admin or IT Specialist only.
+// action="amend" also accepts updated content fields to save changes.
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireRole(request, ["admin", "it_specialist"])
   if (auth instanceof NextResponse) return auth
@@ -46,7 +48,37 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const approver = (auth.token as { name?: string }).name || "Admin"
   const status = action === "reject" ? "rejected" : "approved"
   const amended = action === "amend"
+  const destinationOfGoods = typeof body?.destinationOfGoods === "string" ? body.destinationOfGoods.trim() || null : null
 
+  // For amend: update all editable content fields before setting approval status.
+  if (action === "amend" && body?.items) {
+    const { items, subtotal, vat, total } = normalizeLines(body.items)
+    if (items.length === 0) {
+      return NextResponse.json({ error: "Add at least one line item." }, { status: 400 })
+    }
+    try {
+      await prisma.lpo.update({
+        where: { id },
+        data: {
+          ...(body.supplierName?.trim() && { supplierName: body.supplierName.trim() }),
+          ...(body.shippingAddress !== undefined && { shippingAddress: body.shippingAddress?.trim() || null }),
+          ...(body.purchaseRep !== undefined && { purchaseRep: body.purchaseRep?.trim() || null }),
+          ...(body.orderDate !== undefined && { orderDate: parseDate(body.orderDate) ?? lpo.orderDate }),
+          ...(body.expectedArrival !== undefined && { expectedArrival: parseDate(body.expectedArrival) }),
+          ...(body.notes !== undefined && { notes: body.notes?.trim() || null }),
+          items: items as unknown as Prisma.InputJsonValue,
+          subtotal,
+          vat,
+          total,
+        },
+      })
+    } catch (e) {
+      console.error("LPO amend content update failed:", e)
+      return NextResponse.json({ error: "Could not save the amended content." }, { status: 500 })
+    }
+  }
+
+  // Set approval status + destination via raw SQL.
   try {
     await prisma.$executeRaw`
       UPDATE "Lpo"
@@ -54,12 +86,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           "approvedBy" = ${approver}::text,
           "approvedAt" = ${new Date()}::timestamp,
           "rejectionReason" = ${action === "reject" ? reason : null}::text,
-          "amended" = ${amended}
+          "amended" = ${amended},
+          "destinationOfGoods" = COALESCE(${destinationOfGoods}::text, "destinationOfGoods")
       WHERE id = ${id}
     `
   } catch {
     return NextResponse.json({ error: "Could not update the LPO — migration may not have run yet." }, { status: 500 })
   }
 
-  return NextResponse.json({ ...lpo, status, approvedBy: approver, approvedAt: new Date(), rejectionReason: action === "reject" ? reason : null, amended })
+  // Return the updated LPO for the frontend to refresh state.
+  const updated = await prisma.lpo.findUnique({ where: { id } })
+  return NextResponse.json({ ...updated, status, approvedBy: approver, approvedAt: new Date(), rejectionReason: action === "reject" ? reason : null, amended, destinationOfGoods })
 }

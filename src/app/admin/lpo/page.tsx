@@ -44,10 +44,8 @@ export default function LpoPage() {
 
   // Modal states
   const [approveTarget, setApproveTarget] = useState<Lpo | null>(null)
-  const [amendTarget, setAmendTarget] = useState<Lpo | null>(null)
   const [rejectTarget, setRejectTarget] = useState<Lpo | null>(null)
   const [rejectReason, setRejectReason] = useState("")
-  const [deleteTarget, setDeleteTarget] = useState<Lpo | null>(null)
 
   const today = new Date().toISOString().slice(0, 10)
   const [supplierName, setSupplierName] = useState("")
@@ -91,7 +89,7 @@ export default function LpoPage() {
     finally { setSaving(false) }
   }
 
-  const decide = async (lpo: Lpo, action: "approve" | "reject" | "amend", reason?: string) => {
+  const decide = async (lpo: Lpo, action: "approve" | "reject", reason?: string) => {
     setBusyId(lpo.id)
     try {
       const res = await fetch(`/api/lpos/${lpo.id}`, {
@@ -130,16 +128,6 @@ export default function LpoPage() {
         confirmLabel="Approve"
         onConfirm={() => { if (approveTarget) { decide(approveTarget, "approve"); setApproveTarget(null) } }}
         onCancel={() => setApproveTarget(null)}
-      />
-
-      {/* Amend confirm */}
-      <ConfirmModal
-        open={!!amendTarget}
-        title={`Amend ${amendTarget?.number}?`}
-        message={`Approve this LPO with an "Amended" tag. The submitter will be able to view and print the amended version.`}
-        confirmLabel="Approve (Amended)"
-        onConfirm={() => { if (amendTarget) { decide(amendTarget, "amend"); setAmendTarget(null) } }}
-        onCancel={() => setAmendTarget(null)}
       />
 
       {/* Reject prompt */}
@@ -242,12 +230,9 @@ export default function LpoPage() {
                             style={{ background: GREEN, color: "white", gap: 6, fontSize: 13, height: 36, padding: "0 16px" }}>
                             <Check size={14} /> Approve
                           </Button>
-                          <Button
-                            onClick={() => { setAmendTarget(l) }}
-                            disabled={busyId === l.id}
-                            style={{ background: TEAL, color: "white", gap: 6, fontSize: 13, height: 36, padding: "0 16px" }}>
+                          <Link href={`/admin/lpo/${l.id}/amend`} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: TEAL, color: "white", fontSize: 13, height: 36, padding: "0 16px", borderRadius: 8, textDecoration: "none", fontWeight: 600 }}>
                             <Pencil size={14} /> Amend
-                          </Button>
+                          </Link>
                           <Button
                             onClick={() => { setRejectTarget(l); setRejectReason("") }}
                             disabled={busyId === l.id}
