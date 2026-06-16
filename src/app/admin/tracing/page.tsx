@@ -269,7 +269,12 @@ export default function TracingBoard() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
             <div><label style={label}>Sector</label><Input style={field} value={f.sector} onChange={(e) => setF({ ...f, sector: e.target.value })} /></div>
             <div><label style={label}>Material Category</label><Input style={field} value={f.materialCategory} onChange={(e) => setF({ ...f, materialCategory: e.target.value })} /></div>
-            <div><label style={label}>Material Name *</label><Input style={field} value={f.materialName} onChange={(e) => setF({ ...f, materialName: e.target.value })} /></div>
+            <div>
+              <label style={label}>Material Name</label>
+              <div style={{ width: "100%", minHeight: 40, borderRadius: 8, border: "1px solid var(--admin-border)", padding: "8px 10px", background: "var(--admin-card-2)", color: TEXT, fontSize: 13, lineHeight: 1.5, wordBreak: "break-word" }}>
+                {f.materialName || <span style={{ color: MUTED }}>Auto-filled from LPO</span>}
+              </div>
+            </div>
             <div><label style={label}>Finished Product Name</label><Input style={field} value={f.productName} onChange={(e) => setF({ ...f, productName: e.target.value })} /></div>
             <div><label style={label}>Quantity Requested</label><Input style={field} type="number" value={f.quantityRequested} onChange={(e) => setF({ ...f, quantityRequested: e.target.value })} /></div>
             <div><label style={label}>Unit of Measure</label><Input style={field} value={f.unitOfMeasure} onChange={(e) => setF({ ...f, unitOfMeasure: e.target.value })} /></div>
