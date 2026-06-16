@@ -30,7 +30,10 @@ export default async function proxy(request: NextRequest) {
       "requisition_officer", "agribusiness_manager", "production_officer",
       "dispatch_officer", "receiving_officer",
     ]
-    if (role && TRACING_ROLES.includes(role) && !path.startsWith("/admin/tracing") && !COMMON) {
+    const DOC_ROLES = ["procurement_officer", "executive"]
+    const canDoc = role && DOC_ROLES.includes(role)
+    const docPath = path.startsWith("/admin/lpo") || path.startsWith("/admin/invoicing")
+    if (role && TRACING_ROLES.includes(role) && !path.startsWith("/admin/tracing") && !(canDoc && docPath) && !COMMON) {
       return NextResponse.redirect(new URL("/admin/tracing", request.url))
     }
   }
