@@ -71,6 +71,8 @@ export async function POST(request: NextRequest) {
   const estimatedTotalCost =
     Number(body.estimatedTotalCost) || +(quantityRequested * estimatedUnitCost).toFixed(2)
 
+  const lpoId: string | null = body.lpoId?.trim() || null
+
   try {
     const batch = await createNumbered(
       "BTR",
@@ -79,8 +81,9 @@ export async function POST(request: NextRequest) {
         prisma.batch.create({
           data: {
             code,
-            stage: "approval", // bulk request just filed → awaits executive
+            stage: "approval",
             status: "in_progress",
+            lpoId,
             productName: body.productName?.trim() || body.materialName.trim(),
             bulkRequest: {
               create: {
