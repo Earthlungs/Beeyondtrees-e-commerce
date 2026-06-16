@@ -6,7 +6,7 @@ import { getToken, type JWT } from "next-auth/jwt"
 // sell-only cashier role. proxy.ts lets /api/* through, so each handler calls
 // this guard itself. Returns a NextResponse to return early (401/403), or the
 // token wrapped in an object on success. Callers: `if (a instanceof NextResponse) return a`.
-const DOC_ROLES = new Set(["merchant", "admin"])
+const DOC_ROLES = new Set(["procurement_officer", "executive", "admin", "it_specialist"])
 
 export async function requireDocRole(request: NextRequest): Promise<NextResponse | { token: JWT }> {
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })

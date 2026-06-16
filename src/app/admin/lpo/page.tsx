@@ -34,6 +34,7 @@ export default function LpoPage() {
   const { data: session } = useSession()
   const role = (session?.user as { role?: string })?.role || "merchant"
   const isAdmin = role === "admin" || role === "it_specialist"
+  const canCreate = role === "procurement_officer" || role === "executive" || isAdmin
   const [lpos, setLpos] = useState<Lpo[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -154,9 +155,11 @@ export default function LpoPage() {
           <ClipboardList size={22} color={GREEN} />
           <h1 style={{ fontSize: 22, fontWeight: "bold", color: TEXT }}>Local Purchase Orders</h1>
         </div>
-        <Button onClick={() => setShowForm((s) => !s)} style={{ background: GREEN, color: "white", gap: 6 }}>
-          {showForm ? <><X size={16} /> Close</> : <><Plus size={16} /> New LPO</>}
-        </Button>
+        {canCreate && (
+          <Button onClick={() => setShowForm((s) => !s)} style={{ background: GREEN, color: "white", gap: 6 }}>
+            {showForm ? <><X size={16} /> Close</> : <><Plus size={16} /> New LPO</>}
+          </Button>
+        )}
       </div>
 
       {notice && (
@@ -166,11 +169,11 @@ export default function LpoPage() {
         </div>
       )}
 
-      {!isAdmin && (
+      {canCreate && !isAdmin && (
         <p style={{ fontSize: 12.5, color: MUTED, marginBottom: 16 }}>New purchase orders are sent to an admin for approval before they can be generated or printed.</p>
       )}
 
-      {showForm && (
+      {canCreate && showForm && (
         <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, padding: "16px clamp(12px, 4vw, 20px)", marginBottom: 24, overflowX: "hidden" }}>
           {error && <div style={{ background: "#FBEAEA", color: "#9B2C2C", padding: "8px 12px", borderRadius: 8, fontSize: 13, marginBottom: 12 }}>{error}</div>}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 200px), 1fr))", gap: 12, marginBottom: 16 }}>
