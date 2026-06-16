@@ -112,11 +112,13 @@ export default function TracingBoard() {
   const pickLpo = (lpo: AvailableLpo) => {
     const firstItem = lpo.items?.[0]
     const itemsDesc = lpo.items?.map((i) => i.description).join(", ") || ""
+    const lineCount = String(lpo.items?.length || 1)
     setSelectedLpo(lpo)
     setF((prev) => ({
       ...prev,
       materialName: firstItem?.description || prev.materialName,
       productName: itemsDesc || firstItem?.description || prev.productName,
+      quantityRequested: lineCount,
     }))
     setLpoOpen(false)
     setLpoSearch("")
@@ -124,7 +126,7 @@ export default function TracingBoard() {
 
   const clearLpo = () => {
     setSelectedLpo(null)
-    setF((prev) => ({ ...prev, materialName: "", productName: "" }))
+    setF((prev) => ({ ...prev, materialName: "", productName: "", quantityRequested: "" }))
   }
 
   const filteredLpos = availableLpos.filter((l) =>
@@ -276,7 +278,10 @@ export default function TracingBoard() {
               </div>
             </div>
             <div><label style={label}>Finished Product Name</label><Input style={field} value={f.productName} onChange={(e) => setF({ ...f, productName: e.target.value })} /></div>
-            <div><label style={label}>Quantity Requested</label><Input style={field} type="number" value={f.quantityRequested} onChange={(e) => setF({ ...f, quantityRequested: e.target.value })} /></div>
+            <div>
+              <label style={label}>Quantity Requested</label>
+              <Input style={{ ...field, background: "var(--admin-card-2)" }} value={f.quantityRequested} readOnly />
+            </div>
             <div><label style={label}>Unit of Measure</label><Input style={field} value={f.unitOfMeasure} onChange={(e) => setF({ ...f, unitOfMeasure: e.target.value })} /></div>
             <div><label style={label}>Expected Date</label><Input style={field} type="date" value={f.expectedDate} onChange={(e) => setF({ ...f, expectedDate: e.target.value })} /></div>
             {isAdmin && <div><label style={label}>Estimated Unit Cost</label><Input style={field} type="number" value={f.estimatedUnitCost} onChange={(e) => setF({ ...f, estimatedUnitCost: e.target.value })} /></div>}
