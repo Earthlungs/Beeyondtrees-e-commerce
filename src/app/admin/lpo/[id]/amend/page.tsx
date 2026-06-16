@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
+import { useSession } from "next-auth/react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -36,6 +37,10 @@ export default function AmendLpoPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
   const id = params.id
+  const { data: session } = useSession()
+  const role = (session?.user as { role?: string })?.role || ""
+  const isExec = role === "executive"
+  const action = isExec ? "exec_amend" : "amend"
 
   const [lpo, setLpo] = useState<LpoDetail | null>(null)
   const [fetching, setFetching] = useState(true)
@@ -82,7 +87,7 @@ export default function AmendLpoPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "amend",
+          action,
           supplierName, shippingAddress, purchaseRep,
           orderDate, expectedArrival: expectedArrival || null,
           destinationOfGoods: destinationOfGoods || null,
@@ -156,7 +161,7 @@ export default function AmendLpoPage() {
               <Button variant="outline" style={{ height: 42 }}>Cancel</Button>
             </Link>
             <Button onClick={save} disabled={saving} style={{ background: TEAL, color: "white", gap: 8, height: 42 }}>
-              {saving ? <><Loader2 size={16} className="animate-spin" /> Saving…</> : <><Check size={16} /> Save & Approve (Amended)</>}
+              {saving ? <><Loader2 size={16} className="animate-spin" /> Saving…</> : <><Check size={16} /> {isExec ? "Save & Forward to Admin (Amended)" : "Save & Approve (Amended)"}</>}
             </Button>
           </div>
         </div>

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import { requireDocRole, normalizeLines, parseDate } from "@/lib/docs"
-import { requireRole } from "@/lib/authz"
+import { isAdminish } from "@/lib/authz"
 
 async function fetchExtras(id: string) {
   try {
@@ -26,32 +26,54 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   return NextResponse.json({ ...lpo, ...(extras ?? {}) }, { headers: { "Cache-Control": "no-store" } })
 }
 
-// Approve / reject / amend an LPO — admin or IT Specialist only.
-// action="amend" also accepts updated content fields to save changes.
+// Two-stage approval:
+//   exec_approve / exec_amend  → executive (or admin) → sets status = "exec_approved"
+//   approve / reject            → admin only           → sets status = "approved" / "rejected"
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireRole(request, ["admin", "it_specialist"])
+  const auth = await requireDocRole(request)
   if (auth instanceof NextResponse) return auth
+
+  const role = (auth.token as { role?: string }).role
+  const isAdmin = isAdminish(role)
+  const isExec = role === "executive"
+
   const { id } = await params
   const lpo = await prisma.lpo.findUnique({ where: { id } })
   if (!lpo) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
   const body = await request.json().catch(() => null)
   const action = body?.action
-  if (action !== "approve" && action !== "reject" && action !== "amend") {
-    return NextResponse.json({ error: "Action must be 'approve', 'reject', or 'amend'." }, { status: 400 })
+
+  const VALID = ["exec_approve", "exec_amend", "approve", "reject", "amend"]
+  if (!VALID.includes(action)) {
+    return NextResponse.json({ error: "Invalid action." }, { status: 400 })
   }
+
+  // Role gates per action
+  if ((action === "exec_approve" || action === "exec_amend") && !isExec && !isAdmin) {
+    return NextResponse.json({ error: "Only the Executive can approve at this stage." }, { status: 403 })
+  }
+  if ((action === "approve" || action === "reject" || action === "amend") && !isAdmin) {
+    return NextResponse.json({ error: "Only an Admin can perform the final approval." }, { status: 403 })
+  }
+
   const reason = typeof body?.reason === "string" ? body.reason.trim() : ""
   if (action === "reject" && !reason) {
     return NextResponse.json({ error: "A reason is required to reject." }, { status: 400 })
   }
 
-  const approver = (auth.token as { name?: string }).name || "Admin"
-  const status = action === "reject" ? "rejected" : "approved"
-  const amended = action === "amend"
+  const actor = (auth.token as { name?: string }).name || "Unknown"
   const destinationOfGoods = typeof body?.destinationOfGoods === "string" ? body.destinationOfGoods.trim() || null : null
 
-  // For amend: update all editable content fields before setting approval status.
-  if (action === "amend" && body?.items) {
+  // Determine new status and amended flag
+  const newStatus =
+    action === "exec_approve" || action === "exec_amend" ? "exec_approved"
+    : action === "approve" || action === "amend" ? "approved"
+    : "rejected"
+  const amended = action === "exec_amend" || action === "amend"
+
+  // For amend actions: update editable content first
+  if ((action === "exec_amend" || action === "amend") && body?.items) {
     const { items, subtotal, vat, total } = normalizeLines(body.items)
     if (items.length === 0) {
       return NextResponse.json({ error: "Add at least one line item." }, { status: 400 })
@@ -78,12 +100,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
   }
 
-  // Set approval status + destination via raw SQL.
+  // Apply status change
   try {
     await prisma.$executeRaw`
       UPDATE "Lpo"
-      SET status = ${status},
-          "approvedBy" = ${approver}::text,
+      SET status = ${newStatus},
+          "approvedBy" = ${actor}::text,
           "approvedAt" = ${new Date()}::timestamp,
           "rejectionReason" = ${action === "reject" ? reason : null}::text,
           "amended" = ${amended},
@@ -94,7 +116,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: "Could not update the LPO — migration may not have run yet." }, { status: 500 })
   }
 
-  // Return the updated LPO for the frontend to refresh state.
   const updated = await prisma.lpo.findUnique({ where: { id } })
-  return NextResponse.json({ ...updated, status, approvedBy: approver, approvedAt: new Date(), rejectionReason: action === "reject" ? reason : null, amended, destinationOfGoods })
+  return NextResponse.json({ ...updated, status: newStatus, approvedBy: actor, approvedAt: new Date(), rejectionReason: action === "reject" ? reason : null, amended, destinationOfGoods })
 }
