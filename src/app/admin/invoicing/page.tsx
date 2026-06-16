@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,6 +20,10 @@ interface Invoice {
 
 export default function InvoicingPage() {
   const router = useRouter()
+  const { data: session } = useSession()
+  const role = (session?.user as { role?: string })?.role || ""
+  const isAdmin = role === "admin" || role === "it_specialist"
+  const canCreate = role === "procurement_officer" || role === "executive" || isAdmin
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -66,12 +71,14 @@ export default function InvoicingPage() {
           <FileText size={22} color={GREEN} />
           <h1 style={{ fontSize: 22, fontWeight: "bold", color: TEXT }}>Invoicing</h1>
         </div>
-        <Button onClick={() => setShowForm((s) => !s)} style={{ background: GREEN, color: "white", gap: 6 }}>
-          {showForm ? <><X size={16} /> Close</> : <><Plus size={16} /> New Invoice</>}
-        </Button>
+        {canCreate && (
+          <Button onClick={() => setShowForm((s) => !s)} style={{ background: GREEN, color: "white", gap: 6 }}>
+            {showForm ? <><X size={16} /> Close</> : <><Plus size={16} /> New Invoice</>}
+          </Button>
+        )}
       </div>
 
-      {showForm && (
+      {canCreate && showForm && (
         <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, padding: 20, marginBottom: 24 }}>
           {error && <div style={{ background: "#FBEAEA", color: "#9B2C2C", padding: "8px 12px", borderRadius: 8, fontSize: 13, marginBottom: 12 }}>{error}</div>}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginBottom: 16 }}>
