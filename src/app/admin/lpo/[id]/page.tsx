@@ -21,6 +21,8 @@ export default async function LpoDocPage({ params }: { params: Promise<{ id: str
   const session = await getServerSession(authOptions)
   const userRole = (session?.user as { role?: string })?.role
   const isAdmin = isAdminish(userRole)
+  const isExec = userRole === "executive"
+  const canReview = isAdmin || isExec
 
   let status: string | null = null
   let rejectionReason: string | null = null
@@ -38,18 +40,21 @@ export default async function LpoDocPage({ params }: { params: Promise<{ id: str
     }
   } catch { /* pre-migration — treat as approved */ }
 
-  // Non-admins: gate on approval status
-  if (!isAdmin && status && status !== "approved") {
+  // Non-reviewers (procurement officer etc): gate on approval status
+  if (!canReview && status && status !== "approved") {
     const rejected = status === "rejected"
+    const execPending = status === "pending"
     return (
       <div style={{ maxWidth: 560, margin: "60px auto", textAlign: "center", padding: 24 }}>
         <div style={{ fontSize: 18, fontWeight: 800, color: rejected ? "#C0392B" : "#8a6d00", marginBottom: 8 }}>
-          {rejected ? "This LPO was rejected" : "Awaiting admin approval"}
+          {rejected ? "This LPO was rejected" : execPending ? "Awaiting executive review" : "Awaiting admin approval"}
         </div>
         <p style={{ color: "#6b6353", fontSize: 14 }}>
           {rejected
             ? rejectionReason || "An admin rejected this purchase order."
-            : "This purchase order must be approved by an admin before it can be generated or printed."}
+            : execPending
+            ? "This purchase order is pending executive approval."
+            : "The executive has approved this LPO — awaiting final admin sign-off before it can be printed."}
         </p>
         <Link href="/admin/lpo" style={{ display: "inline-block", marginTop: 18, color: DOC_GREEN, fontWeight: 600, textDecoration: "none" }}>← Back to LPOs</Link>
       </div>
@@ -58,11 +63,19 @@ export default async function LpoDocPage({ params }: { params: Promise<{ id: str
 
   const items = (lpo.items as unknown as DocLine[]) ?? []
 
-  // Banner shown when admin is previewing a non-approved LPO
-  const statusBanner = isAdmin && status && status !== "approved" ? (
+  // Banner shown when reviewer (admin/exec) is previewing a non-approved LPO
+  const bannerText =
+    status === "rejected" ? `Rejected — ${rejectionReason || "no reason given"}`
+    : status === "pending" ? "Awaiting executive review — not yet approved."
+    : status === "exec_approved" ? "Executive approved — awaiting admin final sign-off."
+    : null
+  const bannerColor = status === "rejected" ? { bg: "#FFF5F5", border: "#FED7D7", text: "#9B2C2C" }
+    : { bg: "#FFFBEB", border: "#FBD38D", text: "#744210" }
+
+  const statusBanner = canReview && bannerText ? (
     <div style={{
-      background: status === "rejected" ? "#FFF5F5" : "#FFFBEB",
-      border: `1px solid ${status === "rejected" ? "#FED7D7" : "#FBD38D"}`,
+      background: bannerColor.bg,
+      border: `1px solid ${bannerColor.border}`,
       borderRadius: 10,
       padding: "12px 18px",
       marginBottom: 20,
@@ -70,13 +83,9 @@ export default async function LpoDocPage({ params }: { params: Promise<{ id: str
       alignItems: "center",
       justifyContent: "space-between",
       fontSize: 13,
-      color: status === "rejected" ? "#9B2C2C" : "#744210",
+      color: bannerColor.text,
     }}>
-      <span>
-        <strong>{status === "rejected" ? "Rejected" : "Pending approval"}</strong>
-        {status === "rejected" && rejectionReason ? ` — ${rejectionReason}` : ""}
-        {status === "pending" ? " — this LPO has not been approved yet." : ""}
-      </span>
+      <span><strong>{bannerText}</strong></span>
       <Link href="/admin/lpo" style={{ color: DOC_GREEN, fontWeight: 600, textDecoration: "none", marginLeft: 16, whiteSpace: "nowrap" }}>← Back</Link>
     </div>
   ) : null
@@ -165,7 +174,7 @@ export default async function LpoDocPage({ params }: { params: Promise<{ id: str
           <DocPrintControls backHref="/admin/lpo" backLabel="Back to LPOs" />
         </Suspense>
       )}
-      {isAdmin && status && status !== "approved" && (
+      {canReview && status && status !== "approved" && (
         <div style={{ textAlign: "center", padding: "20px 0" }}>
           <Link href="/admin/lpo" style={{ color: DOC_GREEN, fontWeight: 600, textDecoration: "none" }}>← Back to LPOs</Link>
         </div>

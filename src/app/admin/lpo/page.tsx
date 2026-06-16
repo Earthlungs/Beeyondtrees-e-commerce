@@ -34,7 +34,8 @@ export default function LpoPage() {
   const { data: session } = useSession()
   const role = (session?.user as { role?: string })?.role || "merchant"
   const isAdmin = role === "admin" || role === "it_specialist"
-  const canCreate = role === "procurement_officer" || role === "executive" || isAdmin
+  const isExec = role === "executive"
+  const canCreate = role === "procurement_officer" || isExec || isAdmin
   const [lpos, setLpos] = useState<Lpo[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -90,7 +91,7 @@ export default function LpoPage() {
     finally { setSaving(false) }
   }
 
-  const decide = async (lpo: Lpo, action: "approve" | "reject", reason?: string) => {
+  const decide = async (lpo: Lpo, action: "exec_approve" | "exec_amend" | "approve" | "reject", reason?: string) => {
     setBusyId(lpo.id)
     try {
       const res = await fetch(`/api/lpos/${lpo.id}`, {
@@ -106,17 +107,17 @@ export default function LpoPage() {
 
   const statusBadge = (l: Lpo) => {
     const s = l.status
-    if (s === "approved" && l.amended) {
+    if (s === "approved") {
       return (
         <span style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
-          <span style={{ background: TEAL, color: "white", fontSize: 11, fontWeight: 600, padding: "2px 9px", borderRadius: 999 }}>Approved</span>
-          <span style={{ background: "#ccfbf1", color: TEAL, fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 999 }}>Amended</span>
+          <span style={{ background: GREEN, color: "white", fontSize: 11, fontWeight: 600, padding: "2px 9px", borderRadius: 999 }}>Approved</span>
+          {l.amended && <span style={{ background: "#ccfbf1", color: TEAL, fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 999 }}>Amended</span>}
         </span>
       )
     }
-    const c = s === "approved" ? GREEN : s === "rejected" ? RED : AMBER
-    const label = s === "approved" ? "Approved" : s === "rejected" ? "Rejected" : "Pending approval"
-    return <span style={{ background: c, color: "white", fontSize: 11, fontWeight: 600, padding: "2px 9px", borderRadius: 999 }}>{label}</span>
+    if (s === "exec_approved") return <span style={{ background: TEAL, color: "white", fontSize: 11, fontWeight: 600, padding: "2px 9px", borderRadius: 999 }}>Exec Approved</span>
+    if (s === "rejected") return <span style={{ background: RED, color: "white", fontSize: 11, fontWeight: 600, padding: "2px 9px", borderRadius: 999 }}>Rejected</span>
+    return <span style={{ background: AMBER, color: "white", fontSize: 11, fontWeight: 600, padding: "2px 9px", borderRadius: 999 }}>Awaiting Executive</span>
   }
 
   return (
@@ -125,9 +126,16 @@ export default function LpoPage() {
       <ConfirmModal
         open={!!approveTarget}
         title={`Approve ${approveTarget?.number}?`}
-        message={`Approve the purchase order from ${approveTarget?.supplierName}. The submitter will be able to print it.`}
+        message={isExec
+          ? `Forward this LPO to the Admin for final approval.`
+          : `Give final approval to this LPO from ${approveTarget?.supplierName}. It will become printable.`}
         confirmLabel="Approve"
-        onConfirm={() => { if (approveTarget) { decide(approveTarget, "approve"); setApproveTarget(null) } }}
+        onConfirm={() => {
+          if (approveTarget) {
+            decide(approveTarget, isExec ? "exec_approve" : "approve")
+            setApproveTarget(null)
+          }
+        }}
         onCancel={() => setApproveTarget(null)}
       />
 
@@ -220,13 +228,30 @@ export default function LpoPage() {
                   <td style={td}>{l.status ? statusBadge(l) : null}</td>
                   <td style={{ ...td, textAlign: "right" }}>
                     <div style={{ display: "inline-flex", gap: 8, alignItems: "center", justifyContent: "flex-end", flexWrap: "wrap" }}>
-                      {/* View button — always visible for admin; for non-admin only on rejected (to see reason) and approved */}
-                      {(isAdmin || l.status === "approved" || l.status === "rejected") && (
+                      {/* View — admins and execs always; others only on approved/rejected */}
+                      {(isAdmin || isExec || l.status === "approved" || l.status === "rejected") && (
                         <Link href={`/admin/lpo/${l.id}`} style={{ display: "inline-flex", alignItems: "center", gap: 5, color: "#555", fontWeight: 600, fontSize: 13, textDecoration: "none", padding: "6px 12px", border: "1px solid #ddd", borderRadius: 8 }}>
                           <Eye size={13} /> View
                         </Link>
                       )}
-                      {isAdmin && l.status === "pending" && (
+
+                      {/* Executive stage — acts on "pending" LPOs */}
+                      {isExec && l.status === "pending" && (
+                        <>
+                          <Button
+                            onClick={() => setApproveTarget(l)}
+                            disabled={busyId === l.id}
+                            style={{ background: TEAL, color: "white", gap: 6, fontSize: 13, height: 36, padding: "0 16px" }}>
+                            <Check size={14} /> Approve
+                          </Button>
+                          <Link href={`/admin/lpo/${l.id}/amend`} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#8C6A4A", color: "white", fontSize: 13, height: 36, padding: "0 16px", borderRadius: 8, textDecoration: "none", fontWeight: 600 }}>
+                            <Pencil size={14} /> Amend
+                          </Link>
+                        </>
+                      )}
+
+                      {/* Admin final stage — acts on "exec_approved" LPOs */}
+                      {isAdmin && l.status === "exec_approved" && (
                         <>
                           <Button
                             onClick={() => setApproveTarget(l)}
@@ -234,9 +259,6 @@ export default function LpoPage() {
                             style={{ background: GREEN, color: "white", gap: 6, fontSize: 13, height: 36, padding: "0 16px" }}>
                             <Check size={14} /> Approve
                           </Button>
-                          <Link href={`/admin/lpo/${l.id}/amend`} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: TEAL, color: "white", fontSize: 13, height: 36, padding: "0 16px", borderRadius: 8, textDecoration: "none", fontWeight: 600 }}>
-                            <Pencil size={14} /> Amend
-                          </Link>
                           <Button
                             onClick={() => { setRejectTarget(l); setRejectReason("") }}
                             disabled={busyId === l.id}
@@ -246,13 +268,15 @@ export default function LpoPage() {
                           </Button>
                         </>
                       )}
-                      {!isAdmin && !l.status && (
-                        <span style={{ color: AMBER, fontSize: 12.5 }}>Awaiting approval</span>
+
+                      {/* Procurement officer waiting states */}
+                      {!isAdmin && !isExec && (l.status === "pending" || !l.status) && (
+                        <span style={{ color: AMBER, fontSize: 12.5 }}>Awaiting executive</span>
                       )}
-                      {!isAdmin && l.status === "pending" && (
-                        <span style={{ color: AMBER, fontSize: 12.5 }}>Awaiting approval</span>
+                      {!isAdmin && !isExec && l.status === "exec_approved" && (
+                        <span style={{ color: TEAL, fontSize: 12.5 }}>Awaiting admin approval</span>
                       )}
-                      {l.status === "rejected" && !isAdmin && (
+                      {!isAdmin && !isExec && l.status === "rejected" && (
                         <span style={{ color: RED, fontSize: 12.5 }}>Rejected</span>
                       )}
                     </div>

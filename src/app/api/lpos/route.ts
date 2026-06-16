@@ -54,11 +54,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Add at least one line item." }, { status: 400 })
   }
 
-  // Admin/IT-created LPOs are auto-approved; merchant-created are pending.
+  // Status on create:
+  //   admin/IT    → "approved"      (skip both stages)
+  //   executive   → "exec_approved" (they've exec-approved it, goes to admin)
+  //   anyone else → "pending"       (awaiting executive review)
   const role = (auth.token as { role?: string }).role
   const isAdmin = isAdminish(role)
+  const isExec = role === "executive"
   const approver = (auth.token as { name?: string }).name || "Admin"
-  const status = isAdmin ? "approved" : "pending"
+  const status = isAdmin ? "approved" : isExec ? "exec_approved" : "pending"
   const approvedAt = isAdmin ? new Date() : null
   const destinationOfGoods = body.destinationOfGoods?.trim() || null
 
