@@ -64,6 +64,7 @@ function DeliveriesContent() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [actionError, setActionError] = useState("")
 
   const loadOrders = () => {
     setLoading(true)
@@ -95,7 +96,7 @@ function DeliveriesContent() {
       if (!res.ok) throw new Error()
       setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)))
     } catch {
-      alert("Could not update the order. Please try again.")
+      setActionError("Could not update the order. Please try again.")
     }
   }
 
@@ -128,6 +129,13 @@ function DeliveriesContent() {
           )
         })}
       </div>
+
+      {actionError && (
+        <div style={{ background: "#FDEDED", color: "#9B2C2C", padding: "10px 14px", borderRadius: 8, fontSize: 13, marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span>{actionError}</span>
+          <button onClick={() => setActionError("")} style={{ background: "none", border: "none", cursor: "pointer", color: "#9B2C2C", padding: 2 }}><X size={15} /></button>
+        </div>
+      )}
 
       {loading ? (
         <p style={{ color: MUTED, textAlign: "center", padding: "48px 16px" }}>Loading orders…</p>
@@ -254,6 +262,7 @@ function OrderRow({ order, expanded, onToggle, onStatus, onDispatched }: {
 function DispatchPanel({ order, onDispatched, isPaid }: { order: Order; onDispatched: (d: Dispatch) => void; isPaid: boolean }) {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [dispatchError, setDispatchError] = useState("")
   const [form, setForm] = useState({
     riderName: order.dispatch?.riderName || "",
     riderPhone: order.dispatch?.riderPhone || "",
@@ -263,9 +272,10 @@ function DispatchPanel({ order, onDispatched, isPaid }: { order: Order; onDispat
 
   const save = async () => {
     if (!form.riderName || !form.riderPhone || !form.motorbikePlate || !form.riderIdNo) {
-      alert("Fill in all rider details.")
+      setDispatchError("Fill in all rider details.")
       return
     }
+    setDispatchError("")
     setSaving(true)
     try {
       const res = await fetch(`/api/orders/${order.id}/dispatch`, {
@@ -278,7 +288,7 @@ function DispatchPanel({ order, onDispatched, isPaid }: { order: Order; onDispat
       onDispatched(data.dispatch)
       setOpen(false)
     } catch {
-      alert("Could not assign the rider. Please try again.")
+      setDispatchError("Could not assign the rider. Please try again.")
     } finally {
       setSaving(false)
     }
@@ -323,6 +333,9 @@ function DispatchPanel({ order, onDispatched, isPaid }: { order: Order; onDispat
         <Input placeholder="Rider phone" value={form.riderPhone} onChange={(e) => setForm({ ...form, riderPhone: e.target.value })} />
         <Input placeholder="Motorbike plate" value={form.motorbikePlate} onChange={(e) => setForm({ ...form, motorbikePlate: e.target.value })} />
         <Input placeholder="Rider ID number" value={form.riderIdNo} onChange={(e) => setForm({ ...form, riderIdNo: e.target.value })} />
+        {dispatchError && (
+          <div style={{ background: "#FDEDED", color: "#9B2C2C", padding: "8px 12px", borderRadius: 8, fontSize: 12.5 }}>{dispatchError}</div>
+        )}
         <div style={{ display: "flex", gap: 8 }}>
           <Button onClick={save} disabled={saving} style={{ backgroundColor: SAGE, color: "white", fontSize: 13, height: 38, flex: 1 }}>
             {saving ? "Saving…" : "Save & dispatch"}
