@@ -10,6 +10,7 @@ export interface EditLine {
   unitPrice: string
   taxRate: string
   productId?: string
+  imageUrl?: string
 }
 
 export const emptyLine = (): EditLine => ({ description: "", qty: "1", unitPrice: "", taxRate: "0" })
@@ -73,7 +74,7 @@ export default function DocLineItems({ lines, setLines }: { lines: EditLine[]; s
   const remove = (i: number) => setLines(lines.filter((_, idx) => idx !== i))
 
   const pickProduct = (lineIndex: number, p: CatalogProduct) => {
-    update(lineIndex, { description: p.name, unitPrice: String(p.retailPrice), productId: p.id })
+    update(lineIndex, { description: p.name, unitPrice: String(p.retailPrice), productId: p.id, imageUrl: productThumb(p) ?? undefined })
     setPickerFor(null)
     setSearch("")
   }
@@ -149,14 +150,19 @@ export default function DocLineItems({ lines, setLines }: { lines: EditLine[]; s
             {lines.map((l, i) => (
               <tr key={i}>
                 <td style={{ padding: 3 }}>
-                  <div style={{ display: "flex", gap: 4 }}>
+                  <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
                     <button
                       type="button"
                       title="Pick from product catalog"
                       onClick={() => { setPickerFor(i); setSearch("") }}
-                      style={{ flexShrink: 0, background: pickerFor === i ? GREEN : "#F0EDE8", border: "none", borderRadius: 6, cursor: "pointer", padding: "0 7px", display: "flex", alignItems: "center" }}>
+                      style={{ flexShrink: 0, background: pickerFor === i ? GREEN : "#F0EDE8", border: "none", borderRadius: 6, cursor: "pointer", padding: "0 7px", height: 32, display: "flex", alignItems: "center" }}>
                       <PackageSearch size={13} color={pickerFor === i ? "white" : GREEN} />
                     </button>
+                    {l.imageUrl && (
+                      <div style={{ flexShrink: 0, width: 32, height: 32, borderRadius: 6, overflow: "hidden", border: "1px solid #E5E7EB" }}>
+                        <Image src={l.imageUrl} alt={l.description} width={32} height={32} style={{ objectFit: "cover", width: "100%", height: "100%" }} unoptimized />
+                      </div>
+                    )}
                     <input style={{ ...cell, flex: 1 }} value={l.description} onChange={(e) => update(i, { description: e.target.value })} placeholder="Item / service" />
                   </div>
                 </td>
