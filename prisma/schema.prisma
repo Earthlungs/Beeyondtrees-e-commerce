@@ -168,6 +168,7 @@ model Batch {
   stage                String   @default("bulk_request") // current open stage (STAGES in lib/tracing)
   status               String   @default("in_progress")  // in_progress | rejected | completed
   productName          String? // finished good, used to fuzzy-match the catalog
+  lpoId                String? // LPO that initiated this batch (marks LPO as consumed)
   matchedProductId     String? // resolved catalog Product.id (read-only link, no FK)
   sellingPriceSnapshot Float? // price captured at reconcile time
   createdAt            DateTime @default(now())
