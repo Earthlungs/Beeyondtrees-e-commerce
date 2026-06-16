@@ -114,17 +114,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           ...(isAdmin ? [
             { href: "/admin/analytics", label: "Analytics", icon: TrendingUp },
             { href: "/admin/customers", label: "Customers", icon: Users },
-          ] : []),
+          ] : [chat]),
         ],
       },
-      {
+      ...(isAdmin ? [{
         title: "Value Chain",
         items: [
           { href: "/admin/tracing", label: "Tracing Board", icon: Workflow },
-          ...(isAdmin ? [{ href: "/admin/value-chain/reports", label: "Reports", icon: BarChart3 }] : []),
+          { href: "/admin/value-chain/reports", label: "Reports", icon: BarChart3 },
           chat,
         ],
-      },
+      }] : []),
       ...(isAdmin ? [{
         title: "System",
         items: [
