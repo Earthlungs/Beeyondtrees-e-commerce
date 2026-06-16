@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Lock, User, Shield, Store, Eye, EyeOff } from "lucide-react"
+import { Lock, User, Shield, Eye, EyeOff } from "lucide-react"
 
 export default function AdminLoginPage() {
   const router = useRouter()
@@ -15,7 +15,6 @@ export default function AdminLoginPage() {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-  const [selectedRole, setSelectedRole] = useState<"admin" | "merchant">("admin")
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -37,96 +36,58 @@ export default function AdminLoginPage() {
     }
   }
 
-  const quickLogin = (role: "admin" | "merchant") => {
-    setSelectedRole(role)
-  }
-
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      display: 'flex', 
-      alignItems: 'center', 
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
       justifyContent: 'center',
       background: 'linear-gradient(135deg, #6B7D5C 0%, #4A5A3F 50%, #2D3626 100%)',
       padding: '20px'
     }}>
       <Card style={{
-        width: '440px', 
+        width: '440px',
         maxWidth: '90vw',
-        backgroundColor: "var(--admin-card)", 
+        backgroundColor: "var(--admin-card)",
         border: 'none',
         boxShadow: '0 25px 50px rgba(0,0,0,0.15)',
         borderRadius: '16px',
         marginTop: '40px'
       }}>
         <CardHeader style={{ textAlign: 'center', paddingBottom: '8px' }}>
-          <div style={{ 
-            width: '56px', height: '56px', 
-            backgroundColor: 'var(--admin-bg)', 
+          <div style={{
+            width: '56px', height: '56px',
+            backgroundColor: 'var(--admin-bg)',
             borderRadius: '16px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             margin: '0 auto 16px'
           }}>
-            {selectedRole === "admin" ? (
-              <Shield size={28} style={{ color: '#6B7D5C' }} />
-            ) : (
-              <Store size={28} style={{ color: '#8C6A4A' }} />
-            )}
+            <Shield size={28} style={{ color: '#6B7D5C' }} />
           </div>
           <CardTitle style={{ fontSize: '22px', color: "var(--admin-text)" }}>
-            {selectedRole === "admin" ? 'Administrator Login' : 'Merchant Login'}
+            Administrator Login
           </CardTitle>
           <p style={{ color: "var(--admin-muted)", fontSize: '14px', marginTop: '4px' }}>
-            Sign in to manage {selectedRole === "admin" ? 'the entire platform' : 'your products and orders'}
+            Sign in to access the platform
           </p>
         </CardHeader>
         <CardContent>
-          {/* Role Toggle */}
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', backgroundColor: 'var(--admin-bg)', borderRadius: '10px', padding: '4px' }}>
-            <button
-              onClick={() => quickLogin("admin")}
-              style={{
-                flex: 1, padding: '10px', borderRadius: '8px', border: 'none',
-                backgroundColor: selectedRole === "admin" ? '#6B7D5C' : 'transparent',
-                color: selectedRole === "admin" ? 'white' : '#A89F91',
-                cursor: 'pointer', fontWeight: '500', fontSize: '14px',
-                transition: 'all 0.2s',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
-              }}
-            >
-              <Shield size={16} /> Administrator
-            </button>
-            <button
-              onClick={() => quickLogin("merchant")}
-              style={{
-                flex: 1, padding: '10px', borderRadius: '8px', border: 'none',
-                backgroundColor: selectedRole === "merchant" ? '#8C6A4A' : 'transparent',
-                color: selectedRole === "merchant" ? 'white' : '#A89F91',
-                cursor: 'pointer', fontWeight: '500', fontSize: '14px',
-                transition: 'all 0.2s',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
-              }}
-            >
-              <Store size={16} /> Merchant
-            </button>
-          </div>
-
           {error && (
-            <div style={{ 
-              backgroundColor: '#FFF5F5', color: '#8C6A4A', padding: '12px', 
-              borderRadius: '8px', marginBottom: '16px', fontSize: '14px', textAlign: 'center' 
+            <div style={{
+              backgroundColor: '#FFF5F5', color: '#8C6A4A', padding: '12px',
+              borderRadius: '8px', marginBottom: '16px', fontSize: '14px', textAlign: 'center'
             }}>
               {error}
             </div>
           )}
-          
+
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
               <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500', color: "var(--admin-text)" }}>Username</label>
               <div style={{ position: 'relative' }}>
                 <User size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: "var(--admin-muted)" }} />
                 <Input value={username} onChange={e => setUsername(e.target.value)}
-                  placeholder={selectedRole === "admin" ? "admin" : "merchant"}
+                  placeholder="Enter username"
                   style={{ paddingLeft: '40px', height: '44px' }} required />
               </div>
             </div>
@@ -145,15 +106,14 @@ export default function AdminLoginPage() {
               </div>
             </div>
             <Button type="submit" disabled={loading}
-              style={{ 
-                width: '100%', height: '44px', 
-                backgroundColor: selectedRole === "admin" ? '#6B7D5C' : '#8C6A4A', 
-                color: 'white', fontSize: '15px', fontWeight: '500', marginTop: '8px' 
+              style={{
+                width: '100%', height: '44px',
+                backgroundColor: '#6B7D5C',
+                color: 'white', fontSize: '15px', fontWeight: '500', marginTop: '8px'
               }}>
-              {loading ? 'Signing in...' : `Sign In as ${selectedRole === "admin" ? 'Administrator' : 'Merchant'}`}
+              {loading ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>
-
         </CardContent>
       </Card>
     </div>
