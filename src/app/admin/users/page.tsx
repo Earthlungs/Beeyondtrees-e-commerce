@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Users, Plus, X, Loader2, Ban, CheckCircle2, ShieldAlert } from "lucide-react"
+import { Users, Plus, X, Loader2, Ban, CheckCircle2, ShieldAlert, Trash2 } from "lucide-react"
 import { ROLE_LABELS } from "@/lib/tracing-stages"
 
 const TEXT = "var(--admin-text)"
@@ -72,6 +72,19 @@ export default function UsersPage() {
       const data = await res.json()
       if (!res.ok) { setNotice({ text: data.error || "Update failed.", tone: "error" }); return }
       setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, ...data } : u)))
+    } catch { setNotice({ text: "Network error.", tone: "error" }) }
+    finally { setBusyId(null) }
+  }
+
+  const del = async (u: U) => {
+    if (!window.confirm(`Permanently delete @${u.username} (${u.name})? This cannot be undone.`)) return
+    setBusyId(u.id)
+    try {
+      const res = await fetch("/api/users", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: u.id }) })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { setNotice({ text: data.error || "Delete failed.", tone: "error" }); return }
+      setUsers((prev) => prev.filter((x) => x.id !== u.id))
+      setNotice({ text: `Deleted @${u.username}.`, tone: "success" })
     } catch { setNotice({ text: "Network error.", tone: "error" }) }
     finally { setBusyId(null) }
   }
@@ -164,15 +177,20 @@ export default function UsersPage() {
                       : <span style={{ color: BROWN, fontSize: 12, fontWeight: 600 }}>● Blocked</span>}
                   </td>
                   <td style={{ ...td, textAlign: "right" }}>
-                    {u.active ? (
-                      <Button onClick={() => patch(u.id, { active: false })} disabled={busyId === u.id} variant="outline" style={{ color: BROWN, borderColor: BROWN, gap: 6, fontSize: 12, height: 32 }}>
-                        <Ban size={14} /> Block
+                    <div style={{ display: "inline-flex", gap: 8, justifyContent: "flex-end" }}>
+                      {u.active ? (
+                        <Button onClick={() => patch(u.id, { active: false })} disabled={busyId === u.id} variant="outline" style={{ color: BROWN, borderColor: BROWN, gap: 6, fontSize: 12, height: 32 }}>
+                          <Ban size={14} /> Block
+                        </Button>
+                      ) : (
+                        <Button onClick={() => patch(u.id, { active: true })} disabled={busyId === u.id} style={{ background: GREEN, color: "white", gap: 6, fontSize: 12, height: 32 }}>
+                          <CheckCircle2 size={14} /> Reactivate
+                        </Button>
+                      )}
+                      <Button onClick={() => del(u)} disabled={busyId === u.id} variant="outline" style={{ color: "#C0392B", borderColor: "#C0392B", gap: 6, fontSize: 12, height: 32 }}>
+                        <Trash2 size={14} /> Delete
                       </Button>
-                    ) : (
-                      <Button onClick={() => patch(u.id, { active: true })} disabled={busyId === u.id} style={{ background: GREEN, color: "white", gap: 6, fontSize: 12, height: 32 }}>
-                        <CheckCircle2 size={14} /> Reactivate
-                      </Button>
-                    )}
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
-import { requireRole } from "@/lib/authz"
-import { TRACING_ROLES } from "@/lib/tracing"
+import { requireRole, isAdminish } from "@/lib/authz"
+import { TRACING_ROLES, COST_FIELDS } from "@/lib/tracing"
 
-const VIEW_ROLES = [...TRACING_ROLES, "admin"]
+const VIEW_ROLES = [...TRACING_ROLES, "admin", "it_specialist"]
+
+// Remove every cost-bearing field from a stage record so non-admins never
+// receive cost data (defense-in-depth — the UI also hides it).
+function redactCosts<T>(record: T): T {
+  if (!record || typeof record !== "object") return record
+  const out = { ...(record as Record<string, unknown>) }
+  for (const k of Object.keys(out)) if (COST_FIELDS.has(k)) delete out[k]
+  return out as T
+}
 
 // Full batch with every stage record — drives the stepper detail page.
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -26,5 +35,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     },
   })
   if (!batch) return NextResponse.json({ error: "Not found" }, { status: 404 })
+
+  // Non-admins see the process but not any cost figure.
+  if (!isAdminish((auth.token as { role?: string }).role)) {
+    batch.bulkRequest = redactCosts(batch.bulkRequest)
+    batch.sourcing = redactCosts(batch.sourcing)
+    batch.production = redactCosts(batch.production)
+    batch.dispatch = redactCosts(batch.dispatch)
+  }
+
   return NextResponse.json(batch, { headers: { "Cache-Control": "no-store" } })
 }

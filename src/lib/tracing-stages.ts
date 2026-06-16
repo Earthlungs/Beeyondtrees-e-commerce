@@ -59,6 +59,16 @@ export const ROLE_LABELS: Record<string, string> = {
   receiving_officer: "Receiving Officer",
 }
 
+// Cost-bearing fields across the pipeline. Only `admin`/`it_specialist` may see
+// any cost or the profit/loss reconciliation — every other role sees the process
+// but these fields are redacted (server strips them; client shows NOT_ALLOWED).
+export const COST_FIELDS = new Set([
+  "estimatedUnitCost", "estimatedTotalCost", "laborCost", "transportCost",
+  "otherCosts", "totalHarvestCost", "unitCost", "totalCost",
+])
+
+export const NOT_ALLOWED = "You are not allowed to view this detail"
+
 export function isStage(v: unknown): v is Stage {
   return typeof v === "string" && (STAGES as readonly string[]).includes(v)
 }

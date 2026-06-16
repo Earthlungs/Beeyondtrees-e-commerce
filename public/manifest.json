@@ -2,7 +2,7 @@
   "name": "Beeyond Trees",
   "short_name": "BeeyondTrees",
   "description": "Sustainable natural products - Furniture, Home & Living, Pottery, Ornamental & Curios",
-  "start_url": "/",
+  "start_url": "/admin/login",
   "display": "standalone",
   "background_color": "#F5F1E8",
   "theme_color": "#6B7D5C",

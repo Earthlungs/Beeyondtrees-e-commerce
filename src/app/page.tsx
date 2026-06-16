@@ -360,7 +360,7 @@ export default function Home() {
             <div>
               <h4 style={{ fontWeight: 600, marginBottom: 14, color: "white", fontSize: 14, letterSpacing: "0.05em" }}>Company</h4>
               <div style={{ display: "flex", flexDirection: "column", gap: 9, fontSize: 14 }}>
-                {[["Where We Work", "/where-we-work"], ["Careers", "/careers"], ["Contact", "/contact"], ["Staff Portal", "/portal"]].map(([l, h]) => (
+                {[["Where We Work", "/where-we-work"], ["Careers", "/careers"], ["Contact", "/contact"], ["Staff Sign In", "/admin/login"]].map(([l, h]) => (
                   <Link key={h} href={h} style={{ color: "#B8A99A", textDecoration: "none" }}>{l}</Link>
                 ))}
               </div>

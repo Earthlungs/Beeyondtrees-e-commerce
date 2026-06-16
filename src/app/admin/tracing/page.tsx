@@ -46,7 +46,8 @@ export default function TracingBoard() {
   const router = useRouter()
   const { data: session } = useSession()
   const role = (session?.user as { role?: string })?.role || "merchant"
-  const canCreate = role === "factory_manager" || role === "admin"
+  const isAdmin = role === "admin" || role === "it_specialist"
+  const canCreate = role === "factory_manager" || role === "admin" || role === "it_specialist"
 
   const [rows, setRows] = useState<BatchRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -118,8 +119,8 @@ export default function TracingBoard() {
             <div><label style={label}>Quantity Requested</label><Input style={field} type="number" value={f.quantityRequested} onChange={(e) => setF({ ...f, quantityRequested: e.target.value })} /></div>
             <div><label style={label}>Unit of Measure</label><Input style={field} value={f.unitOfMeasure} onChange={(e) => setF({ ...f, unitOfMeasure: e.target.value })} /></div>
             <div><label style={label}>Expected Date</label><Input style={field} type="date" value={f.expectedDate} onChange={(e) => setF({ ...f, expectedDate: e.target.value })} /></div>
-            <div><label style={label}>Estimated Unit Cost</label><Input style={field} type="number" value={f.estimatedUnitCost} onChange={(e) => setF({ ...f, estimatedUnitCost: e.target.value })} /></div>
-            <div><label style={label}>Estimated Total Cost</label><Input style={{ ...field, background: "var(--admin-card-2)" }} value={ksh(estTotal)} readOnly /></div>
+            {isAdmin && <div><label style={label}>Estimated Unit Cost</label><Input style={field} type="number" value={f.estimatedUnitCost} onChange={(e) => setF({ ...f, estimatedUnitCost: e.target.value })} /></div>}
+            {isAdmin && <div><label style={label}>Estimated Total Cost</label><Input style={{ ...field, background: "var(--admin-card-2)" }} value={ksh(estTotal)} readOnly /></div>}
             <div><label style={label}>Requested By *</label><Input style={field} value={f.requestedBy} onChange={(e) => setF({ ...f, requestedBy: e.target.value })} /></div>
           </div>
           <div style={{ marginTop: 12 }}>
@@ -150,10 +151,12 @@ export default function TracingBoard() {
                   <div style={{ fontSize: 12, color: MUTED }}>by {b.requestedBy || "—"}</div>
                 </div>
                 <div style={{ textAlign: "right" }}>
-                  {b.status === "completed" ? (
-                    <div style={{ fontSize: 12, fontWeight: 600, color: b.summary?.verdict === "loss" ? RED : GREEN }}>
-                      {b.summary?.verdict === "loss" ? "⚠ Loss risk" : "Profitable"} · {ksh(b.summary?.costPerUnit ?? 0)}/unit
+                  {b.status === "completed" && b.summary ? (
+                    <div style={{ fontSize: 12, fontWeight: 600, color: b.summary.verdict === "loss" ? RED : GREEN }}>
+                      {b.summary.verdict === "loss" ? "⚠ Loss risk" : "Profitable"} · {ksh(b.summary.costPerUnit)}/unit
                     </div>
+                  ) : b.status === "completed" ? (
+                    <div style={{ fontSize: 12, fontWeight: 600, color: GREEN }}>Completed</div>
                   ) : (
                     <div style={{ fontSize: 12, color: MUTED }}>Stage: <b style={{ color: TEXT }}>{STAGE_LABELS[b.stage] ?? b.stage}</b></div>
                   )}

@@ -8,7 +8,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ArrowLeft, Loader2, Check, X, Lock, CircleDot, CircleCheck, MapPin } from "lucide-react"
 import ImageUploader from "@/components/admin/ImageUploader"
-import { STAGES, STAGE_LABELS, STAGE_ROLES, ROLE_LABELS, stageIndex, type Stage } from "@/lib/tracing-stages"
+import { STAGES, STAGE_LABELS, STAGE_ROLES, ROLE_LABELS, stageIndex, COST_FIELDS, NOT_ALLOWED, type Stage } from "@/lib/tracing-stages"
+
+// Stages that carry cost figures — used to show the redaction notice to non-admins.
+const STAGES_WITH_COST = new Set<Stage>(["bulk_request", "sourcing", "production", "dispatch"])
 
 const TEXT = "var(--admin-text)"
 const MUTED = "var(--admin-muted)"
@@ -119,6 +122,7 @@ export default function BatchDetail() {
   const { id } = useParams<{ id: string }>()
   const { data: session } = useSession()
   const role = (session?.user as { role?: string })?.role || "merchant"
+  const isAdmin = role === "admin" || role === "it_specialist"
 
   const [batch, setBatch] = useState<Record<string, unknown> | null>(null)
   const [recon, setRecon] = useState<Reconciliation | null>(null)
@@ -129,14 +133,15 @@ export default function BatchDetail() {
   const [error, setError] = useState("")
 
   const load = useCallback(async () => {
-    const [bRes, rRes] = await Promise.all([
-      fetch(`/api/tracing/batches/${id}`),
-      fetch(`/api/tracing/batches/${id}/reconcile`),
-    ])
+    // Reconciliation (costs/profit) is admin-only; non-admins never fetch it.
+    const bRes = await fetch(`/api/tracing/batches/${id}`)
     if (bRes.ok) setBatch(await bRes.json())
-    if (rRes.ok) setRecon(await rRes.json())
+    if (isAdmin) {
+      const rRes = await fetch(`/api/tracing/batches/${id}/reconcile`)
+      if (rRes.ok) setRecon(await rRes.json())
+    }
     setLoading(false)
-  }, [id])
+  }, [id, isAdmin])
   useEffect(() => { load() }, [load])
   useEffect(() => { fetch("/api/products").then((r) => r.ok && r.json()).then((p) => p && setProducts(p)).catch(() => {}) }, [])
 
@@ -261,6 +266,9 @@ export default function BatchDetail() {
                         </div>
                       ))}
                   </div>
+                  {!isAdmin && STAGES_WITH_COST.has(stage) && (
+                    <div style={{ marginTop: 8, fontSize: 12.5, color: "#8a6d00", fontStyle: "italic" }}>Costs: {NOT_ALLOWED}</div>
+                  )}
                   <ImageThumbs urls={[...((record as Record<string, unknown>).images as string[] ?? []), ...((record as Record<string, unknown>).productImage as string[] ?? [])]} />
                 </>
               )}
@@ -278,8 +286,11 @@ export default function BatchDetail() {
               )}
               {canAct && STAGE_FIELDS[stage] && (
                 <div style={{ marginTop: 12 }}>
+                  {!isAdmin && STAGE_FIELDS[stage]!.some((fd) => COST_FIELDS.has(fd.name)) && (
+                    <div style={{ marginBottom: 10, fontSize: 12.5, color: "#8a6d00", fontStyle: "italic" }}>Cost fields are hidden — {NOT_ALLOWED}</div>
+                  )}
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
-                    {STAGE_FIELDS[stage]!.map((fd) => (
+                    {STAGE_FIELDS[stage]!.filter((fd) => isAdmin || !COST_FIELDS.has(fd.name)).map((fd) => (
                       <div key={fd.name} style={fd.type === "textarea" || fd.type === "images" ? { gridColumn: "1 / -1" } : undefined}>
                         <label style={label}>{fd.label}</label>
                         {fd.type === "images" ? (
@@ -307,8 +318,16 @@ export default function BatchDetail() {
         })}
       </div>
 
-      {/* Profit / loss reconciliation */}
-      {recon && (
+      {/* Profit / loss reconciliation — admin only */}
+      {!isAdmin && (
+        <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, padding: 20, marginTop: 24 }}>
+          <h2 style={{ fontSize: 17, fontWeight: 700, color: TEXT, marginBottom: 8 }}>Profit / Loss Reconciliation</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#8a6d00", fontSize: 13.5 }}>
+            <Lock size={15} /> {NOT_ALLOWED}
+          </div>
+        </div>
+      )}
+      {isAdmin && recon && (
         <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, padding: 20, marginTop: 24 }}>
           <h2 style={{ fontSize: 17, fontWeight: 700, color: TEXT, marginBottom: 14 }}>Profit / Loss Reconciliation</h2>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 16 }}>

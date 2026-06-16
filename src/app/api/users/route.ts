@@ -129,3 +129,29 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Could not update the user." }, { status: 500 })
   }
 }
+
+// Permanently delete a staff account — admin or IT Specialist only. Hard delete;
+// User has no FK relations (messages/orders use read-only links), so this is safe.
+export async function DELETE(request: NextRequest) {
+  const auth = await requireRole(request, ADMINISH)
+  if (auth instanceof NextResponse) return auth
+  const body = await request.json().catch(() => null)
+  if (!body?.id) return NextResponse.json({ error: "Missing user id." }, { status: 400 })
+
+  // Can't delete your own account (avoids locking yourself out).
+  const selfId = (auth.token.sub as string | undefined) ?? (auth.token as { id?: string }).id
+  if (body.id === selfId) {
+    return NextResponse.json({ error: "You can't delete your own account." }, { status: 400 })
+  }
+
+  try {
+    await prisma.user.delete({ where: { id: body.id } })
+    return NextResponse.json({ ok: true })
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") {
+      return NextResponse.json({ error: "That user no longer exists." }, { status: 404 })
+    }
+    console.error("User delete failed:", e)
+    return NextResponse.json({ error: "Could not delete the user." }, { status: 500 })
+  }
+}
