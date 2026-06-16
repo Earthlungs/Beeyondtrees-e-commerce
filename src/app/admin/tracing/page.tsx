@@ -129,8 +129,7 @@ export default function TracingBoard() {
 
   const filteredLpos = availableLpos.filter((l) =>
     !lpoSearch.trim() ||
-    l.number.toLowerCase().includes(lpoSearch.toLowerCase()) ||
-    l.supplierName.toLowerCase().includes(lpoSearch.toLowerCase())
+    l.number.toLowerCase().includes(lpoSearch.toLowerCase())
   )
 
   const estTotal = (Number(f.quantityRequested) || 0) * (Number(f.estimatedUnitCost) || 0)
@@ -216,7 +215,7 @@ export default function TracingBoard() {
                     padding: "0 14px", fontSize: 13, display: "flex", alignItems: "center", gap: 8,
                   }}>
                   <Search size={14} color={AMBER} />
-                  <span>Search by LPO number or supplier…</span>
+                  <span>Search by LPO number…</span>
                   {availableLpos.length > 0 && (
                     <span style={{ marginLeft: "auto", background: AMBER, color: "white", fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>
                       {availableLpos.length} available
@@ -232,7 +231,7 @@ export default function TracingBoard() {
                         autoFocus
                         value={lpoSearch}
                         onChange={(e) => setLpoSearch(e.target.value)}
-                        placeholder="Type LPO number or supplier…"
+                        placeholder="Type LPO number…"
                         style={{ flex: 1, border: "none", outline: "none", fontSize: 13, background: "transparent", color: TEXT }}
                       />
                     </div>
