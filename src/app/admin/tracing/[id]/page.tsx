@@ -368,11 +368,8 @@ export default function BatchDetail() {
 
               {canAct && STAGE_FIELDS[stage] && stage !== "receiving" && (
                 <div style={{ marginTop: 12 }}>
-                  {!isAdmin && STAGE_FIELDS[stage]!.some((fd) => COST_FIELDS.has(fd.name)) && (
-                    <div style={{ marginBottom: 10, fontSize: 12.5, color: "#8a6d00", fontStyle: "italic" }}>Cost fields are hidden — {NOT_ALLOWED}</div>
-                  )}
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
-                    {STAGE_FIELDS[stage]!.filter((fd) => isAdmin || !COST_FIELDS.has(fd.name)).map((fd) => (
+                    {STAGE_FIELDS[stage]!.map((fd) => (
                       <div key={fd.name} style={fd.type === "textarea" || fd.type === "images" ? { gridColumn: "1 / -1" } : undefined}>
                         <label style={labelStyle}>{fd.label}</label>
                         {fd.type === "images" ? (

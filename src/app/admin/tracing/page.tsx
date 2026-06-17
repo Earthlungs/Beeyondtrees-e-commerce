@@ -284,8 +284,8 @@ export default function TracingBoard() {
             </div>
             <div><label style={label}>Unit of Measure</label><Input style={field} value={f.unitOfMeasure} onChange={(e) => setF({ ...f, unitOfMeasure: e.target.value })} /></div>
             <div><label style={label}>Expected Date</label><Input style={field} type="date" value={f.expectedDate} onChange={(e) => setF({ ...f, expectedDate: e.target.value })} /></div>
-            {isAdmin && <div><label style={label}>Estimated Unit Cost</label><Input style={field} type="number" value={f.estimatedUnitCost} onChange={(e) => setF({ ...f, estimatedUnitCost: e.target.value })} /></div>}
-            {isAdmin && <div><label style={label}>Estimated Total Cost</label><Input style={{ ...field, background: "var(--admin-card-2)" }} value={ksh(estTotal)} readOnly /></div>}
+            <div><label style={label}>Estimated Unit Cost</label><Input style={field} type="number" value={f.estimatedUnitCost} onChange={(e) => setF({ ...f, estimatedUnitCost: e.target.value })} /></div>
+            <div><label style={label}>Estimated Total Cost</label><Input style={{ ...field, background: "var(--admin-card-2)" }} value={ksh(estTotal)} readOnly /></div>
             <div><label style={label}>Requested By *</label><Input style={field} value={f.requestedBy} onChange={(e) => setF({ ...f, requestedBy: e.target.value })} /></div>
           </div>
           <div style={{ marginTop: 12 }}>
