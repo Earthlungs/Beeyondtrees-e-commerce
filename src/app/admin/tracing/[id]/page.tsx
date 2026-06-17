@@ -164,11 +164,14 @@ export default function BatchDetail() {
         if (productName && !form.materialName) prefill.materialName = productName
         if (!form.inspector) prefill.inspector = userName
         break
-      case "issuance":
+      case "issuance": {
+        const sector = (batch.bulkRequest as { sector?: string } | null)?.sector || ""
+        if (!form.department && sector) prefill.department = sector
         if (!form.approvedBy) prefill.approvedBy = userName
         if (!form.requestedBy && reqs[0]?.requestedBy) prefill.requestedBy = reqs[0].requestedBy
         if (productName && !form.product) prefill.product = productName
         break
+      }
       case "production":
         if (!form.issuedBy) prefill.issuedBy = userName
         if (productName && !form.material) prefill.material = productName
