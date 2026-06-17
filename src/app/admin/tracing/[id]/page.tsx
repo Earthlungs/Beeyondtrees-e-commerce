@@ -345,6 +345,7 @@ export default function BatchDetail() {
                   saving={saving} hasRows={hasRecord}
                   acceptedTotal={acceptedTotal} acceptedRemaining={acceptedRemaining}
                   defaultProduct={(batch.productName as string) || ""}
+                  defaultDepartment={((batch.bulkRequest as { sector?: string } | null)?.sector) || ""}
                   userName={userName}
                   products={products}
                   onAdd={(data) => submit("requisition", "add", data)}
@@ -534,12 +535,12 @@ function ApprovalForm({ saving, onSubmit }: { saving: boolean; onSubmit: (s: Sta
   )
 }
 
-function RequisitionForm({ saving, onAdd, onProceed, hasRows, acceptedTotal, acceptedRemaining, defaultProduct, userName, products }: {
+function RequisitionForm({ saving, onAdd, onProceed, hasRows, acceptedTotal, acceptedRemaining, defaultProduct, defaultDepartment, userName, products }: {
   saving: boolean; onAdd: (data: Record<string, unknown>) => void; onProceed: () => void
   hasRows: boolean; acceptedTotal: number; acceptedRemaining: number; defaultProduct: string
-  userName: string; products: { id: string; name: string }[]
+  defaultDepartment: string; userName: string; products: { id: string; name: string }[]
 }) {
-  const [r, setR] = useState({ department: "", product: defaultProduct, quantityRequired: acceptedRemaining ? String(acceptedRemaining) : "", requestedBy: userName, purpose: "" })
+  const [r, setR] = useState({ department: defaultDepartment, product: defaultProduct, quantityRequired: acceptedRemaining ? String(acceptedRemaining) : "", requestedBy: userName, purpose: "" })
   const [err, setErr] = useState("")
 
   const add = () => {
@@ -549,7 +550,7 @@ function RequisitionForm({ saving, onAdd, onProceed, hasRows, acceptedTotal, acc
     if (acceptedTotal > 0 && qty > acceptedRemaining) { setErr(`Only ${acceptedRemaining} accepted units remain — you can't requisition more than what was accepted.`); return }
     setErr("")
     onAdd(r)
-    setR({ department: "", product: defaultProduct, quantityRequired: "", requestedBy: userName, purpose: "" })
+    setR({ department: defaultDepartment, product: defaultProduct, quantityRequired: "", requestedBy: userName, purpose: "" })
   }
 
   return (
