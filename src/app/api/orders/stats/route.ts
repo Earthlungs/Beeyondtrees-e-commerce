@@ -10,15 +10,25 @@ export async function GET(request: NextRequest) {
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const [statusGroups, revenueAgg, customers, recent] = await Promise.all([
+  const role = (token as { role?: string }).role ?? "merchant"
+  const isAdminish = role === "admin" || role === "it_specialist"
+
+  const [statusGroups, revenueAgg, customers, recent, userCounts] = await Promise.all([
     prisma.order.groupBy({ by: ["status"], _count: { _all: true } }),
     prisma.order.aggregate({ _sum: { total: true }, where: { paymentStatus: "paid" } }),
     prisma.order.findMany({ distinct: ["customerPhone"], select: { customerPhone: true } }),
     prisma.order.findMany({
       orderBy: { createdAt: "desc" },
-      take: 5,
+      take: 20,
       select: { id: true, customerName: true, total: true, status: true, createdAt: true, _count: { select: { items: true } } },
     }),
+    isAdminish
+      ? Promise.all([
+          prisma.user.count(),
+          prisma.user.count({ where: { active: true } }),
+          prisma.user.count({ where: { active: false } }),
+        ])
+      : Promise.resolve(null),
   ])
 
   const orders = statusGroups.reduce((s, g) => s + g._count._all, 0)
@@ -36,6 +46,7 @@ export async function GET(request: NextRequest) {
         id: o.id, customerName: o.customerName, total: o.total,
         status: o.status, createdAt: o.createdAt, itemCount: o._count.items,
       })),
+      ...(userCounts ? { users: { total: userCounts[0], active: userCounts[1], blocked: userCounts[2] } } : {}),
     },
     { headers: { "Cache-Control": "no-store" } }
   )

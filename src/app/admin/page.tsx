@@ -47,28 +47,12 @@ export default function AdminDashboard() {
           customers: d.customers ?? 0,
         })
         setRecentOrders(Array.isArray(d.recent) ? d.recent : [])
+        if (d.users) setUserStats(d.users)
       })
       .catch(() => { if (!cancelled) setRecentOrders([]) })
 
     return () => { cancelled = true }
   }, [products])
-
-  useEffect(() => {
-    if (!isAdmin) return
-    let cancelled = false
-    fetch('/api/users')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((list: any[]) => {
-        if (cancelled || !Array.isArray(list)) return
-        setUserStats({
-          total: list.length,
-          active: list.filter((u) => u.active).length,
-          blocked: list.filter((u) => !u.active).length,
-        })
-      })
-      .catch(() => {})
-    return () => { cancelled = true }
-  }, [isAdmin])
 
   const visibleOrders = ordersExpanded ? recentOrders : recentOrders.slice(0, PREVIEW)
   const visibleStock = stockExpanded ? lowStock : lowStock.slice(0, PREVIEW)
