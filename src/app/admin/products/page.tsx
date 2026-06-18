@@ -16,6 +16,7 @@ export default function AdminProductsPage() {
   const [imageUrls, setImageUrls] = useState<string[]>([])
   const [newImageUrl, setNewImageUrl] = useState("")
   const [productSearch, setProductSearch] = useState("")
+  const handleSearch = (v: string) => { setProductSearch(v); setPage(1) }
   const [uploading, setUploading] = useState(false)
   const [notice, setNotice] = useState<{ text: string; tone: "error" | "success" } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -65,6 +66,8 @@ export default function AdminProductsPage() {
   const removeImageUrl = (index: number) => { setImageUrls(imageUrls.filter((_, i) => i !== index)) }
 
   const [saving, setSaving] = useState(false)
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 15
 
   const handleSave = async () => {
     const productData: Product = {
@@ -122,8 +125,11 @@ export default function AdminProductsPage() {
   const totalStockValue = products.reduce((s, p) => s + (Number(p.retailPrice) || 0) * (Number(p.stock) || 0), 0)
   // De-dupe by id (guards the React key warning from any stray duplicate/blank
   // id) and apply the admin product search.
-  const visibleProducts = Array.from(new Map(products.filter(p => p.id).map(p => [p.id, p])).values())
+  const filteredProducts = Array.from(new Map(products.filter(p => p.id).map(p => [p.id, p])).values())
     .filter(p => fuzzyMatch(productSearch, `${p.name} ${p.category}`))
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE))
+  const safePage = Math.min(page, totalPages)
+  const visibleProducts = filteredProducts.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
 
   return (
     <div>
@@ -252,10 +258,10 @@ export default function AdminProductsPage() {
       {products.length > 0 && (
         <div style={{ position: 'relative', marginBottom: '14px', maxWidth: '420px' }}>
           <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: "var(--admin-muted)" }} />
-          <input value={productSearch} onChange={e => setProductSearch(e.target.value)} placeholder="Search products by name or category…"
+          <input value={productSearch} onChange={e => handleSearch(e.target.value)} placeholder="Search products by name or category…"
             style={{ width: '100%', height: '40px', borderRadius: '8px', border: '1px solid var(--admin-border)', background: 'var(--admin-card)', padding: '0 36px', fontSize: '14px', color: "var(--admin-text)", outline: 'none' }} />
           {productSearch && (
-            <button onClick={() => setProductSearch("")} aria-label="Clear" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: "var(--admin-muted)", display: 'flex' }}><X size={15} /></button>
+            <button onClick={() => handleSearch("")} aria-label="Clear" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: "var(--admin-muted)", display: 'flex' }}><X size={15} /></button>
           )}
         </div>
       )}
@@ -296,7 +302,30 @@ export default function AdminProductsPage() {
             </tbody>
           </table>
         </CardContent></Card>
-      ) : (
+      ) : null}
+
+      {/* Pagination */}
+      {filteredProducts.length > PAGE_SIZE && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '16px' }}>
+          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}
+            style={{ padding: '6px 14px', borderRadius: 7, border: '1px solid var(--admin-border)', background: 'var(--admin-card)', color: safePage === 1 ? 'var(--admin-muted)' : 'var(--admin-text)', cursor: safePage === 1 ? 'default' : 'pointer', fontSize: 13 }}>
+            ← Prev
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+            <button key={n} onClick={() => setPage(n)}
+              style={{ width: 34, height: 34, borderRadius: 7, border: '1px solid var(--admin-border)', background: n === safePage ? '#6B7D5C' : 'var(--admin-card)', color: n === safePage ? 'white' : 'var(--admin-text)', cursor: 'pointer', fontSize: 13, fontWeight: n === safePage ? 700 : 400 }}>
+              {n}
+            </button>
+          ))}
+          <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}
+            style={{ padding: '6px 14px', borderRadius: 7, border: '1px solid var(--admin-border)', background: 'var(--admin-card)', color: safePage === totalPages ? 'var(--admin-muted)' : 'var(--admin-text)', cursor: safePage === totalPages ? 'default' : 'pointer', fontSize: 13 }}>
+            Next →
+          </button>
+          <span style={{ fontSize: 12, color: 'var(--admin-muted)', marginLeft: 4 }}>{filteredProducts.length} products</span>
+        </div>
+      )}
+
+      {products.length === 0 && (
         <Card><CardContent style={{ padding: '48px', textAlign: 'center' }}>
           <Package size={48} style={{ color: "var(--admin-muted)", marginBottom: '12px' }} />
           <h3 style={{ color: "var(--admin-text)", marginBottom: '6px' }}>No Products</h3>

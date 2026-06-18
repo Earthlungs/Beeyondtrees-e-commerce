@@ -46,6 +46,7 @@ export const STAGE_LABELS: Record<Stage, string> = {
 
 export const ROLE_LABELS: Record<string, string> = {
   admin: "Admin",
+  it_specialist: "IT Specialist",
   merchant: "Merchant",
   cashier: "Cashier",
   factory_manager: "Factory Manager",
@@ -57,6 +58,24 @@ export const ROLE_LABELS: Record<string, string> = {
   production_officer: "Production Officer",
   dispatch_officer: "Dispatch Officer",
   receiving_officer: "Receiving Officer",
+  // Extended staff roles
+  technician: "Technician",
+  engineering: "Engineering",
+  motorcycle_rider: "Motorcycle Rider",
+  assistant_administrator: "Assistant Administrator",
+  fiber_extractor: "Fiber Extractor",
+  pottery: "Pottery",
+  technical_superintendent: "Technical Superintendent",
+  building_construction: "Building & Construction",
+  bamboo_weaver: "Bamboo Weaver",
+  assistant_bamboo_tech: "Assistant Bamboo Tech",
+  ttgf: "TTGF",
+  farm_foreman: "Farm Foreman",
+  nursery: "Nursery",
+  shop_attendant: "Shop Attendant",
+  fiber_weaver: "Fiber Weaver",
+  glass_technician: "Glass Technician",
+  driver: "Driver",
 }
 
 // Cost-bearing fields across the pipeline. Only `admin`/`it_specialist` may see

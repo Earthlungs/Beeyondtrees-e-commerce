@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Users, Plus, X, Loader2, Ban, CheckCircle2, ShieldAlert, Trash2 } from "lucide-react"
+import { Users, Plus, X, Loader2, Ban, CheckCircle2, ShieldAlert, Trash2, UserCheck, UserX } from "lucide-react"
 import { ROLE_LABELS } from "@/lib/tracing-stages"
 import { ConfirmModal } from "@/components/admin/ConfirmModal"
 
@@ -19,13 +19,39 @@ interface U {
 // Selectable roles. The 9 *_officer/manager/executive roles drive the product
 // tracing pipeline (src/lib/tracing-stages.ts); cashier is till-only.
 const ROLE_OPTIONS: [string, string][] = [
-  ["merchant", "Merchant"], ["cashier", "Cashier (till only)"], ["admin", "Admin"],
+  // System / management
+  ["admin", "Admin"],
   ["it_specialist", "IT Specialist (full control)"],
-  ["factory_manager", "Factory Manager"], ["executive", "Executive"],
-  ["procurement_officer", "Procurement Officer"], ["quality_inspector", "Quality Inspector"],
-  ["requisition_officer", "Requisition Officer"], ["agribusiness_manager", "Agribusiness Manager"],
-  ["production_officer", "Production Officer"], ["dispatch_officer", "Dispatch Officer"],
+  ["assistant_administrator", "Assistant Administrator"],
+  ["merchant", "Merchant"],
+  ["cashier", "Cashier (till only)"],
+  // Pipeline roles
+  ["factory_manager", "Factory Manager"],
+  ["executive", "Executive"],
+  ["procurement_officer", "Procurement Officer"],
+  ["quality_inspector", "Quality Inspector"],
+  ["requisition_officer", "Requisition Officer"],
+  ["agribusiness_manager", "Agribusiness Manager"],
+  ["production_officer", "Production Officer"],
+  ["dispatch_officer", "Dispatch Officer"],
   ["receiving_officer", "Receiving Officer"],
+  // Extended staff
+  ["technician", "Technician"],
+  ["engineering", "Engineering"],
+  ["motorcycle_rider", "Motorcycle Rider"],
+  ["fiber_extractor", "Fiber Extractor"],
+  ["pottery", "Pottery"],
+  ["technical_superintendent", "Technical Superintendent"],
+  ["building_construction", "Building & Construction"],
+  ["bamboo_weaver", "Bamboo Weaver"],
+  ["assistant_bamboo_tech", "Assistant Bamboo Tech"],
+  ["ttgf", "TTGF"],
+  ["farm_foreman", "Farm Foreman"],
+  ["nursery", "Nursery"],
+  ["shop_attendant", "Shop Attendant"],
+  ["fiber_weaver", "Fiber Weaver"],
+  ["glass_technician", "Glass Technician"],
+  ["driver", "Driver"],
 ]
 
 export default function UsersPage() {
@@ -95,8 +121,32 @@ export default function UsersPage() {
     return <span style={{ background: c, color: "white", fontSize: 11, fontWeight: 600, padding: "2px 9px", borderRadius: 999 }}>{ROLE_LABELS[role] ?? role}</span>
   }
 
+  const activeCount = users.filter((u) => u.active).length
+  const blockedCount = users.filter((u) => !u.active).length
+
   return (
     <div>
+      {/* Summary cards */}
+      {!loading && users.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 150px), 1fr))', gap: '14px', marginBottom: '22px' }}>
+          {[
+            { label: 'Total Users', value: users.length, icon: Users, color: '#2C5282' },
+            { label: 'Active', value: activeCount, icon: UserCheck, color: GREEN },
+            { label: 'Blocked', value: blockedCount, icon: UserX, color: '#C0392B' },
+          ].map((s, i) => (
+            <div key={i} style={{ background: 'var(--admin-card)', border: '1px solid var(--admin-border)', borderRadius: 12, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{ width: 38, height: 38, borderRadius: 9, backgroundColor: 'var(--admin-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <s.icon size={18} color={s.color} />
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: MUTED, marginBottom: 2 }}>{s.label}</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: TEXT }}>{s.value}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       <ConfirmModal
         open={!!deleteTarget}
         title={`Delete @${deleteTarget?.username}?`}
