@@ -26,8 +26,11 @@ interface BatchRow {
   materialName: string | null
   requestedBy: string | null
   createdAt: string
+  matchedProductId: string | null
   summary: { costPerUnit: number; verdict: string } | null
 }
+
+interface CatalogProduct { id: string; name: string; images: string[] }
 
 interface AvailableLpo {
   id: string
@@ -69,6 +72,8 @@ export default function TracingBoard() {
   const [lpoOpen, setLpoOpen] = useState(false)
   const [selectedLpo, setSelectedLpo] = useState<AvailableLpo | null>(null)
   const lpoRef = useRef<HTMLDivElement>(null)
+  const [catalogProducts, setCatalogProducts] = useState<CatalogProduct[]>([])
+  const [matchedProduct, setMatchedProduct] = useState<CatalogProduct | null>(null)
 
   const today = new Date().toISOString().slice(0, 10)
   const [f, setF] = useState({
@@ -85,6 +90,13 @@ export default function TracingBoard() {
   }
 
   useEffect(() => { load() }, [])
+
+  useEffect(() => {
+    fetch("/api/products")
+      .then((r) => r.ok ? r.json() : [])
+      .then((data: CatalogProduct[]) => setCatalogProducts(data))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (!showForm || !canCreate) return
@@ -111,14 +123,23 @@ export default function TracingBoard() {
 
   const pickLpo = (lpo: AvailableLpo) => {
     const firstItem = lpo.items?.[0]
-    const itemsDesc = lpo.items?.map((i) => i.description).join(", ") || ""
-    const lineCount = String(lpo.items?.length || 1)
+    const totalQty = lpo.items?.reduce((s, i) => s + (Number(i.qty) || 0), 0) || 0
+    const materialName = firstItem?.description || ""
+    const estimatedUnitCost = totalQty > 0 ? String((lpo.total / totalQty).toFixed(2)) : ""
+
+    const lower = materialName.toLowerCase()
+    const matched = catalogProducts.find(
+      (p) => p.name.toLowerCase().includes(lower) || lower.includes(p.name.toLowerCase())
+    ) || null
+
     setSelectedLpo(lpo)
+    setMatchedProduct(matched)
     setF((prev) => ({
       ...prev,
-      materialName: firstItem?.description || prev.materialName,
-      productName: itemsDesc || firstItem?.description || prev.productName,
-      quantityRequested: lineCount,
+      materialName,
+      productName: materialName,
+      quantityRequested: String(totalQty),
+      estimatedUnitCost,
     }))
     setLpoOpen(false)
     setLpoSearch("")
@@ -126,7 +147,8 @@ export default function TracingBoard() {
 
   const clearLpo = () => {
     setSelectedLpo(null)
-    setF((prev) => ({ ...prev, materialName: "", productName: "", quantityRequested: "" }))
+    setMatchedProduct(null)
+    setF((prev) => ({ ...prev, materialName: "", productName: "", quantityRequested: "", estimatedUnitCost: "" }))
   }
 
   const filteredLpos = availableLpos.filter((l) =>
@@ -146,7 +168,7 @@ export default function TracingBoard() {
       const res = await fetch("/api/tracing/batches", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...f, estimatedTotalCost: estTotal, lpoId: selectedLpo.id }),
+        body: JSON.stringify({ ...f, estimatedTotalCost: selectedLpo.total, lpoId: selectedLpo.id, matchedProductId: matchedProduct?.id || null }),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error || "Could not create batch."); return }
@@ -205,7 +227,24 @@ export default function TracingBoard() {
                   <X size={15} />
                 </button>
               </div>
-            ) : (
+            ) : null}
+
+            {selectedLpo && matchedProduct && matchedProduct.images[0] && (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, padding: "8px 12px", background: "#F0F9FF", border: "1px solid #BAE6FD", borderRadius: 8 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={matchedProduct.images[0]} alt={matchedProduct.name} style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 6, border: "1px solid var(--admin-border)", flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: TEXT }}>Linked product: {matchedProduct.name}</div>
+                  <div style={{ fontSize: 11, color: MUTED }}>Image will follow this batch through all stages</div>
+                </div>
+              </div>
+            )}
+
+            {selectedLpo && !matchedProduct && (
+              <div style={{ marginTop: 6, fontSize: 11, color: MUTED, fontStyle: "italic" }}>No matching catalog product found — image will not be linked.</div>
+            )}
+
+            {!selectedLpo && (
               <div style={{ position: "relative" }}>
                 <button
                   type="button"
@@ -305,13 +344,27 @@ export default function TracingBoard() {
         <div style={{ textAlign: "center", padding: 60, color: MUTED }}>No batches yet.</div>
       ) : (
         <div style={{ display: "grid", gap: 10 }}>
-          {rows.map((b) => (
+          {rows.map((b) => {
+            const rowProduct = b.matchedProductId ? catalogProducts.find((p) => p.id === b.matchedProductId) : null
+            const rowThumb = rowProduct?.images?.[0] || null
+            return (
             <Link key={b.id} href={`/admin/tracing/${b.id}`} style={{ textDecoration: "none" }}>
               <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, padding: 16, display: "flex", alignItems: "center", gap: 16 }}>
-                <div style={{ minWidth: 90 }}>
-                  <div style={{ fontWeight: 700, color: TEXT, fontSize: 14 }}>{b.code}</div>
-                  <div style={{ fontSize: 11, color: MUTED }}>{new Date(b.createdAt).toLocaleDateString()}</div>
-                </div>
+                {rowThumb ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={rowThumb} alt="" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8, border: "1px solid var(--admin-border)", flexShrink: 0 }} />
+                ) : (
+                  <div style={{ minWidth: 90 }}>
+                    <div style={{ fontWeight: 700, color: TEXT, fontSize: 14 }}>{b.code}</div>
+                    <div style={{ fontSize: 11, color: MUTED }}>{new Date(b.createdAt).toLocaleDateString()}</div>
+                  </div>
+                )}
+                {rowThumb && (
+                  <div style={{ minWidth: 70 }}>
+                    <div style={{ fontWeight: 700, color: TEXT, fontSize: 14 }}>{b.code}</div>
+                    <div style={{ fontSize: 11, color: MUTED }}>{new Date(b.createdAt).toLocaleDateString()}</div>
+                  </div>
+                )}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 600, color: TEXT, fontSize: 14 }}>{b.productName || b.materialName || "—"}</div>
                   <div style={{ fontSize: 12, color: MUTED }}>by {b.requestedBy || "—"}</div>
@@ -331,7 +384,8 @@ export default function TracingBoard() {
                 <ChevronRight size={18} color={MUTED} />
               </div>
             </Link>
-          ))}
+          )
+          })}
         </div>
       )}
     </div>

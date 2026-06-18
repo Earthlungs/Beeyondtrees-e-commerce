@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
         materialName: b.bulkRequest?.materialName ?? null,
         requestedBy: b.bulkRequest?.requestedBy ?? null,
         createdAt: b.createdAt,
+        matchedProductId: b.matchedProductId ?? null,
         summary,
       }
     })
@@ -72,6 +73,7 @@ export async function POST(request: NextRequest) {
     Number(body.estimatedTotalCost) || +(quantityRequested * estimatedUnitCost).toFixed(2)
 
   const lpoId: string | null = body.lpoId?.trim() || null
+  const matchedProductId: string | null = body.matchedProductId?.trim() || null
 
   try {
     const batch = await createNumbered(
@@ -84,6 +86,7 @@ export async function POST(request: NextRequest) {
             stage: "approval",
             status: "in_progress",
             lpoId,
+            matchedProductId,
             productName: body.productName?.trim() || body.materialName.trim(),
             bulkRequest: {
               create: {
