@@ -126,30 +126,31 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const lpoNumber = (updated as { number?: string } | null)?.number ?? id
   const supplierName = (updated as { supplierName?: string } | null)?.supplierName ?? ""
 
-  if (newStatus === "approved") {
-    // Final approval — notify procurement officers
-    const poUsers = await prisma.user.findMany({ where: { role: "procurement_officer" }, select: { email: true } })
-    const adminUsers = await prisma.user.findMany({ where: { role: "admin" }, select: { email: true } })
-    const to = [...poUsers, ...adminUsers].flatMap((u) => u.email ? [u.email] : [])
-    if (to.length > 0) {
-      sendMail({
-        to,
-        subject: `[Beeyond Trees] LPO ${lpoNumber} approved`,
-        html: lpoApprovedEmail({ lpoNumber, supplierName, total: lpoTotal, approvedBy: actor, lpoUrl }),
-      }).catch((e) => console.error("[mailer] LPO approved:", e))
+  try {
+    if (newStatus === "approved") {
+      // Admin gave final approval — notify factory managers so they can create a batch
+      const fmUsers = await prisma.user.findMany({ where: { role: "factory_manager" }, select: { email: true } })
+      const to = fmUsers.flatMap((u) => u.email ? [u.email] : [])
+      if (to.length > 0) {
+        await sendMail({
+          to,
+          subject: `[Beeyond Trees] LPO ${lpoNumber} fully approved — you can now create a batch`,
+          html: lpoApprovedEmail({ lpoNumber, supplierName, total: lpoTotal, approvedBy: actor, lpoUrl }),
+        })
+      }
+    } else if (newStatus === "exec_approved") {
+      // Executive approved — notify admins for final sign-off
+      const adminUsers = await prisma.user.findMany({ where: { role: "admin" }, select: { email: true } })
+      const to = adminUsers.flatMap((u) => u.email ? [u.email] : [])
+      if (to.length > 0) {
+        await sendMail({
+          to,
+          subject: `[Beeyond Trees] LPO ${lpoNumber} awaiting your final approval`,
+          html: lpoExecApprovedEmail({ lpoNumber, supplierName, total: lpoTotal, approvedBy: actor, lpoUrl }),
+        })
+      }
     }
-  } else if (newStatus === "exec_approved") {
-    // Executive approved — notify admins for final sign-off
-    const adminUsers = await prisma.user.findMany({ where: { role: "admin" }, select: { email: true } })
-    const to = adminUsers.flatMap((u) => u.email ? [u.email] : [])
-    if (to.length > 0) {
-      sendMail({
-        to,
-        subject: `[Beeyond Trees] LPO ${lpoNumber} awaiting final approval`,
-        html: lpoExecApprovedEmail({ lpoNumber, supplierName, total: lpoTotal, approvedBy: actor, lpoUrl }),
-      }).catch((e) => console.error("[mailer] LPO exec approved:", e))
-    }
-  }
+  } catch (e) { console.error("[mailer] LPO approval notify:", e) }
 
   return NextResponse.json({ ...updated, status: newStatus, approvedBy: actor, approvedAt: new Date(), rejectionReason: action === "reject" ? reason : null, amended, destinationOfGoods })
 }
