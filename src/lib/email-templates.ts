@@ -1,4 +1,5 @@
-const BASE_URL = process.env.NEXTAUTH_URL || "http://localhost:3000"
+const BASE_URL = process.env.NEXTAUTH_URL || "https://www.beeyondtrees.org"
+const LOGO_URL = `${BASE_URL}/icons/icon-192.png`
 const GREEN = "#6B7D5C"
 const RED = "#C0392B"
 const BROWN = "#8C6A4A"
@@ -10,8 +11,9 @@ function layout(body: string) {
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#F5F1EC;font-family:system-ui,sans-serif;">
   <div style="max-width:560px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-    <div style="background:${GREEN};padding:20px 28px;display:flex;align-items:center;gap:10px;">
-      <span style="color:#fff;font-size:20px;font-weight:700;letter-spacing:-0.5px;">🌿 Beeyond Trees</span>
+    <div style="background:${GREEN};padding:16px 28px;display:flex;align-items:center;gap:12px;">
+      <img src="${LOGO_URL}" alt="Beeyond Trees" width="44" height="44" style="width:44px;height:44px;object-fit:contain;border-radius:10px;flex-shrink:0;background:#ffffff;padding:4px;" />
+      <span style="color:#fff;font-size:20px;font-weight:700;letter-spacing:-0.5px;">Beeyond Trees</span>
     </div>
     <div style="padding:28px;">
       ${body}
