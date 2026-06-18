@@ -5,11 +5,16 @@ import { prisma } from "@/lib/db"
 import { requireRole, isAdminish } from "@/lib/authz"
 
 const ROLES = new Set([
-  "admin", "merchant", "cashier", "it_specialist",
-  // Traceability pipeline roles (see src/lib/tracing-stages.ts)
+  "admin", "merchant", "cashier", "it_specialist", "assistant_administrator",
+  // Traceability pipeline roles
   "factory_manager", "executive", "procurement_officer", "quality_inspector",
   "requisition_officer", "agribusiness_manager", "production_officer",
   "dispatch_officer", "receiving_officer",
+  // Extended staff roles
+  "technician", "engineering", "motorcycle_rider", "fiber_extractor",
+  "pottery", "technical_superintendent", "building_construction",
+  "bamboo_weaver", "assistant_bamboo_tech", "ttgf", "farm_foreman",
+  "nursery", "shop_attendant", "fiber_weaver", "glass_technician", "driver",
 ])
 const EMAIL_DOMAIN = "earthlungs.org"
 const ADMINISH = ["admin", "it_specialist"]
