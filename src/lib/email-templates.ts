@@ -101,11 +101,12 @@ export function lpoApprovedEmail({
   lpoNumber: string; supplierName: string; total: number; approvedBy: string; lpoUrl: string
 }) {
   return layout(`
-    <h2 style="margin:0 0 8px;font-size:18px;color:${GREEN};">✓ LPO Approved</h2>
+    <h2 style="margin:0 0 8px;font-size:18px;color:${GREEN};">✓ LPO Fully Approved</h2>
     <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 12px;">
-      LPO <strong>${lpoNumber}</strong> (${supplierName}) for <strong>${ksh(total)}</strong> has been <strong style="color:${GREEN};">fully approved</strong> by ${approvedBy} and is ready to use.
+      LPO <strong>${lpoNumber}</strong> (${supplierName}) for <strong>${ksh(total)}</strong> has been <strong style="color:${GREEN};">fully approved</strong> by ${approvedBy}.
+      You can now create a production batch linked to this LPO.
     </p>
-    ${btn("View LPO", lpoUrl)}
+    ${btn("Create Batch →", lpoUrl)}
   `)
 }
 
