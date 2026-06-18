@@ -3,6 +3,10 @@ import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import { requireDocRole, normalizeLines, parseDate } from "@/lib/docs"
 import { isAdminish } from "@/lib/authz"
+import { sendMail } from "@/lib/mailer"
+import { lpoApprovedEmail, lpoExecApprovedEmail } from "@/lib/email-templates"
+
+const BASE_URL = process.env.NEXTAUTH_URL || "http://localhost:3000"
 
 async function fetchExtras(id: string) {
   try {
@@ -117,5 +121,35 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
 
   const updated = await prisma.lpo.findUnique({ where: { id } })
+  const lpoUrl = `${BASE_URL}/admin/lpo/${id}`
+  const lpoTotal = Number((updated as { total?: number } | null)?.total) || 0
+  const lpoNumber = (updated as { number?: string } | null)?.number ?? id
+  const supplierName = (updated as { supplierName?: string } | null)?.supplierName ?? ""
+
+  if (newStatus === "approved") {
+    // Final approval — notify procurement officers
+    const poUsers = await prisma.user.findMany({ where: { role: "procurement_officer" }, select: { email: true } })
+    const adminUsers = await prisma.user.findMany({ where: { role: "admin" }, select: { email: true } })
+    const to = [...poUsers, ...adminUsers].flatMap((u) => u.email ? [u.email] : [])
+    if (to.length > 0) {
+      sendMail({
+        to,
+        subject: `[Beeyond Trees] LPO ${lpoNumber} approved`,
+        html: lpoApprovedEmail({ lpoNumber, supplierName, total: lpoTotal, approvedBy: actor, lpoUrl }),
+      }).catch((e) => console.error("[mailer] LPO approved:", e))
+    }
+  } else if (newStatus === "exec_approved") {
+    // Executive approved — notify admins for final sign-off
+    const adminUsers = await prisma.user.findMany({ where: { role: "admin" }, select: { email: true } })
+    const to = adminUsers.flatMap((u) => u.email ? [u.email] : [])
+    if (to.length > 0) {
+      sendMail({
+        to,
+        subject: `[Beeyond Trees] LPO ${lpoNumber} awaiting final approval`,
+        html: lpoExecApprovedEmail({ lpoNumber, supplierName, total: lpoTotal, approvedBy: actor, lpoUrl }),
+      }).catch((e) => console.error("[mailer] LPO exec approved:", e))
+    }
+  }
+
   return NextResponse.json({ ...updated, status: newStatus, approvedBy: actor, approvedAt: new Date(), rejectionReason: action === "reject" ? reason : null, amended, destinationOfGoods })
 }
