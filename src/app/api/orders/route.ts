@@ -85,24 +85,18 @@ export async function POST(request: NextRequest) {
     include: { items: true },
   })
 
-  // Notify admins of the new order (fire-and-forget)
-  prisma.user.findMany({ where: { role: "admin" }, select: { email: true } }).then((admins) => {
+  // Notify admins of the new order
+  try {
+    const admins = await prisma.user.findMany({ where: { role: "admin" }, select: { email: true } })
     const to = admins.flatMap((u) => u.email ? [u.email] : [])
-    if (to.length === 0) return
-    sendMail({
-      to,
-      subject: `[Beeyond Trees] New order from ${customerName}`,
-      html: newOrderEmail({
-        orderRef: order.id,
-        customerName,
-        customerPhone,
-        town,
-        county,
-        total,
-        ordersUrl: `${BASE_URL}/admin`,
-      }),
-    }).catch((e) => console.error("[mailer] new order:", e))
-  }).catch(() => {})
+    if (to.length > 0) {
+      await sendMail({
+        to,
+        subject: `[Beeyond Trees] New order from ${customerName}`,
+        html: newOrderEmail({ orderRef: order.id, customerName, customerPhone, town, county, total, ordersUrl: `${BASE_URL}/admin` }),
+      })
+    }
+  } catch (e) { console.error("[mailer] new order:", e) }
 
   return NextResponse.json(order, { status: 201 })
 }

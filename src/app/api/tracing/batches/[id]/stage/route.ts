@@ -60,12 +60,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     })
     // Fire-and-forget email — never block the response
     if (next) {
-      notifyNextStage(id, batch.code, batch.productName ?? "", next).catch(() => {})
+      await notifyNextStage(id, batch.code, batch.productName ?? "", next)
     } else {
       // Batch completed — notify admins
       const adminEmails = await emailsForRole("admin")
       if (adminEmails.length > 0) {
-        sendMail({
+        await sendMail({
           to: adminEmails,
           subject: `[Beeyond Trees] Batch ${batch.code} completed`,
           html: batchCompletedEmail({ batchCode: batch.code, productName: batch.productName ?? "", batchUrl: `${BASE_URL}/admin/tracing/${id}` }),
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           // Also notify the factory manager that their request was approved
           const fmEmails = await emailsForRole("factory_manager")
           if (fmEmails.length > 0) {
-            sendMail({
+            await sendMail({
               to: fmEmails,
               subject: `[Beeyond Trees] Batch ${batch.code} approved`,
               html: batchApprovedEmail({ batchCode: batch.code, productName: batch.productName ?? "", approvedBy, batchUrl: `${BASE_URL}/admin/tracing/${id}` }),
