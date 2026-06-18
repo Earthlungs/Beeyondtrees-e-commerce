@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getToken } from "next-auth/jwt"
 import { prisma } from "@/lib/db"
+import { sendMail } from "@/lib/mailer"
+import { newOrderEmail } from "@/lib/email-templates"
+
+const BASE_URL = process.env.NEXTAUTH_URL || "http://localhost:3000"
 
 // Admin order list, newest first, with line items and any dispatch record.
 // Orders contain customer PII (name, phone, address) so this is admin-only.
@@ -80,6 +84,25 @@ export async function POST(request: NextRequest) {
     },
     include: { items: true },
   })
+
+  // Notify admins of the new order (fire-and-forget)
+  prisma.user.findMany({ where: { role: "admin" }, select: { email: true } }).then((admins) => {
+    const to = admins.flatMap((u) => u.email ? [u.email] : [])
+    if (to.length === 0) return
+    sendMail({
+      to,
+      subject: `[Beeyond Trees] New order from ${customerName}`,
+      html: newOrderEmail({
+        orderRef: order.id,
+        customerName,
+        customerPhone,
+        town,
+        county,
+        total,
+        ordersUrl: `${BASE_URL}/admin`,
+      }),
+    }).catch((e) => console.error("[mailer] new order:", e))
+  }).catch(() => {})
 
   return NextResponse.json(order, { status: 201 })
 }

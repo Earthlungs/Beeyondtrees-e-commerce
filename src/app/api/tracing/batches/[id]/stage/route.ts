@@ -3,6 +3,31 @@ import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import { createNumbered, parseDate } from "@/lib/docs"
 import { requireStage, nextStage, isStage, type Stage } from "@/lib/tracing"
+import { STAGE_LABELS, STAGE_ROLES, ROLE_LABELS } from "@/lib/tracing-stages"
+import { sendMail } from "@/lib/mailer"
+import { stageAdvanceEmail, batchApprovedEmail, batchRejectedEmail, batchCompletedEmail } from "@/lib/email-templates"
+
+const BASE_URL = process.env.NEXTAUTH_URL || "http://localhost:3000"
+
+async function emailsForRole(role: string): Promise<string[]> {
+  const users = await prisma.user.findMany({ where: { role }, select: { email: true } })
+  return users.flatMap((u) => u.email ? [u.email] : [])
+}
+
+async function notifyNextStage(batchId: string, batchCode: string, productName: string, nextSt: Stage) {
+  const roleName = ROLE_LABELS[STAGE_ROLES[nextSt]] ?? nextSt
+  const stageName = STAGE_LABELS[nextSt] ?? nextSt
+  const batchUrl = `${BASE_URL}/admin/tracing/${batchId}`
+  const to = await emailsForRole(STAGE_ROLES[nextSt])
+  const adminEmails = await emailsForRole("admin")
+  const all = [...new Set([...to, ...adminEmails])]
+  if (all.length === 0) return
+  await sendMail({
+    to: all,
+    subject: `[Beeyond Trees] Action required: ${stageName} — ${batchCode}`,
+    html: stageAdvanceEmail({ batchCode, productName, stageName, roleName, batchUrl }),
+  }).catch((e) => console.error("[mailer] stage advance:", e))
+}
 
 const num = (v: unknown) => Number(v) || 0
 const str = (v: unknown) => (typeof v === "string" ? v.trim() : "")
@@ -29,10 +54,25 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const advance = async () => {
     const next = nextStage(stage)
-    return prisma.batch.update({
+    const updated = await prisma.batch.update({
       where: { id },
       data: next ? { stage: next } : { status: "completed" },
     })
+    // Fire-and-forget email — never block the response
+    if (next) {
+      notifyNextStage(id, batch.code, batch.productName ?? "", next).catch(() => {})
+    } else {
+      // Batch completed — notify admins
+      const adminEmails = await emailsForRole("admin")
+      if (adminEmails.length > 0) {
+        sendMail({
+          to: adminEmails,
+          subject: `[Beeyond Trees] Batch ${batch.code} completed`,
+          html: batchCompletedEmail({ batchCode: batch.code, productName: batch.productName ?? "", batchUrl: `${BASE_URL}/admin/tracing/${id}` }),
+        }).catch((e) => console.error("[mailer] batch completed:", e))
+      }
+    }
+    return updated
   }
 
   try {
@@ -50,12 +90,32 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         if (decision === "rejected") {
           await prisma.batch.update({ where: { id }, data: { status: "rejected" } })
           await prisma.bulkRequest.update({ where: { batchId: id }, data: { status: "rejected" } })
+          // Notify the factory manager who raised the request
+          const br = await prisma.bulkRequest.findUnique({ where: { batchId: id }, select: { requestedBy: true } })
+          const fmEmails = await emailsForRole("factory_manager")
+          if (fmEmails.length > 0) {
+            await sendMail({
+              to: fmEmails,
+              subject: `[Beeyond Trees] Batch ${batch.code} rejected`,
+              html: batchRejectedEmail({ batchCode: batch.code, productName: batch.productName ?? "", approvedBy, reason: str(d.reason), batchUrl: `${BASE_URL}/admin/tracing/${id}` }),
+            }).catch((e) => console.error("[mailer] batch rejected:", e))
+          }
+          void br // suppress unused warning
         } else {
           await prisma.bulkRequest.update({
             where: { batchId: id },
             data: { status: "approved", approvedBy },
           })
-          await advance()
+          await advance() // advance() fires notifyNextStage internally
+          // Also notify the factory manager that their request was approved
+          const fmEmails = await emailsForRole("factory_manager")
+          if (fmEmails.length > 0) {
+            sendMail({
+              to: fmEmails,
+              subject: `[Beeyond Trees] Batch ${batch.code} approved`,
+              html: batchApprovedEmail({ batchCode: batch.code, productName: batch.productName ?? "", approvedBy, batchUrl: `${BASE_URL}/admin/tracing/${id}` }),
+            }).catch((e) => console.error("[mailer] batch approved:", e))
+          }
         }
         break
       }
