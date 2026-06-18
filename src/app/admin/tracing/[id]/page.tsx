@@ -125,7 +125,7 @@ export default function BatchDetail() {
 
   const [batch, setBatch] = useState<Record<string, unknown> | null>(null)
   const [recon, setRecon] = useState<Reconciliation | null>(null)
-  const [products, setProducts] = useState<{ id: string; name: string }[]>([])
+  const [products, setProducts] = useState<{ id: string; name: string; images: string[] }[]>([])
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState<FormState>({})
   const [saving, setSaving] = useState(false)
@@ -192,6 +192,8 @@ export default function BatchDetail() {
   const currentStage = batch.stage as Stage
   const status = batch.status as string
   const currentIdx = stageIndex(currentStage)
+  const matchedProduct = products.find((p) => p.id === (batch.matchedProductId as string | null))
+  const batchImage = matchedProduct?.images?.[0] || null
   const inspection = batch.inspection as { quantityAccepted?: number } | null
   const dispatch = batch.dispatch as { quantity?: number } | null
   const requisitions = (batch.requisitions as { quantityRequired?: number; requestedBy?: string }[]) ?? []
@@ -243,11 +245,19 @@ export default function BatchDetail() {
       </Link>
 
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
-        <h1 style={{ fontSize: 22, fontWeight: "bold", color: TEXT }}>{batch.code as string}</h1>
-        <span style={{ background: status === "completed" ? GREEN : status === "rejected" ? RED : "#8C6A4A", color: "white", fontSize: 12, fontWeight: 600, padding: "3px 11px", borderRadius: 999, textTransform: "capitalize" }}>
-          {status.replace("_", " ")}
-        </span>
-        <span style={{ fontSize: 13, color: MUTED }}>{(batch.productName as string) || ""}</span>
+        {batchImage && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={batchImage} alt="" style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 10, border: "1px solid var(--admin-border)", flexShrink: 0 }} />
+        )}
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: "bold", color: TEXT }}>{batch.code as string}</h1>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 2 }}>
+            <span style={{ background: status === "completed" ? GREEN : status === "rejected" ? RED : "#8C6A4A", color: "white", fontSize: 12, fontWeight: 600, padding: "3px 11px", borderRadius: 999, textTransform: "capitalize" }}>
+              {status.replace("_", " ")}
+            </span>
+            <span style={{ fontSize: 13, color: MUTED }}>{(batch.productName as string) || ""}</span>
+          </div>
+        </div>
       </div>
 
       {error && <div style={{ background: "#FDEDED", color: RED, padding: "10px 14px", borderRadius: 8, fontSize: 13, marginBottom: 16 }}>{error}</div>}
@@ -326,6 +336,13 @@ export default function BatchDetail() {
                     <div style={{ marginTop: 8, fontSize: 12.5, color: "#8a6d00", fontStyle: "italic" }}>Costs: {NOT_ALLOWED}</div>
                   )}
                   <ImageThumbs urls={[...((record as Record<string, unknown>).images as string[] ?? []), ...((record as Record<string, unknown>).productImage as string[] ?? [])]} />
+                  {stage === "bulk_request" && batchImage && (
+                    <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8 }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={batchImage} alt={matchedProduct?.name} style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 8, border: "1px solid var(--admin-border)" }} />
+                      <div style={{ fontSize: 12, color: MUTED }}>Linked product: <span style={{ color: TEXT, fontWeight: 600 }}>{matchedProduct?.name}</span></div>
+                    </div>
+                  )}
                 </>
               )}
 
