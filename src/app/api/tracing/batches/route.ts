@@ -115,24 +115,26 @@ export async function POST(request: NextRequest) {
     // Notify executives (and admin) that a new batch needs approval
     const batchUrl = `${BASE_URL}/admin/tracing/${batch.id}`
     const productName = batch.productName ?? batch.bulkRequest?.materialName ?? ""
-    prisma.user.findMany({
-      where: { role: { in: ["executive", "admin"] } },
-      select: { email: true },
-    }).then((users) => {
+    try {
+      const users = await prisma.user.findMany({
+        where: { role: { in: ["executive", "admin"] } },
+        select: { email: true },
+      })
       const to = users.flatMap((u) => u.email ? [u.email] : [])
-      if (to.length === 0) return
-      sendMail({
-        to,
-        subject: `[Beeyond Trees] New batch ${batch.code} awaiting approval`,
-        html: stageAdvanceEmail({
-          batchCode: batch.code,
-          productName,
-          stageName: "Approval",
-          roleName: "Executive",
-          batchUrl,
-        }),
-      }).catch((e) => console.error("[mailer] new batch notify:", e))
-    }).catch(() => {})
+      if (to.length > 0) {
+        await sendMail({
+          to,
+          subject: `[Beeyond Trees] New batch ${batch.code} awaiting approval`,
+          html: stageAdvanceEmail({
+            batchCode: batch.code,
+            productName,
+            stageName: "Approval",
+            roleName: "Executive",
+            batchUrl,
+          }),
+        })
+      }
+    } catch (e) { console.error("[mailer] new batch notify:", e) }
 
     return NextResponse.json(batch, { status: 201 })
   } catch (e) {
