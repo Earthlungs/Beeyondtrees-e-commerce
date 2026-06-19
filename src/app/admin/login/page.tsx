@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Lock, User, Shield, Eye, EyeOff } from "lucide-react"
+import { WorldCupBanner } from "@/components/layout/WorldCupBanner"
 
 export default function AdminLoginPage() {
   const router = useRouter()
@@ -37,6 +38,8 @@ export default function AdminLoginPage() {
   }
 
   return (
+    <>
+    <WorldCupBanner />
     <div style={{
       minHeight: '100vh',
       display: 'flex',
@@ -117,5 +120,6 @@ export default function AdminLoginPage() {
         </CardContent>
       </Card>
     </div>
+    </>
   )
 }

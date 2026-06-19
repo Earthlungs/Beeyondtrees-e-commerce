@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next"
 import { Geist, Fraunces } from "next/font/google"
 import "./globals.css"
 import { Providers } from "@/components/providers/Providers"
+import { WorldCupBanner } from "@/components/layout/WorldCupBanner"
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" })
 const fraunces = Fraunces({
@@ -46,6 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className={geist.className}>
+        <WorldCupBanner />
         <Providers>{children}</Providers>
       </body>
     </html>
