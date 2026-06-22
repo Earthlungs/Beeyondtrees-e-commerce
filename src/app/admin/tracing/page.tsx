@@ -186,6 +186,12 @@ export default function TracingBoard() {
           50% { border-color: #F59E0B; box-shadow: 0 0 0 6px ${AMBER}20; }
         }
         .lpo-pulse { animation: lpo-pulse 1.6s ease-in-out infinite; }
+        .lpo-tray-row { display: flex; align-items: center; gap: 12px; background: white; border: 1px solid #FDE68A; border-radius: 8px; padding: 10px 14px; }
+        .lpo-tray-btn { flex-shrink: 0; }
+        @media (max-width: 520px) {
+          .lpo-tray-row { flex-direction: column; align-items: stretch; gap: 8px; }
+          .lpo-tray-btn { width: 100%; justify-content: center; }
+        }
       `}</style>
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
@@ -214,7 +220,7 @@ export default function TracingBoard() {
           </div>
           <div style={{ display: "grid", gap: 8 }}>
             {availableLpos.map((lpo) => (
-              <div key={lpo.id} style={{ display: "flex", alignItems: "center", gap: 12, background: "white", border: "1px solid #FDE68A", borderRadius: 8, padding: "10px 14px" }}>
+              <div key={lpo.id} className="lpo-tray-row">
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, color: GREEN, fontSize: 13 }}>{lpo.number}</div>
                   <div style={{ fontSize: 12, color: MUTED, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -222,8 +228,9 @@ export default function TracingBoard() {
                   </div>
                 </div>
                 <Button
+                  className="lpo-tray-btn"
                   onClick={() => { pickLpo(lpo); setShowForm(true) }}
-                  style={{ background: AMBER, color: "white", fontSize: 12, height: 32, padding: "0 14px", gap: 5, flexShrink: 0 }}>
+                  style={{ background: AMBER, color: "white", fontSize: 12, height: 32, padding: "0 14px", gap: 5 }}>
                   <Plus size={13} /> Start Batch
                 </Button>
               </div>
