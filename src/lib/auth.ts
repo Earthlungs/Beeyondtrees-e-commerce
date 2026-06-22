@@ -47,6 +47,18 @@ export const authOptions: NextAuthOptions = {
         if (s.image !== undefined) token.picture = s.image
         if (typeof s.theme === "string") token.theme = s.theme
       }
+      // Re-read role + active flag from DB on every token refresh so role changes
+      // made by an admin take effect without the user needing to sign out first.
+      if (token.sub && !user) {
+        try {
+          const fresh = await prisma.user.findUnique({
+            where: { id: token.sub },
+            select: { role: true, active: true },
+          })
+          if (!fresh || !fresh.active) return { ...token, role: null } // forces 401 on next request
+          token.role = fresh.role
+        } catch { /* DB unreachable — keep existing token */ }
+      }
       return token
     },
     async session({ session, token }) {
