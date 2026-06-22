@@ -98,13 +98,14 @@ export default function TracingBoard() {
       .catch(() => {})
   }, [])
 
+  // Always load available LPOs for factory_manager so the board shows the pending tray
   useEffect(() => {
-    if (!showForm || !canCreate) return
+    if (!canCreate) return
     fetch("/api/tracing/available-lpos")
       .then((r) => r.ok ? r.json() : [])
       .then((data: AvailableLpo[]) => setAvailableLpos(data))
       .catch(() => {})
-  }, [showForm, canCreate])
+  }, [canCreate])
 
   // Close LPO dropdown on outside click
   useEffect(() => {
@@ -201,6 +202,35 @@ export default function TracingBoard() {
           </Button>
         )}
       </div>
+
+      {/* Approved LPOs tray — visible to factory_manager before opening the form */}
+      {canCreate && !showForm && availableLpos.length > 0 && (
+        <div style={{ background: "#FFFBEB", border: `1px solid ${AMBER}`, borderRadius: 12, padding: 16, marginBottom: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+            <ClipboardList size={16} color={AMBER} />
+            <span style={{ fontWeight: 700, color: AMBER, fontSize: 14 }}>
+              {availableLpos.length} Approved LPO{availableLpos.length > 1 ? "s" : ""} ready — start a batch to continue the pipeline
+            </span>
+          </div>
+          <div style={{ display: "grid", gap: 8 }}>
+            {availableLpos.map((lpo) => (
+              <div key={lpo.id} style={{ display: "flex", alignItems: "center", gap: 12, background: "white", border: "1px solid #FDE68A", borderRadius: 8, padding: "10px 14px" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, color: GREEN, fontSize: 13 }}>{lpo.number}</div>
+                  <div style={{ fontSize: 12, color: MUTED, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {lpo.supplierName} · {lpo.items?.map((i: { description: string }) => i.description).join(", ")} · KSh {lpo.total.toLocaleString()}
+                  </div>
+                </div>
+                <Button
+                  onClick={() => { pickLpo(lpo); setShowForm(true) }}
+                  style={{ background: AMBER, color: "white", fontSize: 12, height: 32, padding: "0 14px", gap: 5, flexShrink: 0 }}>
+                  <Plus size={13} /> Start Batch
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {showForm && (
         <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, padding: 20, marginBottom: 20 }}>
