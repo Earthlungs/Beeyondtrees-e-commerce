@@ -87,7 +87,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (role === "cashier") {
     groups = [{ items: [{ href: "/admin/pos", label: "Point of Sale", icon: ShoppingCart }, chat] }]
   } else if (isTracing && !canDoc) {
-    groups = [{ title: "Value Chain", items: [{ href: "/admin/tracing", label: "Tracing Board", icon: Workflow }, chat] }]
+    // factory_manager can view approved LPOs to pick one when starting a batch
+    const lpoItems: NavItem[] = role === "factory_manager"
+      ? [{ href: "/admin/lpo", label: "LPO", icon: ClipboardList }]
+      : []
+    groups = [{ title: "Value Chain", items: [...lpoItems, { href: "/admin/tracing", label: "Tracing Board", icon: Workflow }, chat] }]
   } else if (isTracing && canDoc) {
     groups = [
       {

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import { requireDocRole, normalizeLines, createNumbered, parseDate } from "@/lib/docs"
-import { isAdminish } from "@/lib/authz"
+import { requireRole, isAdminish } from "@/lib/authz"
 import { sendMail } from "@/lib/mailer"
 import { lpoExecApprovedEmail } from "@/lib/email-templates"
 
@@ -62,7 +62,8 @@ async function fetchExtras(ids: string[]): Promise<Map<string, ExtraFields>> {
 }
 
 export async function GET(request: NextRequest) {
-  const auth = await requireDocRole(request)
+  // factory_manager needs read-only access to see approved LPOs before creating a batch
+  const auth = await requireRole(request, ["procurement_officer", "executive", "admin", "it_specialist", "factory_manager"])
   if (auth instanceof NextResponse) return auth
   const lpos = await prisma.lpo.findMany({ orderBy: { createdAt: "desc" } })
   const extras = await fetchExtras(lpos.map((l) => l.id))

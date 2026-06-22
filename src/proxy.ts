@@ -32,8 +32,10 @@ export default async function proxy(request: NextRequest) {
     ]
     const DOC_ROLES = ["procurement_officer", "executive"]
     const canDoc = role && DOC_ROLES.includes(role)
+    // factory_manager may view approved LPOs (read-only) so they can pick one when starting a batch
+    const canLpoView = role === "factory_manager" && path.startsWith("/admin/lpo")
     const docPath = path.startsWith("/admin/lpo") || path.startsWith("/admin/invoicing")
-    if (role && TRACING_ROLES.includes(role) && !path.startsWith("/admin/tracing") && !(canDoc && docPath) && !COMMON) {
+    if (role && TRACING_ROLES.includes(role) && !path.startsWith("/admin/tracing") && !(canDoc && docPath) && !canLpoView && !COMMON) {
       return NextResponse.redirect(new URL("/admin/tracing", request.url))
     }
   }
