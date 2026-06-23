@@ -14,11 +14,29 @@ async function emailsForRole(role: string): Promise<string[]> {
   return users.flatMap((u) => u.email ? [u.email] : [])
 }
 
+// Email of the user who created the batch's LPO (the designated receiver).
+async function lpoCreatorEmail(batchId: string): Promise<string[]> {
+  try {
+    const rows = await prisma.$queryRaw<{ uid: string | null; nm: string | null }[]>`
+      SELECT "lpoCreatedByUserId" AS uid, "lpoCreatedByName" AS nm FROM "Batch" WHERE id = ${batchId}
+    `
+    const r = rows[0]
+    if (!r) return []
+    const user = r.uid
+      ? await prisma.user.findUnique({ where: { id: r.uid }, select: { email: true } })
+      : r.nm
+        ? await prisma.user.findFirst({ where: { name: r.nm }, select: { email: true } })
+        : null
+    return user?.email ? [user.email] : []
+  } catch { return [] }
+}
+
 async function notifyNextStage(batchId: string, batchCode: string, productName: string, nextSt: Stage) {
-  const roleName = ROLE_LABELS[STAGE_ROLES[nextSt]] ?? nextSt
   const stageName = STAGE_LABELS[nextSt] ?? nextSt
   const batchUrl = `${BASE_URL}/admin/tracing/${batchId}`
-  const to = await emailsForRole(STAGE_ROLES[nextSt])
+  // Receiving is done by the LPO creator (dynamic), not the legacy receiving_officer.
+  const roleName = nextSt === "receiving" ? "LPO Creator (Receiver)" : (ROLE_LABELS[STAGE_ROLES[nextSt]] ?? nextSt)
+  const to = nextSt === "receiving" ? await lpoCreatorEmail(batchId) : await emailsForRole(STAGE_ROLES[nextSt])
   const adminEmails = await emailsForRole("admin")
   const all = [...new Set([...to, ...adminEmails])]
   if (all.length === 0) return

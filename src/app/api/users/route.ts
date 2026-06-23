@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/db"
-import { requireRole, isAdminish } from "@/lib/authz"
+import { requireRole, isAdminish, ADMINISH_ROLES } from "@/lib/authz"
 
 const ROLES = new Set([
   "admin", "merchant", "cashier", "it_specialist", "assistant_administrator",
+  // Leadership / 2026 restructure roles
+  "assistant_ceo", "chief", "finance", "factory_procurement", "external_procurement",
   // Traceability pipeline roles
   "factory_manager", "executive", "procurement_officer", "quality_inspector",
   "requisition_officer", "agribusiness_manager", "production_officer",
@@ -17,7 +19,7 @@ const ROLES = new Set([
   "nursery", "shop_attendant", "fiber_weaver", "glass_technician", "driver",
 ])
 const EMAIL_DOMAIN = "earthlungs.org"
-const ADMINISH = ["admin", "it_specialist"]
+const ADMINISH = [...ADMINISH_ROLES]
 const select = { id: true, username: true, name: true, role: true, active: true, email: true, phone: true, image: true, mustChangePassword: true, createdAt: true }
 
 // User management — admin or IT Specialist (IT has full control).

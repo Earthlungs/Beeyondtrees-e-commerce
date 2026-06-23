@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ArrowLeft, Loader2, Check, X, Lock, CircleDot, CircleCheck, MapPin, Plus, Trash2 } from "lucide-react"
 import ImageUploader from "@/components/admin/ImageUploader"
-import { STAGES, STAGE_LABELS, STAGE_ROLES, ROLE_LABELS, stageIndex, COST_FIELDS, NOT_ALLOWED, type Stage } from "@/lib/tracing-stages"
+import ProductionProgress from "@/components/admin/ProductionProgress"
+import { STAGES, STAGE_LABELS, STAGE_ROLES, ROLE_LABELS, stageIndex, COST_FIELDS, NOT_ALLOWED, isAdminishRole, type Stage } from "@/lib/tracing-stages"
 
 const STAGES_WITH_COST = new Set<Stage>(["bulk_request", "sourcing", "production", "dispatch"])
 
@@ -120,7 +121,10 @@ export default function BatchDetail() {
   const { id } = useParams<{ id: string }>()
   const { data: session } = useSession()
   const role = (session?.user as { role?: string })?.role || "merchant"
-  const isAdmin = role === "admin" || role === "it_specialist"
+  const isAdmin = isAdminishRole(role)
+  // CEO-level stage authority mirrors requireStage on the server (admin + Assistant
+  // CEO may act on ANY stage; IT specialist does NOT get stage-acting rights).
+  const isCeo = role === "admin" || role === "assistant_ceo"
   const userName = (session?.user?.name as string) || ""
 
   const [batch, setBatch] = useState<Record<string, unknown> | null>(null)
@@ -273,7 +277,10 @@ export default function BatchDetail() {
         {STAGES.map((stage, idx) => {
           const isDone = idx < currentIdx || (status === "completed" && idx <= currentIdx)
           const isCurrent = stage === currentStage && status === "in_progress"
-          const canAct = isCurrent && (role === "admin" || role === STAGE_ROLES[stage])
+          // Receiving is done by whoever created the LPO (matched by name as a
+          // fallback since the session has no user id) — not the legacy receiving_officer.
+          const isReceivingCreator = stage === "receiving" && !!userName && batch["lpoCreatedByName"] === userName
+          const canAct = isCurrent && (isCeo || role === STAGE_ROLES[stage] || isReceivingCreator)
           const record = batch[RECORD_KEY[stage]]
           const hasRecord = stage === "requisition" ? Array.isArray(record) && (record as unknown[]).length > 0 : !!record
 
@@ -300,6 +307,9 @@ export default function BatchDetail() {
                   </span>
                 )}
               </div>
+
+              {/* Production progress — live sub-stage timeline + % (graphical, all viewers) */}
+              {stage === "production" && <ProductionProgress batchId={id} canLog={canAct} />}
 
               {/* Read-only requisition rows */}
               {hasRecord && stage === "requisition" && (

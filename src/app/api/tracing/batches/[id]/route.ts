@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireRole, isAdminish } from "@/lib/authz"
 import { TRACING_ROLES, COST_FIELDS } from "@/lib/tracing"
 
-const VIEW_ROLES = [...TRACING_ROLES, "admin", "it_specialist"]
+const VIEW_ROLES = [...TRACING_ROLES, "admin", "it_specialist", "assistant_ceo"]
 
 // Remove every cost-bearing field from a stage record so non-admins never
 // receive cost data (defense-in-depth — the UI also hides it).
@@ -44,5 +44,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     batch.dispatch = redactCosts(batch.dispatch)
   }
 
-  return NextResponse.json(batch, { headers: { "Cache-Control": "no-store" } })
+  // Raw columns (origin + LPO creator) for the origin badge and the receiving
+  // gate ("whoever created the LPO receives the goods").
+  let extra: { origin: string | null; lpoCreatedByName: string | null; lpoCreatedByUserId: string | null } = { origin: null, lpoCreatedByName: null, lpoCreatedByUserId: null }
+  try {
+    const rows = await prisma.$queryRaw<typeof extra[]>`
+      SELECT "origin", "lpoCreatedByName", "lpoCreatedByUserId" FROM "Batch" WHERE id = ${id}
+    `
+    if (rows[0]) extra = rows[0]
+  } catch { /* columns not present yet */ }
+
+  return NextResponse.json({ ...batch, ...extra }, { headers: { "Cache-Control": "no-store" } })
 }

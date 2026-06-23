@@ -46,29 +46,43 @@ type ExtraFields = {
   rejectionReason: string | null
   destinationOfGoods: string | null
   amended: boolean
+  origin: string | null
+  createdByName: string | null
+  onBehalf: boolean
+}
+
+const EXTRA_DEFAULTS: ExtraFields = {
+  status: "approved", approvedBy: null, approvedAt: null, rejectionReason: null,
+  destinationOfGoods: null, amended: false, origin: "internal", createdByName: null, onBehalf: false,
 }
 
 async function fetchExtras(ids: string[]): Promise<Map<string, ExtraFields>> {
   if (ids.length === 0) return new Map()
   try {
     const rows = await prisma.$queryRaw<(ExtraFields & { id: string })[]>`
-      SELECT id, status, "approvedBy", "approvedAt", "rejectionReason", "destinationOfGoods", "amended"
+      SELECT id, status, "approvedBy", "approvedAt", "rejectionReason", "destinationOfGoods", "amended", "origin", "createdByName", "onBehalf"
       FROM "Lpo"
       WHERE id = ANY(${ids}::text[])
     `
     return new Map(rows.map((r) => [r.id, r]))
   } catch {
-    return new Map(ids.map((id) => [id, { status: null as unknown as string, approvedBy: null, approvedAt: null, rejectionReason: null, destinationOfGoods: null, amended: false }]))
+    return new Map(ids.map((id) => [id, { ...EXTRA_DEFAULTS, status: null as unknown as string }]))
   }
 }
 
+// Roles allowed to view the LPO list: originators, both approval chains, finance
+// (notified on CEO approval), CEO-level, and factory_manager (picks an approved LPO).
+const LPO_VIEW_ROLES = [
+  "procurement_officer", "external_procurement", "executive", "chief", "finance",
+  "admin", "assistant_ceo", "it_specialist", "factory_manager",
+]
+
 export async function GET(request: NextRequest) {
-  // factory_manager needs read-only access to see approved LPOs before creating a batch
-  const auth = await requireRole(request, ["procurement_officer", "executive", "admin", "it_specialist", "factory_manager"])
+  const auth = await requireRole(request, LPO_VIEW_ROLES)
   if (auth instanceof NextResponse) return auth
   const lpos = await prisma.lpo.findMany({ orderBy: { createdAt: "desc" } })
   const extras = await fetchExtras(lpos.map((l) => l.id))
-  const result = lpos.map((l) => ({ ...l, ...(extras.get(l.id) ?? { status: "approved", approvedBy: null, approvedAt: null, rejectionReason: null, destinationOfGoods: null, amended: false }) }))
+  const result = lpos.map((l) => ({ ...l, ...(extras.get(l.id) ?? EXTRA_DEFAULTS) }))
   return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } })
 }
 
@@ -86,15 +100,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Add at least one line item." }, { status: 400 })
   }
 
+  // Two LPO lanes, decided by who raises it:
+  //   external_procurement → origin "external" (Bamboosa); chain: Chief → CEO
+  //   everyone else        → origin "internal" (Beeyond Trees); chain: Factory Admin → CEO
+  //
   // Status on create:
-  //   admin/IT    → "approved"      (skip both stages)
-  //   executive   → "exec_approved" (they've exec-approved it, goes to admin)
-  //   anyone else → "pending"       (awaiting executive review)
+  //   admin/IT/asst CEO      → "approved"       (skip both stages)
+  //   external_procurement   → "pending_chief"  (awaiting Chief review)
+  //   executive              → "exec_approved"  (Factory Admin self-approved → CEO)
+  //   anyone else (internal) → "pending"        (awaiting Factory Admin review)
   const role = (auth.token as { role?: string }).role
   const isAdmin = isAdminish(role)
   const isExec = role === "executive"
+  const isExternal = role === "external_procurement"
+  const origin = isExternal ? "external" : "internal"
   const approver = (auth.token as { name?: string }).name || "Admin"
-  const status = isAdmin ? "approved" : isExec ? "exec_approved" : "pending"
+  const creatorId = (auth.token as { sub?: string }).sub || null
+  const creatorName = (auth.token as { name?: string }).name || null
+  const status = isAdmin ? "approved" : isExternal ? "pending_chief" : isExec ? "exec_approved" : "pending"
   const approvedAt = isAdmin ? new Date() : null
   const destinationOfGoods = body.destinationOfGoods?.trim() || null
   // Where to email the generated LPO. Stored now; sent immediately if the admin
@@ -132,7 +155,10 @@ export async function POST(request: NextRequest) {
             "approvedBy" = ${isAdmin ? approver : null}::text,
             "approvedAt" = ${approvedAt}::timestamp,
             "destinationOfGoods" = ${destinationOfGoods}::text,
-            "recipientEmail" = ${recipientEmail}::text
+            "recipientEmail" = ${recipientEmail}::text,
+            "origin" = ${origin}::text,
+            "createdByUserId" = ${creatorId}::text,
+            "createdByName" = ${creatorName}::text
         WHERE id = ${lpo.id}
       `
     } catch { /* migration not yet applied — fields applied on deploy */ }
@@ -143,7 +169,7 @@ export async function POST(request: NextRequest) {
     const lpoTotal = total
 
     if (status === "pending") {
-      // Procurement officer submitted — notify executives to review
+      // Procurement officer submitted (internal) — notify Factory Admins to review
       try {
         const executives = await prisma.user.findMany({ where: { role: "executive" }, select: { email: true } })
         const to = executives.flatMap((u) => u.email ? [u.email] : [])
@@ -151,10 +177,23 @@ export async function POST(request: NextRequest) {
           await sendMail({
             to,
             subject: `[Beeyond Trees] New LPO ${lpoNumber} awaiting your approval`,
-            html: lpoNewEmail({ lpoNumber, supplierName, total: lpoTotal, lpoUrl, recipientRole: "executive" }),
+            html: lpoNewEmail({ lpoNumber, supplierName, total: lpoTotal, lpoUrl, recipientRole: "Factory Admin" }),
           })
         }
       } catch (e) { console.error("[mailer] LPO new (exec notify):", e) }
+    } else if (status === "pending_chief") {
+      // External Procurement (Bamboosa) submitted — notify Chiefs to review
+      try {
+        const chiefs = await prisma.user.findMany({ where: { role: "chief" }, select: { email: true } })
+        const to = chiefs.flatMap((u) => u.email ? [u.email] : [])
+        if (to.length > 0) {
+          await sendMail({
+            to,
+            subject: `[Beeyond Trees] New EXTERNAL LPO ${lpoNumber} awaiting Chief approval`,
+            html: lpoNewEmail({ lpoNumber, supplierName, total: lpoTotal, lpoUrl, recipientRole: "Chief" }),
+          })
+        }
+      } catch (e) { console.error("[mailer] LPO new (chief notify):", e) }
     } else if (status === "exec_approved") {
       // Executive created LPO directly — notify admins for final sign-off
       try {

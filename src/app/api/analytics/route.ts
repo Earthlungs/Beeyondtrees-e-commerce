@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
-import { requireRole } from "@/lib/authz"
+import { requireRole, ADMINISH_ROLES } from "@/lib/authz"
+import { ROLE_LABELS } from "@/lib/tracing-stages"
 
 const EAT = 3 * 60 * 60 * 1000 // Kenya is UTC+3, no DST
 
@@ -11,8 +12,11 @@ const eatDayStart = (ymd: string) => new Date(Date.parse(`${ymd}T00:00:00Z`) - E
 // (inclusive EAT days). Defaults to "today" (since EAT midnight) — which is how
 // the dashboard's headline figure "auto-resets" each day. Counts only paid
 // orders (online paymentStatus=paid + POS sales, which are also paid).
+// Bonus rate awarded on a seller's full-year POS revenue.
+const BONUS_RATE = 0.1
+
 export async function GET(request: NextRequest) {
-  const auth = await requireRole(request, ["admin"])
+  const auth = await requireRole(request, [...ADMINISH_ROLES])
   if (auth instanceof NextResponse) return auth
 
   const sp = request.nextUrl.searchParams
@@ -104,6 +108,36 @@ export async function GET(request: NextRequest) {
   const top = <T extends { revenue: number }>(m: Map<string, T>, n = 8) =>
     [...m.values()].sort((a, b) => b.revenue - a.revenue).slice(0, n)
 
+  // ── Year-end bonus engine ──────────────────────────────────────────────────
+  // Independent of the selected range: every staff member's POS sales for the
+  // CURRENT calendar year (EAT), with their department (role) and sale frequency.
+  // Bonus = 10% of the revenue they personally rang up over the year.
+  const year = eatNow.getUTCFullYear()
+  const yearStartUtc = new Date(Date.UTC(year, 0, 1) - EAT)
+  let bonuses: { name: string; role: string | null; department: string; orders: number; revenue: number; bonus: number }[] = []
+  try {
+    const rows = await prisma.$queryRaw<{ soldBy: string | null; role: string | null; orders: number; revenue: number }[]>`
+      SELECT "soldBy",
+             MAX("soldByRole") AS role,
+             COUNT(*)::int      AS orders,
+             COALESCE(SUM(total), 0)::float AS revenue
+      FROM "Order"
+      WHERE "paymentStatus" = 'paid' AND channel = 'pos'
+        AND "soldBy" IS NOT NULL
+        AND "createdAt" >= ${yearStartUtc}
+      GROUP BY "soldBy"
+      ORDER BY revenue DESC
+    `
+    bonuses = rows.map((r) => ({
+      name: r.soldBy ?? "—",
+      role: r.role,
+      department: r.role ? (ROLE_LABELS[r.role] ?? r.role) : "—",
+      orders: Number(r.orders) || 0,
+      revenue: r.revenue || 0,
+      bonus: +((r.revenue || 0) * BONUS_RATE).toFixed(2),
+    }))
+  } catch (e) { console.error("[analytics] bonus aggregation failed:", e) }
+
   return NextResponse.json(
     {
       range: { from: from.toISOString(), to: to.toISOString() },
@@ -123,6 +157,10 @@ export async function GET(request: NextRequest) {
       byMethod,
       collectors: [...byCollector.values()].sort((a, b) => b.total - a.total),
       hourly,
+      bonusYear: year,
+      bonusRate: BONUS_RATE,
+      bonuses,
+      bonusTotal: +bonuses.reduce((s, b) => s + b.bonus, 0).toFixed(2),
     },
     { headers: { "Cache-Control": "no-store" } }
   )

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import {
   TrendingUp, TrendingDown, Wallet, Boxes, Globe, Store,
-  MapPin, Package, Clock, Loader2, Banknote, Smartphone, CreditCard, Receipt,
+  MapPin, Package, Clock, Loader2, Banknote, Smartphone, CreditCard, Receipt, Award,
 } from "lucide-react"
 
 const TEXT = "var(--admin-text)", MUTED = "#A89F91", GREEN = "#6B7D5C", BROWN = "#8C6A4A", DARK = "#3D3226", CREAM = "var(--admin-card-2)"
@@ -22,6 +22,8 @@ interface Analytics {
   byMethod: Record<string, { amount: number; count: number }>
   collectors: { name: string; total: number; cash: number; mpesa: number; card: number; orders: number }[]
   hourly: { hour: number; online: number; pos: number }[]
+  bonusYear: number; bonusRate: number; bonusTotal: number
+  bonuses: { name: string; role: string | null; department: string; orders: number; revenue: number; bonus: number }[]
 }
 
 type Preset = "today" | "7d" | "30d" | "custom"
@@ -184,6 +186,49 @@ export default function AnalyticsPage() {
             <Panel title="Best-selling products" icon={<Package size={16} />}>
               <RankTable rows={data.topProducts.map((p) => ({ a: p.name, b: `${p.qty} sold`, c: ksh(p.revenue) }))} empty="No sales in range." />
             </Panel>
+          </div>
+
+          {/* Year-end staff sales bonuses (whole-year, independent of the date filter) */}
+          <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 14, padding: 16, marginTop: 18 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 4 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, color: TEXT, fontWeight: 700, fontSize: 14 }}>
+                <Award size={16} color={BROWN} /> Staff sales bonuses — {data.bonusYear}
+              </div>
+              <div style={{ fontSize: 12.5, color: MUTED }}>
+                {Math.round(data.bonusRate * 100)}% of each seller&apos;s full-year POS revenue · Pool: <b style={{ color: GREEN }}>{ksh(data.bonusTotal)}</b>
+              </div>
+            </div>
+            <p style={{ fontSize: 12, color: MUTED, margin: "2px 0 10px" }}>Every staff member can sell at the till. This ranks who sold how much this year, their department, and the {Math.round(data.bonusRate * 100)}% bonus earned.</p>
+            {data.bonuses.length === 0 ? (
+              <p style={{ color: MUTED, fontSize: 13, padding: "12px 0" }}>No POS sales recorded this year yet.</p>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 520 }}>
+                  <thead>
+                    <tr style={{ textAlign: "left", color: MUTED, fontSize: 11.5, textTransform: "uppercase", letterSpacing: 0.4 }}>
+                      <th style={{ padding: "6px 8px" }}>#</th>
+                      <th style={{ padding: "6px 8px" }}>Staff</th>
+                      <th style={{ padding: "6px 8px" }}>Department</th>
+                      <th style={{ padding: "6px 8px", textAlign: "right" }}>Sales (freq.)</th>
+                      <th style={{ padding: "6px 8px", textAlign: "right" }}>Year revenue</th>
+                      <th style={{ padding: "6px 8px", textAlign: "right" }}>Bonus ({Math.round(data.bonusRate * 100)}%)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.bonuses.map((b, i) => (
+                      <tr key={i} style={{ borderTop: "1px solid var(--admin-border)" }}>
+                        <td style={{ padding: "9px 8px", color: MUTED, fontSize: 12.5 }}>{i + 1}</td>
+                        <td style={{ padding: "9px 8px", color: TEXT, fontSize: 13, fontWeight: 600 }}>{b.name}</td>
+                        <td style={{ padding: "9px 8px", color: MUTED, fontSize: 12.5 }}>{b.department}</td>
+                        <td style={{ ...cellR }}>{b.orders}</td>
+                        <td style={{ ...cellR }}>{ksh(b.revenue)}</td>
+                        <td style={{ ...cellR, fontWeight: 800, color: GREEN }}>{ksh(b.bonus)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </>
       )}

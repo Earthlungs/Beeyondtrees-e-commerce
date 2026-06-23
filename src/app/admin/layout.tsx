@@ -14,10 +14,11 @@ import { ROLE_LABELS } from "@/lib/tracing-stages"
 import { applyTheme, getStoredTheme, type Theme } from "@/lib/theme"
 
 const TRACING_ROLES = [
-  "factory_manager", "executive", "procurement_officer", "quality_inspector",
-  "requisition_officer", "agribusiness_manager", "production_officer",
-  "dispatch_officer", "receiving_officer",
+  "factory_manager", "executive", "agribusiness_manager", "production_officer",
+  "factory_procurement", "external_procurement", "procurement_officer",
 ]
+// Chief + Finance: approval/oversight roles confined to the LPO documents.
+const APPROVAL_ROLES = ["chief", "finance"]
 
 interface NavItem { href: string; label: string; icon: React.ComponentType<{ size?: number }> }
 interface NavGroup { title?: string; items: NavItem[] }
@@ -75,23 +76,31 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const role = (session.user as { role?: string })?.role || "merchant"
   const roleLabel = ROLE_LABELS[role] ?? role
   const avatar = (session.user as { image?: string | null })?.image || null
-  const isAdmin = role === "admin" || role === "it_specialist" // full control
+  const isAdmin = role === "admin" || role === "it_specialist" || role === "assistant_ceo" // full control (Assistant CEO = all CEO rights)
   const isTracing = TRACING_ROLES.includes(role)
-  const canDoc = role === "procurement_officer" || role === "executive" // LPO + invoicing
+  const isApproval = APPROVAL_ROLES.includes(role)
+  // LPO + invoicing: Procurement Officer (internal) / External Procurement originate,
+  // Factory Admin (executive) approves internal LPOs.
+  const canDoc = role === "procurement_officer" || role === "external_procurement" || role === "executive"
 
   const chat: NavItem = { href: "/admin/chat", label: "Chat", icon: MessageSquare }
+  // Point of Sale is available to EVERY staff member now.
+  const pos: NavItem = { href: "/admin/pos", label: "Point of Sale", icon: ShoppingCart }
 
   // Nav is grouped: store commands vs the "Value Chain" pipeline. Cashier/tracing
   // roles are confined (proxy.ts enforces it server-side too).
   let groups: NavGroup[]
   if (role === "cashier") {
-    groups = [{ items: [{ href: "/admin/pos", label: "Point of Sale", icon: ShoppingCart }, chat] }]
+    groups = [{ items: [pos, chat] }]
+  } else if (isApproval) {
+    // Chief (approves external LPOs) / Finance (notified on CEO approval): LPO + POS.
+    groups = [{ title: role === "chief" ? "Approvals" : "Finance", items: [{ href: "/admin/lpo", label: "LPO", icon: ClipboardList }, pos, chat] }]
   } else if (isTracing && !canDoc) {
     // factory_manager can view approved LPOs to pick one when starting a batch
     const lpoItems: NavItem[] = role === "factory_manager"
       ? [{ href: "/admin/lpo", label: "LPO", icon: ClipboardList }]
       : []
-    groups = [{ title: "Value Chain", items: [...lpoItems, { href: "/admin/tracing", label: "Tracing Board", icon: Workflow }, chat] }]
+    groups = [{ title: "Value Chain", items: [...lpoItems, { href: "/admin/tracing", label: "Tracing Board", icon: Workflow }, pos, chat] }]
   } else if (isTracing && canDoc) {
     groups = [
       {
@@ -103,7 +112,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       },
       {
         title: "Value Chain",
-        items: [{ href: "/admin/tracing", label: "Tracing Board", icon: Workflow }, chat],
+        items: [{ href: "/admin/tracing", label: "Tracing Board", icon: Workflow }, pos, chat],
       },
     ]
   } else {
@@ -234,6 +243,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </Button>
           </div>
         </header>
+        {role === "external_procurement" && (
+          <div style={{ background: 'linear-gradient(90deg,#3F5E2E,#6B7D5C)', color: '#fff', padding: '8px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, fontSize: 13, fontWeight: 600, letterSpacing: 0.3 }}>
+            <span style={{ fontWeight: 800 }}>Bamboosa</span>
+            <span style={{ opacity: 0.85, fontWeight: 400 }}>in partnership with</span>
+            <span style={{ fontWeight: 800 }}>Beeyond Trees</span>
+          </div>
+        )}
         <div style={{ padding: '24px' }}>{children}</div>
       </div>
     </div>

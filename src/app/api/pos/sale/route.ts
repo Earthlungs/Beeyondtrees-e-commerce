@@ -7,20 +7,18 @@ import {
   type PosSaleLine,
 } from "@/lib/orders"
 import { sendReceiptEmail, isValidEmail } from "@/lib/doc-email"
+import { prisma } from "@/lib/db"
 
-const ROLES_ALLOWED = new Set(["cashier", "merchant", "admin"])
 const METHODS = new Set<PaymentMethod>(["cash", "mpesa", "card"])
 
 // Ring up a sale at the physical-shop till. proxy.ts lets /api/* through without
-// auth, so this handler verifies the NextAuth token itself and restricts the
-// channel to till-capable roles.
+// auth, so this handler verifies the NextAuth token itself. Point-of-sale is now
+// available to EVERY logged-in staff member (any role), and each sale records the
+// seller's role/department so admin can attribute sales and award year-end bonuses.
 export async function POST(request: NextRequest) {
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const role = (token as { role?: string }).role ?? "merchant"
-  if (!ROLES_ALLOWED.has(role)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-  }
 
   const body = await request.json().catch(() => null)
   if (!body) return NextResponse.json({ error: "Invalid request body" }, { status: 400 })
@@ -53,6 +51,12 @@ export async function POST(request: NextRequest) {
       // Stamp the sale with whoever is logged in at the till.
       soldBy: (token.name as string) ?? null,
     })
+
+    // Record the seller's role/department (raw column, not in the Prisma schema)
+    // so admin analytics can attribute sales per department and award bonuses.
+    try {
+      await prisma.$executeRaw`UPDATE "Order" SET "soldByRole" = ${role}::text WHERE id = ${order.id}`
+    } catch (e) { console.error("[pos] soldByRole stamp failed:", e) }
 
     // Email the branded receipt if the cashier captured a customer email. Never
     // let a mail failure fail a completed sale.

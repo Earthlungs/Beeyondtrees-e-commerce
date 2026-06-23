@@ -19,12 +19,35 @@ export * from "@/lib/tracing-stages"
 export async function requireStage(
   request: NextRequest,
   stage: Stage,
-  batch: { stage: string; status: string }
+  batch: { id: string; stage: string; status: string }
 ): Promise<NextResponse | { token: JWT; role: string }> {
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const role = (token as { role?: string }).role ?? "merchant"
-  if (role !== "admin" && role !== STAGE_ROLES[stage]) {
+  // CEO (`admin`) and Assistant CEO (all CEO rights) may act on any stage.
+  const isCeo = role === "admin" || role === "assistant_ceo"
+
+  let allowed: boolean
+  if (stage === "receiving") {
+    // Strict rule: whoever CREATED the LPO receives the goods — NOT the legacy
+    // receiving_officer. Match the logged-in user against the batch's LPO creator
+    // (by id, falling back to name). CEO-level may always act.
+    allowed = isCeo
+    if (!allowed) {
+      try {
+        const rows = await prisma.$queryRaw<{ uid: string | null; nm: string | null }[]>`
+          SELECT "lpoCreatedByUserId" AS uid, "lpoCreatedByName" AS nm FROM "Batch" WHERE id = ${batch.id}
+        `
+        const r = rows[0]
+        const sub = (token as { sub?: string }).sub
+        const name = (token as { name?: string }).name
+        if (r && ((r.uid && r.uid === sub) || (r.nm && name && r.nm === name))) allowed = true
+      } catch { /* raw columns missing — fall through to 403 */ }
+    }
+  } else {
+    allowed = isCeo || role === STAGE_ROLES[stage]
+  }
+  if (!allowed) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
   if (batch.status === "rejected") {

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
-import { requireRole } from "@/lib/authz"
+import { requireRole, ADMINISH_ROLES } from "@/lib/authz"
 import { computeReconciliation, STAGES, STAGE_LABELS, type Stage } from "@/lib/tracing"
 
-// Value-chain analytics — admin + IT only.
+// Value-chain analytics — CEO-level only (admin / IT / assistant CEO).
 export async function GET(request: NextRequest) {
-  const auth = await requireRole(request, ["admin", "it_specialist"])
+  const auth = await requireRole(request, [...ADMINISH_ROLES])
   if (auth instanceof NextResponse) return auth
 
   const batches = await prisma.batch.findMany({

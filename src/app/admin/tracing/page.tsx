@@ -7,7 +7,7 @@ import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Workflow, Plus, X, Loader2, ChevronRight, Search, ClipboardList } from "lucide-react"
-import { STAGE_LABELS, type Stage } from "@/lib/tracing-stages"
+import { STAGE_LABELS, isAdminishRole, LIMITED_BOARD_STAGES, type Stage } from "@/lib/tracing-stages"
 
 const TEXT = "var(--admin-text)"
 const MUTED = "var(--admin-muted)"
@@ -27,7 +27,21 @@ interface BatchRow {
   requestedBy: string | null
   createdAt: string
   matchedProductId: string | null
+  origin: string | null // "internal" | "external" — where the LPO came from
+  productionPercent: number | null // live production completion (when at production stage)
   summary: { costPerUnit: number; verdict: string } | null
+}
+
+// Small pill showing whether a batch came from an internal (Beeyond Trees) or
+// external (Bamboosa) LPO — so factory_manager & pipeline users can tell them apart.
+function originBadge(origin: string | null | undefined) {
+  if (origin !== "internal" && origin !== "external") return null
+  const external = origin === "external"
+  return (
+    <span style={{ background: external ? "#8C6A4A" : "#6B7D5C", color: "white", fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 999, textTransform: "uppercase", letterSpacing: 0.5 }}>
+      {external ? "External" : "Internal"}
+    </span>
+  )
 }
 
 interface CatalogProduct { id: string; name: string; images: string[] }
@@ -58,10 +72,15 @@ export default function TracingBoard() {
   const router = useRouter()
   const { data: session } = useSession()
   const role = (session?.user as { role?: string })?.role || "merchant"
-  const isAdmin = role === "admin" || role === "it_specialist"
-  const canCreate = role === "factory_manager" || role === "admin" || role === "it_specialist"
+  const isAdmin = isAdminishRole(role)
+  const canCreate = role === "factory_manager" || isAdmin
+  // The two LPO originators (procurement_officer / external_procurement) only see
+  // a subset of stages on the board — they're here to RECEIVE their own goods.
+  const limitedStages = LIMITED_BOARD_STAGES[role] ?? null
 
   const [rows, setRows] = useState<BatchRow[]>([])
+  // Limited-board roles only see batches sitting at their allowed stages.
+  const visibleRows = limitedStages ? rows.filter((b) => limitedStages.includes(b.stage)) : rows
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -377,11 +396,11 @@ export default function TracingBoard() {
 
       {loading ? (
         <div style={{ display: "flex", justifyContent: "center", padding: 60, color: MUTED }}><Loader2 className="animate-spin" /></div>
-      ) : rows.length === 0 ? (
-        <div style={{ textAlign: "center", padding: 60, color: MUTED }}>No batches yet.</div>
+      ) : visibleRows.length === 0 ? (
+        <div style={{ textAlign: "center", padding: 60, color: MUTED }}>{limitedStages ? "No batches awaiting you yet." : "No batches yet."}</div>
       ) : (
         <div style={{ display: "grid", gap: 10 }}>
-          {rows.map((b) => {
+          {visibleRows.map((b) => {
             const rowProduct = b.matchedProductId ? catalogProducts.find((p) => p.id === b.matchedProductId) : null
             const rowThumb = rowProduct?.images?.[0] || null
             return (
@@ -403,7 +422,10 @@ export default function TracingBoard() {
                   </div>
                 )}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, color: TEXT, fontSize: 14 }}>{b.productName || b.materialName || "—"}</div>
+                  <div style={{ fontWeight: 600, color: TEXT, fontSize: 14, display: "flex", alignItems: "center", gap: 8 }}>
+                    {b.productName || b.materialName || "—"}
+                    {originBadge(b.origin)}
+                  </div>
                   <div style={{ fontSize: 12, color: MUTED }}>by {b.requestedBy || "—"}</div>
                 </div>
                 <div style={{ textAlign: "right" }}>
@@ -413,6 +435,13 @@ export default function TracingBoard() {
                     </div>
                   ) : b.status === "completed" ? (
                     <div style={{ fontSize: 12, fontWeight: 600, color: GREEN }}>Completed</div>
+                  ) : b.stage === "production" ? (
+                    <div style={{ minWidth: 150 }}>
+                      <div style={{ fontSize: 12, color: MUTED, marginBottom: 4 }}>Production: <b style={{ color: TEXT }}>{b.productionPercent ?? 0}%</b></div>
+                      <div style={{ height: 6, background: "var(--admin-border)", borderRadius: 999, overflow: "hidden" }}>
+                        <div style={{ width: `${b.productionPercent ?? 0}%`, height: "100%", background: GREEN, transition: "width .3s" }} />
+                      </div>
+                    </div>
                   ) : (
                     <div style={{ fontSize: 12, color: MUTED }}>Stage: <b style={{ color: TEXT }}>{STAGE_LABELS[b.stage] ?? b.stage}</b></div>
                   )}

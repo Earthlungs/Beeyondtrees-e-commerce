@@ -20,14 +20,19 @@ interface U {
 // tracing pipeline (src/lib/tracing-stages.ts); cashier is till-only.
 const ROLE_OPTIONS: [string, string][] = [
   // System / management
-  ["admin", "Admin"],
+  ["admin", "CEO"],
+  ["assistant_ceo", "Assistant CEO (all CEO rights)"],
   ["it_specialist", "IT Specialist (full control)"],
+  ["chief", "Chief (approves external procurement)"],
+  ["finance", "Finance"],
   ["assistant_administrator", "Assistant Administrator"],
   ["merchant", "Merchant"],
   ["cashier", "Cashier (till only)"],
   // Pipeline roles
   ["factory_manager", "Factory Manager"],
-  ["executive", "Executive"],
+  ["executive", "Factory Admin"],
+  ["factory_procurement", "Factory Procurement"],
+  ["external_procurement", "External Procurement (Bamboosa)"],
   ["procurement_officer", "Procurement Officer"],
   ["quality_inspector", "Quality Inspector"],
   ["requisition_officer", "Requisition Officer"],

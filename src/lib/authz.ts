@@ -1,11 +1,25 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getToken, type JWT } from "next-auth/jwt"
 
-// Full-control roles. `it_specialist` (IT dashboard, provisions all staff) is a
-// superset of `admin` — anywhere admin is allowed, IT is too. Use this instead
-// of bare `role === "admin"` checks so IT keeps full control of the system.
+// Full-control roles. `admin` is the CEO (label-only rename). `it_specialist`
+// (IT dashboard, provisions all staff) is a superset of admin. `assistant_ceo`
+// has "all rights as CEO" per the 2026 restructure — same dashboards, cost
+// visibility, and approval authority — so it is admin-equivalent here too. Use
+// this instead of bare `role === "admin"` checks.
+//   The ONE place assistant_ceo differs from admin is approvals: when an
+// assistant_ceo approves, it is recorded as "on behalf" and the CEO is notified
+// (see isAssistantCeo + the LPO/stage approval handlers). Everywhere else they
+// are interchangeable.
+export const ADMINISH_ROLES = ["admin", "it_specialist", "assistant_ceo"] as const
+
 export function isAdminish(role: string | undefined | null): boolean {
-  return role === "admin" || role === "it_specialist"
+  return role === "admin" || role === "it_specialist" || role === "assistant_ceo"
+}
+
+// True only for the Assistant CEO — used to tag CEO approvals done "on behalf"
+// and notify the real CEO's dashboard.
+export function isAssistantCeo(role: string | undefined | null): boolean {
+  return role === "assistant_ceo"
 }
 
 // Role guard for admin API routes. proxy.ts lets /api/* through, so handlers

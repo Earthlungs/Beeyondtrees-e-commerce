@@ -20,16 +20,18 @@ export default async function LpoDocPage({ params }: { params: Promise<{ id: str
   const userRole = (session?.user as { role?: string })?.role
   const isAdmin = isAdminish(userRole)
   const isExec = userRole === "executive"
-  const canReview = isAdmin || isExec
+  const isChief = userRole === "chief"
+  const canReview = isAdmin || isExec || isChief
 
   let status: string | null = null
   let rejectionReason: string | null = null
   let destinationOfGoods: string | null = null
   let recipientEmail: string | null = null
   let amended = false
+  let origin: string | null = null
   try {
-    const rows = await prisma.$queryRaw<{ status: string; rejectionReason: string | null; destinationOfGoods: string | null; recipientEmail: string | null; amended: boolean }[]>`
-      SELECT status, "rejectionReason", "destinationOfGoods", "recipientEmail", "amended" FROM "Lpo" WHERE id = ${id}
+    const rows = await prisma.$queryRaw<{ status: string; rejectionReason: string | null; destinationOfGoods: string | null; recipientEmail: string | null; amended: boolean; origin: string | null }[]>`
+      SELECT status, "rejectionReason", "destinationOfGoods", "recipientEmail", "amended", "origin" FROM "Lpo" WHERE id = ${id}
     `
     if (rows[0]) {
       status = rows[0].status
@@ -37,35 +39,37 @@ export default async function LpoDocPage({ params }: { params: Promise<{ id: str
       destinationOfGoods = rows[0].destinationOfGoods
       recipientEmail = rows[0].recipientEmail
       amended = rows[0].amended ?? false
+      origin = rows[0].origin
     }
   } catch { /* pre-migration — treat as approved */ }
 
   // Non-reviewers (procurement officer etc): gate on approval status
   if (!canReview && status && status !== "approved") {
     const rejected = status === "rejected"
-    const execPending = status === "pending"
+    const waitMsg =
+      status === "pending" ? { head: "Awaiting Factory Admin review", body: "This purchase order is pending Factory Admin approval." }
+      : status === "pending_chief" ? { head: "Awaiting Chief review", body: "This external (Bamboosa) purchase order is pending Chief approval." }
+      : { head: "Awaiting CEO approval", body: "This LPO has cleared the first approval — awaiting final CEO sign-off before it can be printed." }
     return (
       <div style={{ maxWidth: 560, margin: "60px auto", textAlign: "center", padding: 24 }}>
         <div style={{ fontSize: 18, fontWeight: 800, color: rejected ? "#C0392B" : "#8a6d00", marginBottom: 8 }}>
-          {rejected ? "This LPO was rejected" : execPending ? "Awaiting executive review" : "Awaiting admin approval"}
+          {rejected ? "This LPO was rejected" : waitMsg.head}
         </div>
         <p style={{ color: "#6b6353", fontSize: 14 }}>
-          {rejected
-            ? rejectionReason || "An admin rejected this purchase order."
-            : execPending
-            ? "This purchase order is pending executive approval."
-            : "The executive has approved this LPO — awaiting final admin sign-off before it can be printed."}
+          {rejected ? (rejectionReason || "This purchase order was rejected.") : waitMsg.body}
         </p>
         <Link href="/admin/lpo" style={{ display: "inline-block", marginTop: 18, color: DOC_GREEN, fontWeight: 600, textDecoration: "none" }}>← Back to LPOs</Link>
       </div>
     )
   }
 
-  // Banner shown when reviewer (admin/exec) is previewing a non-approved LPO
+  // Banner shown when a reviewer (CEO/Factory Admin/Chief) previews a non-approved LPO
   const bannerText =
     status === "rejected" ? `Rejected — ${rejectionReason || "no reason given"}`
-    : status === "pending" ? "Awaiting executive review — not yet approved."
-    : status === "exec_approved" ? "Executive approved — awaiting admin final sign-off."
+    : status === "pending" ? "Awaiting Factory Admin review — not yet approved."
+    : status === "pending_chief" ? "Awaiting Chief review — not yet approved."
+    : status === "exec_approved" ? "Factory Admin approved — awaiting CEO final sign-off."
+    : status === "chief_approved" ? "Chief approved — awaiting CEO final sign-off."
     : null
   const bannerColor = status === "rejected" ? { bg: "#FFF5F5", border: "#FED7D7", text: "#9B2C2C" }
     : { bg: "#FFFBEB", border: "#FBD38D", text: "#744210" }
@@ -92,6 +96,11 @@ export default async function LpoDocPage({ params }: { params: Promise<{ id: str
     <>
       {statusBanner}
       <BrandedDoc title="PURCHASE ORDER">
+        {origin === "external" && (
+          <div style={{ textAlign: "center", marginBottom: 14, padding: "6px 10px", borderRadius: 8, background: "#F0F4EC", color: "#3F5E2E", fontSize: 12.5, fontWeight: 700, letterSpacing: 0.3 }}>
+            Bamboosa — in partnership with Beeyond Trees
+          </div>
+        )}
         {/* Status badges in header area */}
         {(status === "approved" || amended) && (
           <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>

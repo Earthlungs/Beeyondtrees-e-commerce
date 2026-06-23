@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
-import { requireRole } from "@/lib/authz"
+import { requireRole, ADMINISH_ROLES } from "@/lib/authz"
 import { computeReconciliation } from "@/lib/tracing"
 
-// Profit/loss reconciliation is admin-only — non-admins get 403.
-const VIEW_ROLES = ["admin", "it_specialist"]
+// Profit/loss reconciliation is CEO-level only (admin/IT/assistant CEO) — others get 403.
+const VIEW_ROLES = [...ADMINISH_ROLES]
 
 const include = {
   bulkRequest: true,

@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { MessageSquare, Send, Loader2, ArrowLeft, Check, CheckCheck, Megaphone, X } from "lucide-react"
-import { ROLE_LABELS } from "@/lib/tracing-stages"
+import { ROLE_LABELS, isAdminishRole } from "@/lib/tracing-stages"
 
 const TEXT = "var(--admin-text)"
 const MUTED = "var(--admin-muted)"
@@ -32,7 +32,7 @@ export default function ChatPage() {
   const isMobile = useIsMobile()
   const { data: session } = useSession()
   const role = (session?.user as { role?: string })?.role
-  const isAdmin = role === "admin" || role === "it_specialist"
+  const isAdmin = isAdminishRole(role)
 
   const [contacts, setContacts] = useState<Contact[]>([])
   const [active, setActive] = useState<Contact | null>(null)

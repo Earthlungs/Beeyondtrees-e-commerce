@@ -12,13 +12,14 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { useProductStore } from "@/store/product-store"
+import { isAdminishRole } from "@/lib/tracing-stages"
 
 const PREVIEW = 3
 
 export default function AdminDashboard() {
   const { data: session } = useSession()
   const role = (session?.user as any)?.role || "merchant"
-  const isAdmin = role === "admin" || role === "it_specialist"
+  const isAdmin = isAdminishRole(role)
   const products = useProductStore((s) => s.products)
   const loadProducts = useProductStore((s) => s.loadProducts)
   const [stats, setStats] = useState({

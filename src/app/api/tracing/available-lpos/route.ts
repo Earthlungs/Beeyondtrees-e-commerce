@@ -5,7 +5,7 @@ import { requireRole } from "@/lib/authz"
 // Returns approved LPOs that have not yet been linked to a tracing batch.
 // Accessible to factory_manager (who picks the LPO) and admin.
 export async function GET(request: NextRequest) {
-  const auth = await requireRole(request, ["factory_manager", "admin", "it_specialist"])
+  const auth = await requireRole(request, ["factory_manager", "admin", "it_specialist", "assistant_ceo"])
   if (auth instanceof NextResponse) return auth
 
   try {

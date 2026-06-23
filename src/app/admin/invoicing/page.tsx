@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { FileText, Plus, X, Loader2, Printer } from "lucide-react"
 import DocLineItems, { EditLine, emptyLine } from "@/components/admin/DocLineItems"
 import { SuccessModal } from "@/components/admin/ConfirmModal"
+import { isAdminishRole } from "@/lib/tracing-stages"
 
 const TEXT = "var(--admin-text)"
 const MUTED = "var(--admin-muted)"
@@ -23,8 +24,8 @@ export default function InvoicingPage() {
   const router = useRouter()
   const { data: session } = useSession()
   const role = (session?.user as { role?: string })?.role || ""
-  const isAdmin = role === "admin" || role === "it_specialist"
-  const canCreate = role === "procurement_officer" || role === "executive" || isAdmin
+  const isAdmin = isAdminishRole(role)
+  const canCreate = role === "procurement_officer" || role === "external_procurement" || role === "executive" || isAdmin
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)

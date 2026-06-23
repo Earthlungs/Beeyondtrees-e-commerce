@@ -8,8 +8,35 @@ import { stageAdvanceEmail } from "@/lib/email-templates"
 
 const BASE_URL = process.env.NEXTAUTH_URL || "http://localhost:3000"
 
-// Anyone in the pipeline (or admin) can see the board.
-const VIEW_ROLES = [...TRACING_ROLES, "admin", "it_specialist"]
+// Anyone in the pipeline (or CEO-level) can see the board.
+const VIEW_ROLES = [...TRACING_ROLES, "admin", "it_specialist", "assistant_ceo"]
+
+// Raw columns on Batch (origin / LPO creator) not modelled in Prisma.
+async function fetchBatchOrigins(ids: string[]): Promise<Map<string, { origin: string | null; lpoCreatedByName: string | null; lpoCreatedByUserId: string | null }>> {
+  if (ids.length === 0) return new Map()
+  try {
+    const rows = await prisma.$queryRaw<{ id: string; origin: string | null; lpoCreatedByName: string | null; lpoCreatedByUserId: string | null }[]>`
+      SELECT id, "origin", "lpoCreatedByName", "lpoCreatedByUserId" FROM "Batch" WHERE id = ANY(${ids}::text[])
+    `
+    return new Map(rows.map((r) => [r.id, r]))
+  } catch {
+    return new Map()
+  }
+}
+
+// Highest logged production-completion percent per batch (for the board's progress bar).
+async function fetchProductionPercents(ids: string[]): Promise<Map<string, number>> {
+  if (ids.length === 0) return new Map()
+  try {
+    const rows = await prisma.$queryRaw<{ batchId: string; pct: number }[]>`
+      SELECT "batchId", MAX(percent)::int AS pct FROM "ProductionStep"
+      WHERE "batchId" = ANY(${ids}::text[]) GROUP BY "batchId"
+    `
+    return new Map(rows.map((r) => [r.batchId, r.pct]))
+  } catch {
+    return new Map()
+  }
+}
 
 export async function GET(request: NextRequest) {
   const auth = await requireRole(request, VIEW_ROLES)
@@ -29,6 +56,8 @@ export async function GET(request: NextRequest) {
       receiving: true,
     },
   })
+  const origins = await fetchBatchOrigins(batches.map((b) => b.id))
+  const prodPercents = await fetchProductionPercents(batches.map((b) => b.id))
 
   // Attach a profit/loss summary for completed batches so the board can flag it.
   const rows = await Promise.all(
@@ -49,6 +78,9 @@ export async function GET(request: NextRequest) {
         requestedBy: b.bulkRequest?.requestedBy ?? null,
         createdAt: b.createdAt,
         matchedProductId: b.matchedProductId ?? null,
+        origin: origins.get(b.id)?.origin ?? null,
+        lpoCreatedByName: origins.get(b.id)?.lpoCreatedByName ?? null,
+        productionPercent: prodPercents.get(b.id) ?? null,
         summary,
       }
     })
@@ -59,7 +91,7 @@ export async function GET(request: NextRequest) {
 
 // Stage 1 — Factory manager (or admin) starts a batch with the bulk request.
 export async function POST(request: NextRequest) {
-  const auth = await requireRole(request, ["factory_manager", "admin"])
+  const auth = await requireRole(request, ["factory_manager", "admin", "assistant_ceo"])
   if (auth instanceof NextResponse) return auth
 
   const body = await request.json().catch(() => null)
@@ -112,6 +144,27 @@ export async function POST(request: NextRequest) {
           include: { bulkRequest: true },
         })
     )
+
+    // Stamp the batch with its LPO's origin (internal/external) + creator so the
+    // board can label it and the receiving stage can be gated to the LPO creator.
+    if (lpoId) {
+      try {
+        const lpoRows = await prisma.$queryRaw<{ origin: string | null; createdByUserId: string | null; createdByName: string | null }[]>`
+          SELECT "origin", "createdByUserId", "createdByName" FROM "Lpo" WHERE id = ${lpoId}
+        `
+        const lpo = lpoRows[0]
+        if (lpo) {
+          await prisma.$executeRaw`
+            UPDATE "Batch"
+            SET "origin" = ${lpo.origin ?? "internal"}::text,
+                "lpoCreatedByUserId" = ${lpo.createdByUserId}::text,
+                "lpoCreatedByName" = ${lpo.createdByName}::text
+            WHERE id = ${batch.id}
+          `
+        }
+      } catch (e) { console.error("[batch] origin stamp failed:", e) }
+    }
+
     // Notify executives (and admin) that a new batch needs approval
     const batchUrl = `${BASE_URL}/admin/tracing/${batch.id}`
     const productName = batch.productName ?? batch.bulkRequest?.materialName ?? ""

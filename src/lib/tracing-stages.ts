@@ -16,21 +16,57 @@ export const STAGES = [
 
 export type Stage = (typeof STAGES)[number]
 
-// One role owns each stage. `admin` may act on any stage.
+// One role owns each stage. `admin` (CEO) may act on any stage.
+// NOTE (2026 restructure): stages were consolidated onto fewer owners —
+//  · sourcing is owned by `factory_procurement` (NEW pipeline role). The legacy
+//    `procurement_officer` is NOT in the pipeline — it only raises INTERNAL LPOs
+//    (+ POS + invoicing), then its job is done once the LPO enters the pipeline.
+//  · inspection, dispatch moved onto agribusiness_manager (one owner does
+//    inspection → issuance → dispatch)
+//  · requisition moved from requisition_officer → production_officer
+//  · approval (this batch stage) is owned by `executive` (now "Factory Admin").
+//    The full LPO sign-off chain happens BEFORE the pipeline, on the LPO document:
+//      internal LPO  : procurement_officer → Factory Admin (executive) → CEO (admin)
+//      external LPO  : external_procurement → Chief → CEO (admin)
+//    Finance is notified on CEO approval. See src/app/api/lpos/[id]/route.ts.
+//  · receiving is owned by `receiving_officer` as a FALLBACK, but the strict
+//    rule is "whoever created the LPO receives the goods" — that dynamic gate is
+//    enforced in requireStage (src/lib/tracing.ts) against Lpo.createdByUserId.
+// The roles that no longer own a stage (quality_inspector, requisition_officer,
+// dispatch_officer, receiving_officer) are kept as login/staff roles.
 export const STAGE_ROLES: Record<Stage, string> = {
   bulk_request: "factory_manager",
   approval: "executive",
-  sourcing: "procurement_officer",
-  inspection: "quality_inspector",
-  requisition: "requisition_officer",
+  sourcing: "factory_procurement",
+  inspection: "agribusiness_manager",
+  requisition: "production_officer",
   issuance: "agribusiness_manager",
   production: "production_officer",
-  dispatch: "dispatch_officer",
+  dispatch: "agribusiness_manager",
   receiving: "receiving_officer",
 }
 
-// The 9 pipeline roles (nav/proxy confinement + the users dropdown).
-export const TRACING_ROLES = Object.values(STAGE_ROLES)
+// Roles that get tracing-board access (nav/proxy confinement + users dropdown).
+// Explicit list (not derived) because several stages share an owner and because
+// the two LPO originators (procurement_officer / external_procurement) get a
+// LIMITED board so they can RECEIVE their own LPO's goods — see LIMITED_BOARD_STAGES.
+export const TRACING_ROLES = [
+  "factory_manager", "executive", "agribusiness_manager", "production_officer",
+  "factory_procurement", "external_procurement", "procurement_officer",
+]
+
+// Roles that may originate an LPO and the origin tag their LPOs get.
+//   procurement_officer  → "internal"  (Beeyond Trees)
+//   external_procurement → "external"  (Bamboosa, co-branded)
+export const LPO_ORIGINATOR_ROLES = ["procurement_officer", "external_procurement"]
+
+// Some board roles only see a subset of stages. The two LPO originators are not
+// pipeline actors — they appear on the board ONLY to receive (and, for the
+// external partner, to watch the back end of the pipeline).
+export const LIMITED_BOARD_STAGES: Record<string, Stage[]> = {
+  external_procurement: ["production", "dispatch", "receiving"],
+  procurement_officer: ["receiving"],
+}
 
 export const STAGE_LABELS: Record<Stage, string> = {
   bulk_request: "Bulk Request",
@@ -45,12 +81,20 @@ export const STAGE_LABELS: Record<Stage, string> = {
 }
 
 export const ROLE_LABELS: Record<string, string> = {
-  admin: "Admin",
+  // Leadership — label-only renames (the stored role STRINGS stay `admin` /
+  // `executive` so login, /admin gating, and cost visibility never break).
+  admin: "CEO",
+  executive: "Factory Admin",
   it_specialist: "IT Specialist",
   merchant: "Merchant",
   cashier: "Cashier",
   factory_manager: "Factory Manager",
-  executive: "Executive",
+  // New roles from the 2026 restructure / Bamboosa fusion.
+  factory_procurement: "Factory Procurement",
+  external_procurement: "External Procurement",
+  chief: "Chief",
+  assistant_ceo: "Assistant CEO",
+  finance: "Finance",
   procurement_officer: "Procurement Officer",
   quality_inspector: "Quality Inspector",
   requisition_officer: "Requisition Officer",
@@ -87,6 +131,13 @@ export const COST_FIELDS = new Set([
 ])
 
 export const NOT_ALLOWED = "You are not allowed to view this detail"
+
+// Client-safe CEO-level check. Mirrors authz.isAdminish() (which is server-only
+// because it imports next/server) so client components can gate admin UI without
+// pulling server code. `admin` = CEO, plus IT and Assistant CEO (all CEO rights).
+export function isAdminishRole(role: string | undefined | null): boolean {
+  return role === "admin" || role === "it_specialist" || role === "assistant_ceo"
+}
 
 export function isStage(v: unknown): v is Stage {
   return typeof v === "string" && (STAGES as readonly string[]).includes(v)
