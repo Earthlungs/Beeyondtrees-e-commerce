@@ -6,8 +6,14 @@ import {
   type DocEmailLine,
 } from "@/lib/email-templates"
 import type { DocLine } from "@/lib/docs"
+import { signDoc } from "@/lib/doc-token"
 
 const BASE_URL = process.env.NEXTAUTH_URL || "https://www.beeyondtrees.org"
+
+// Public, login-free link for a document emailed to a client (carries a signed token).
+function publicUrl(type: "invoice" | "lpo" | "receipt", id: string): string {
+  return `${BASE_URL}/doc/${type}/${id}?t=${signDoc(type, id)}`
+}
 
 const fmtDate = (d: Date | string | null | undefined) =>
   d ? new Date(d).toLocaleDateString("en-KE") : ""
@@ -45,7 +51,7 @@ export async function sendInvoiceEmail(invoice: {
     items: toEmailLines((invoice.items as DocLine[]) ?? []),
     subtotal: invoice.subtotal, vat: invoice.vat, total: invoice.total,
     notes: invoice.notes,
-    viewUrl: `${BASE_URL}/admin/invoicing/${invoice.id}`,
+    viewUrl: publicUrl("invoice", invoice.id),
   })
   await sendMail({ to, subject: `Invoice ${invoice.number} from Beeyond Trees`, html })
 }
@@ -67,7 +73,7 @@ export async function sendLpoEmail(lpo: {
     items: toEmailLines((lpo.items as DocLine[]) ?? []),
     subtotal: lpo.subtotal, vat: lpo.vat, total: lpo.total,
     notes: lpo.notes,
-    viewUrl: `${BASE_URL}/admin/lpo/${lpo.id}`,
+    viewUrl: publicUrl("lpo", lpo.id),
   })
   await sendMail({ to, subject: `Purchase Order ${lpo.number} from Beeyond Trees`, html })
 }
@@ -101,7 +107,7 @@ export async function sendReceiptEmail(order: {
     total: order.total,
     cashReceived: order.cashReceived,
     change,
-    viewUrl: `${BASE_URL}/admin/pos/receipt/${order.id}`,
+    viewUrl: publicUrl("receipt", order.id),
   })
   await sendMail({ to, subject: `Receipt ${receiptNo} — Beeyond Trees`, html })
 }
