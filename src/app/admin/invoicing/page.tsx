@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { FileText, Plus, X, Loader2, Printer } from "lucide-react"
 import DocLineItems, { EditLine, emptyLine } from "@/components/admin/DocLineItems"
+import { SuccessModal } from "@/components/admin/ConfirmModal"
 
 const TEXT = "var(--admin-text)"
 const MUTED = "var(--admin-muted)"
@@ -29,6 +30,7 @@ export default function InvoicingPage() {
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+  const [success, setSuccess] = useState<{ id: string; number: string; emailed: boolean } | null>(null)
 
   const today = new Date().toISOString().slice(0, 10)
   const [customerName, setCustomerName] = useState("")
@@ -48,6 +50,11 @@ export default function InvoicingPage() {
   }
   useEffect(() => { load() }, [])
 
+  const resetForm = () => {
+    setCustomerName(""); setCustomerContact(""); setEmail(""); setDate(today)
+    setDueDate(""); setNotes(""); setLines([emptyLine()])
+  }
+
   const save = async () => {
     setError("")
     if (!customerName.trim()) { setError("Customer name is required."); return }
@@ -60,13 +67,25 @@ export default function InvoicingPage() {
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error || "Could not save invoice."); return }
-      router.push(`/admin/invoicing/${data.id}?print=1`)
+      // Show a success alert and clear the form; printing is one click away.
+      setSuccess({ id: data.id, number: data.number, emailed: !!data.emailed })
+      resetForm()
+      load()
     } catch { setError("Network error. Try again.") }
     finally { setSaving(false) }
   }
 
   return (
     <div>
+      <SuccessModal
+        open={!!success}
+        title={`Invoice ${success?.number ?? ""} created`}
+        message={success?.emailed ? "A copy has been emailed to the customer. You can print it now or close this." : "The invoice has been saved. You can print it now or close this."}
+        primaryLabel="View / Print"
+        onPrimary={() => { if (success) router.push(`/admin/invoicing/${success.id}?print=1`) }}
+        onClose={() => setSuccess(null)}
+      />
+
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <FileText size={22} color={GREEN} />

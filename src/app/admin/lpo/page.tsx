@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ClipboardList, Plus, X, Loader2, Printer, Check, Ban, Eye, Pencil } from "lucide-react"
 import DocLineItems, { EditLine, emptyLine } from "@/components/admin/DocLineItems"
-import { ConfirmModal, PromptModal } from "@/components/admin/ConfirmModal"
+import { ConfirmModal, PromptModal, SuccessModal } from "@/components/admin/ConfirmModal"
 
 const TEXT = "var(--admin-text)"
 const MUTED = "var(--admin-muted)"
@@ -43,6 +43,7 @@ export default function LpoPage() {
   const [busyId, setBusyId] = useState<string | null>(null)
   const [error, setError] = useState("")
   const [notice, setNotice] = useState("")
+  const [success, setSuccess] = useState<{ id: string; number: string; approved: boolean; emailed: boolean; email: string } | null>(null)
 
   // Modal states
   const [approveTarget, setApproveTarget] = useState<Lpo | null>(null)
@@ -68,6 +69,11 @@ export default function LpoPage() {
   }
   useEffect(() => { load() }, [])
 
+  const resetForm = () => {
+    setSupplierName(""); setShippingAddress(""); setPurchaseRep(""); setOrderDate(today)
+    setExpectedArrival(""); setDestinationOfGoods(""); setEmail(""); setNotes(""); setLines([emptyLine()])
+  }
+
   const save = async () => {
     setError("")
     if (!supplierName.trim()) { setError("Supplier name is required."); return }
@@ -80,14 +86,11 @@ export default function LpoPage() {
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error || "Could not save LPO."); return }
-      if (data.status === "approved") {
-        router.push(`/admin/lpo/${data.id}?print=1`)
-      } else {
-        setShowForm(false)
-        setSupplierName(""); setShippingAddress(""); setPurchaseRep(""); setExpectedArrival(""); setDestinationOfGoods(""); setEmail(""); setNotes(""); setLines([emptyLine()])
-        setNotice(`${data.number} submitted for admin approval.${email ? ` It will be emailed to ${email} once approved.` : ""}`)
-        load()
-      }
+      // Success alert + clear the form. Approved (admin) LPOs can be printed now;
+      // those sent for approval can't be printed/emailed until an admin signs off.
+      setSuccess({ id: data.id, number: data.number, approved: data.status === "approved", emailed: !!data.emailed, email })
+      resetForm()
+      load()
     } catch { setError("Network error. Try again.") }
     finally { setSaving(false) }
   }
@@ -123,6 +126,20 @@ export default function LpoPage() {
 
   return (
     <div>
+      {/* Save success */}
+      <SuccessModal
+        open={!!success}
+        title={success?.approved ? `LPO ${success?.number} created` : `LPO ${success?.number} submitted`}
+        message={
+          success?.approved
+            ? (success.emailed ? `A copy has been emailed to ${success.email}. You can print it now or close this.` : "The purchase order is approved and ready. You can print it now or close this.")
+            : `It has been sent for admin approval.${success?.email ? ` It will be emailed to ${success.email} once approved.` : ""}`
+        }
+        primaryLabel={success?.approved ? "View / Print" : undefined}
+        onPrimary={success?.approved ? () => { if (success) router.push(`/admin/lpo/${success.id}?print=1`) } : undefined}
+        onClose={() => setSuccess(null)}
+      />
+
       {/* Approve confirm */}
       <ConfirmModal
         open={!!approveTarget}

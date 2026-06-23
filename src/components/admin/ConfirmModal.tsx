@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef } from "react"
-import { X } from "lucide-react"
+import { X, CheckCircle2, Printer } from "lucide-react"
 
 const GREEN = "#6B7D5C"
 const RED = "#C0392B"
@@ -57,6 +57,55 @@ export function ConfirmModal({ open, title, message, confirmLabel = "Confirm", c
           <button onClick={onConfirm} style={{ padding: "9px 22px", borderRadius: 8, border: "none", background: danger ? RED : GREEN, color: "white", cursor: "pointer", fontSize: 14, fontWeight: 700 }}>
             {confirmLabel}
           </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+interface SuccessModalProps {
+  open: boolean
+  title: string
+  message?: string
+  // Optional primary action (e.g. "View / Print"). Omit to show only the close button.
+  primaryLabel?: string
+  onPrimary?: () => void
+  closeLabel?: string
+  onClose: () => void
+}
+
+// Branded success alert shown after a document is saved. Confirms what was
+// created and offers a one-click View / Print, while the form clears underneath.
+export function SuccessModal({ open, title, message, primaryLabel, onPrimary, closeLabel = "Done", onClose }: SuccessModalProps) {
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose() }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [open, onClose])
+  if (!open) return null
+  return (
+    <div style={backdrop} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
+      <div style={{ ...panel, textAlign: "center" }} role="dialog" aria-modal="true">
+        <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, background: "none", border: "none", cursor: "pointer", color: "#888" }}>
+          <X size={18} />
+        </button>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+          <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#EAF3EA", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <CheckCircle2 size={32} color={GREEN} />
+          </div>
+        </div>
+        <div style={{ fontWeight: 800, fontSize: 18, color: "#1a1a1a", marginBottom: message ? 8 : 22 }}>{title}</div>
+        {message && <p style={{ fontSize: 14, color: "#555", marginBottom: 24, lineHeight: 1.6 }}>{message}</p>}
+        <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+          <button onClick={onClose} style={{ padding: "9px 20px", borderRadius: 8, border: "1px solid #ddd", background: "white", cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
+            {closeLabel}
+          </button>
+          {primaryLabel && onPrimary && (
+            <button onClick={onPrimary} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "9px 22px", borderRadius: 8, border: "none", background: GREEN, color: "white", cursor: "pointer", fontSize: 14, fontWeight: 700 }}>
+              <Printer size={15} /> {primaryLabel}
+            </button>
+          )}
         </div>
       </div>
     </div>

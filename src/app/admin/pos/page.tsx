@@ -9,6 +9,7 @@ import {
   Banknote, Smartphone, CreditCard, AlertTriangle, Loader2, CheckCircle2,
 } from "lucide-react"
 import { useProductStore, productImageUrl, fuzzyMatch, type Product } from "@/store/product-store"
+import { SuccessModal } from "@/components/admin/ConfirmModal"
 
 type Tier = "retail" | "wholesale" | "distributor"
 type Method = "cash" | "mpesa" | "card"
@@ -49,6 +50,7 @@ export default function PosPage() {
   const [customerEmail, setCustomerEmail] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [notice, setNotice] = useState<{ text: string; tone: "error" | "success" } | null>(null)
+  const [saleSuccess, setSaleSuccess] = useState<{ id: string; receiptNo: string; emailed: boolean } | null>(null)
 
   useEffect(() => { loadProducts() }, [])
   useEffect(() => {
@@ -155,10 +157,11 @@ export default function PosPage() {
         }
         return
       }
-      // Refresh shared stock and open the auto-printing receipt.
+      // Refresh shared stock, clear the till, and show a success alert with a
+      // one-click receipt print (and a note if it was emailed).
       loadProducts(true)
       resetSale()
-      router.push(`/admin/pos/receipt/${data.id}?print=1`)
+      setSaleSuccess({ id: data.id, receiptNo: String(data.id).slice(-8).toUpperCase(), emailed: !!data.emailed })
     } catch {
       setNotice({ text: "Network error — sale not recorded. Try again.", tone: "error" })
     } finally {
@@ -181,6 +184,17 @@ export default function PosPage() {
           <span>{notice.text}</span>
         </div>
       )}
+
+      <SuccessModal
+        open={!!saleSuccess}
+        title="Sale completed"
+        message={saleSuccess?.emailed
+          ? `Receipt ${saleSuccess?.receiptNo} saved and emailed to the customer. You can print it now or close this.`
+          : `Receipt ${saleSuccess?.receiptNo} saved. You can print it now or close this.`}
+        primaryLabel="View / Print receipt"
+        onPrimary={() => { if (saleSuccess) router.push(`/admin/pos/receipt/${saleSuccess.id}?print=1`) }}
+        onClose={() => setSaleSuccess(null)}
+      />
 
       {/* Header + search */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
