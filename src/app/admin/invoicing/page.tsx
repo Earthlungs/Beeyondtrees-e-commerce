@@ -33,6 +33,7 @@ export default function InvoicingPage() {
   const today = new Date().toISOString().slice(0, 10)
   const [customerName, setCustomerName] = useState("")
   const [customerContact, setCustomerContact] = useState("")
+  const [email, setEmail] = useState("")
   const [date, setDate] = useState(today)
   const [dueDate, setDueDate] = useState("")
   const [notes, setNotes] = useState("")
@@ -55,7 +56,7 @@ export default function InvoicingPage() {
       const res = await fetch("/api/invoices", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customerName, customerContact, date, dueDate: dueDate || null, notes, items: lines }),
+        body: JSON.stringify({ customerName, customerContact, email: email || null, date, dueDate: dueDate || null, notes, items: lines }),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error || "Could not save invoice."); return }
@@ -86,6 +87,7 @@ export default function InvoicingPage() {
             <Field label="Phone / Email"><Input value={customerContact} onChange={(e) => setCustomerContact(e.target.value)} /></Field>
             <Field label="Invoice date"><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
             <Field label="Due date"><Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} /></Field>
+            <Field label="Email invoice to"><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="customer@email.com — emailed on save" /></Field>
           </div>
           <DocLineItems lines={lines} setLines={setLines} />
           <div style={{ marginTop: 16 }}>

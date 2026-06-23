@@ -73,6 +73,7 @@ export interface PosSaleInput {
   paymentMethod: PaymentMethod
   customerName?: string | null
   customerPhone?: string | null
+  customerEmail?: string | null
   cashReceived?: number | null
   mpesaCode?: string | null
   cardRef?: string | null
@@ -183,6 +184,7 @@ export async function recordPosSale(input: PosSaleInput) {
       data: {
         customerName: input.customerName?.trim() || "Walk-in customer",
         customerPhone: input.customerPhone?.trim() || "N/A",
+        customerEmail: input.customerEmail?.trim() || null,
         // POS sales are collected in-store; reuse delivery columns as the shop location.
         county: "In-store",
         town: "Shop",

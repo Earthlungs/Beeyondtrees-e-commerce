@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import { requireDocRole, normalizeLines, createNumbered, parseDate } from "@/lib/docs"
+import { sendInvoiceEmail, isValidEmail } from "@/lib/doc-email"
 
 export async function GET(request: NextRequest) {
   const auth = await requireDocRole(request)
@@ -44,7 +45,19 @@ export async function POST(request: NextRequest) {
           },
         })
     )
-    return NextResponse.json(invoice, { status: 201 })
+
+    // Auto-email a branded copy if a recipient was entered on the form. An email
+    // failure must never fail the invoice that's already saved.
+    const emailTo = typeof body.email === "string" ? body.email.trim() : ""
+    let emailed = false
+    if (isValidEmail(emailTo)) {
+      try {
+        await sendInvoiceEmail(invoice, emailTo)
+        emailed = true
+      } catch (e) { console.error("[mailer] invoice copy:", e) }
+    }
+
+    return NextResponse.json({ ...invoice, emailed }, { status: 201 })
   } catch (e) {
     console.error("Invoice create failed:", e)
     return NextResponse.json({ error: "Could not save the invoice. Please try again." }, { status: 500 })

@@ -5,6 +5,7 @@ import { requireDocRole, normalizeLines, parseDate } from "@/lib/docs"
 import { requireRole, isAdminish } from "@/lib/authz"
 import { sendMail } from "@/lib/mailer"
 import { lpoApprovedEmail, lpoExecApprovedEmail } from "@/lib/email-templates"
+import { sendLpoEmail } from "@/lib/doc-email"
 
 const BASE_URL = process.env.NEXTAUTH_URL || "http://localhost:3000"
 
@@ -139,6 +140,18 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           html: lpoApprovedEmail({ lpoNumber, supplierName, total: lpoTotal, approvedBy: actor, lpoUrl }),
         })
       }
+
+      // The LPO is now generated — email the branded copy to the recipient entered
+      // when it was created (if any). Fetched via raw SQL (not a Prisma column).
+      try {
+        const rows = await prisma.$queryRaw<{ recipientEmail: string | null; destinationOfGoods: string | null }[]>`
+          SELECT "recipientEmail", "destinationOfGoods" FROM "Lpo" WHERE id = ${id}
+        `
+        const recipientEmail = rows[0]?.recipientEmail
+        if (recipientEmail && updated) {
+          await sendLpoEmail({ ...updated, destinationOfGoods: rows[0]?.destinationOfGoods ?? null }, recipientEmail)
+        }
+      } catch (e) { console.error("[mailer] LPO copy on approval:", e) }
     } else if (newStatus === "exec_approved") {
       // Executive approved — notify admins for final sign-off
       const adminUsers = await prisma.user.findMany({ where: { role: "admin" }, select: { email: true } })

@@ -56,6 +56,7 @@ export default function LpoPage() {
   const [orderDate, setOrderDate] = useState(today)
   const [expectedArrival, setExpectedArrival] = useState("")
   const [destinationOfGoods, setDestinationOfGoods] = useState("")
+  const [email, setEmail] = useState("")
   const [notes, setNotes] = useState("")
   const [lines, setLines] = useState<EditLine[]>([emptyLine()])
 
@@ -75,7 +76,7 @@ export default function LpoPage() {
       const res = await fetch("/api/lpos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ supplierName, shippingAddress, purchaseRep, orderDate, expectedArrival: expectedArrival || null, destinationOfGoods: destinationOfGoods || null, notes, items: lines }),
+        body: JSON.stringify({ supplierName, shippingAddress, purchaseRep, orderDate, expectedArrival: expectedArrival || null, destinationOfGoods: destinationOfGoods || null, email: email || null, notes, items: lines }),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error || "Could not save LPO."); return }
@@ -83,8 +84,8 @@ export default function LpoPage() {
         router.push(`/admin/lpo/${data.id}?print=1`)
       } else {
         setShowForm(false)
-        setSupplierName(""); setShippingAddress(""); setPurchaseRep(""); setExpectedArrival(""); setDestinationOfGoods(""); setNotes(""); setLines([emptyLine()])
-        setNotice(`${data.number} submitted for admin approval.`)
+        setSupplierName(""); setShippingAddress(""); setPurchaseRep(""); setExpectedArrival(""); setDestinationOfGoods(""); setEmail(""); setNotes(""); setLines([emptyLine()])
+        setNotice(`${data.number} submitted for admin approval.${email ? ` It will be emailed to ${email} once approved.` : ""}`)
         load()
       }
     } catch { setError("Network error. Try again.") }
@@ -191,6 +192,7 @@ export default function LpoPage() {
             <Field label="Expected arrival"><Input type="date" value={expectedArrival} onChange={(e) => setExpectedArrival(e.target.value)} /></Field>
             <Field label="Shipping address"><Input value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} /></Field>
             <Field label="Destination of goods"><Input value={destinationOfGoods} onChange={(e) => setDestinationOfGoods(e.target.value)} placeholder="e.g. Nairobi Warehouse" /></Field>
+            <Field label="Email LPO to"><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="supplier@email.com — emailed when approved" /></Field>
           </div>
           <DocLineItems lines={lines} setLines={setLines} />
           <div style={{ marginTop: 16 }}>

@@ -5,6 +5,7 @@ import { requireDocRole, normalizeLines, createNumbered, parseDate } from "@/lib
 import { requireRole, isAdminish } from "@/lib/authz"
 import { sendMail } from "@/lib/mailer"
 import { lpoExecApprovedEmail } from "@/lib/email-templates"
+import { sendLpoEmail, isValidEmail } from "@/lib/doc-email"
 
 const BASE_URL = process.env.NEXTAUTH_URL || "https://www.beeyondtrees.org"
 
@@ -96,6 +97,9 @@ export async function POST(request: NextRequest) {
   const status = isAdmin ? "approved" : isExec ? "exec_approved" : "pending"
   const approvedAt = isAdmin ? new Date() : null
   const destinationOfGoods = body.destinationOfGoods?.trim() || null
+  // Where to email the generated LPO. Stored now; sent immediately if the admin
+  // creates it (already approved), otherwise sent on final approval (PATCH).
+  const recipientEmail = typeof body.email === "string" && isValidEmail(body.email.trim()) ? body.email.trim() : null
 
   try {
     const lpo = await createNumbered(
@@ -127,7 +131,8 @@ export async function POST(request: NextRequest) {
         SET status = ${status},
             "approvedBy" = ${isAdmin ? approver : null}::text,
             "approvedAt" = ${approvedAt}::timestamp,
-            "destinationOfGoods" = ${destinationOfGoods}::text
+            "destinationOfGoods" = ${destinationOfGoods}::text,
+            "recipientEmail" = ${recipientEmail}::text
         WHERE id = ${lpo.id}
       `
     } catch { /* migration not yet applied — fields applied on deploy */ }
@@ -165,7 +170,18 @@ export async function POST(request: NextRequest) {
       } catch (e) { console.error("[mailer] LPO new (admin notify):", e) }
     }
 
-    return NextResponse.json({ ...lpo, status, approvedBy: isAdmin ? approver : null, approvedAt, destinationOfGoods, amended: false }, { status: 201 })
+    // Admin-created LPOs are generated (approved) immediately — email the branded
+    // copy to the entered recipient now. Non-approved LPOs are emailed on final
+    // approval (see the PATCH handler).
+    let emailed = false
+    if (status === "approved" && recipientEmail) {
+      try {
+        await sendLpoEmail({ ...lpo, destinationOfGoods }, recipientEmail)
+        emailed = true
+      } catch (e) { console.error("[mailer] LPO copy:", e) }
+    }
+
+    return NextResponse.json({ ...lpo, status, approvedBy: isAdmin ? approver : null, approvedAt, destinationOfGoods, recipientEmail, emailed, amended: false }, { status: 201 })
   } catch (e) {
     console.error("LPO create failed:", e)
     return NextResponse.json({ error: "Could not save the LPO. Please try again." }, { status: 500 })

@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth/next"
 import { prisma } from "@/lib/db"
 import BrandedDoc, { DOC_GREEN } from "@/components/admin/BrandedDoc"
 import DocPrintControls from "@/components/admin/DocPrintControls"
+import DocEmailButton from "@/components/admin/DocEmailButton"
 import { authOptions } from "@/lib/auth"
 import { isAdminish } from "@/lib/authz"
 import type { DocLine } from "@/lib/docs"
@@ -27,15 +28,17 @@ export default async function LpoDocPage({ params }: { params: Promise<{ id: str
   let status: string | null = null
   let rejectionReason: string | null = null
   let destinationOfGoods: string | null = null
+  let recipientEmail: string | null = null
   let amended = false
   try {
-    const rows = await prisma.$queryRaw<{ status: string; rejectionReason: string | null; destinationOfGoods: string | null; amended: boolean }[]>`
-      SELECT status, "rejectionReason", "destinationOfGoods", "amended" FROM "Lpo" WHERE id = ${id}
+    const rows = await prisma.$queryRaw<{ status: string; rejectionReason: string | null; destinationOfGoods: string | null; recipientEmail: string | null; amended: boolean }[]>`
+      SELECT status, "rejectionReason", "destinationOfGoods", "recipientEmail", "amended" FROM "Lpo" WHERE id = ${id}
     `
     if (rows[0]) {
       status = rows[0].status
       rejectionReason = rows[0].rejectionReason
       destinationOfGoods = rows[0].destinationOfGoods
+      recipientEmail = rows[0].recipientEmail
       amended = rows[0].amended ?? false
     }
   } catch { /* pre-migration — treat as approved */ }
@@ -168,11 +171,16 @@ export default async function LpoDocPage({ params }: { params: Promise<{ id: str
         </div>
       </BrandedDoc>
 
-      {/* Print controls only for fully approved LPOs */}
+      {/* Print + email controls only for fully approved LPOs */}
       {(status === "approved" || status === null) && (
-        <Suspense fallback={null}>
-          <DocPrintControls backHref="/admin/lpo" backLabel="Back to LPOs" />
-        </Suspense>
+        <>
+          <div className="no-print" style={{ display: "flex", justifyContent: "center", marginTop: 20 }}>
+            <DocEmailButton endpoint={`/api/lpos/${lpo.id}/email`} defaultEmail={recipientEmail ?? ""} label="Email LPO" />
+          </div>
+          <Suspense fallback={null}>
+            <DocPrintControls backHref="/admin/lpo" backLabel="Back to LPOs" />
+          </Suspense>
+        </>
       )}
       {canReview && status && status !== "approved" && (
         <div style={{ textAlign: "center", padding: "20px 0" }}>

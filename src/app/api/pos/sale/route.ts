@@ -6,6 +6,7 @@ import {
   type PaymentMethod,
   type PosSaleLine,
 } from "@/lib/orders"
+import { sendReceiptEmail, isValidEmail } from "@/lib/doc-email"
 
 const ROLES_ALLOWED = new Set(["cashier", "merchant", "admin"])
 const METHODS = new Set<PaymentMethod>(["cash", "mpesa", "card"])
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null)
   if (!body) return NextResponse.json({ error: "Invalid request body" }, { status: 400 })
 
-  const { lines, paymentMethod, customerName, customerPhone, cashReceived, mpesaCode, cardRef } = body
+  const { lines, paymentMethod, customerName, customerPhone, customerEmail, cashReceived, mpesaCode, cardRef } = body
 
   if (!Array.isArray(lines) || lines.length === 0) {
     return NextResponse.json({ error: "Add at least one item to the sale." }, { status: 400 })
@@ -45,13 +46,26 @@ export async function POST(request: NextRequest) {
       paymentMethod,
       customerName: customerName ?? null,
       customerPhone: customerPhone ?? null,
+      customerEmail: customerEmail ?? null,
       cashReceived: cashReceived != null ? Number(cashReceived) : null,
       mpesaCode: mpesaCode ?? null,
       cardRef: cardRef ?? null,
       // Stamp the sale with whoever is logged in at the till.
       soldBy: (token.name as string) ?? null,
     })
-    return NextResponse.json(order, { status: 201 })
+
+    // Email the branded receipt if the cashier captured a customer email. Never
+    // let a mail failure fail a completed sale.
+    const emailTo = typeof customerEmail === "string" ? customerEmail.trim() : ""
+    let emailed = false
+    if (isValidEmail(emailTo)) {
+      try {
+        await sendReceiptEmail(order, emailTo)
+        emailed = true
+      } catch (e) { console.error("[mailer] receipt copy:", e) }
+    }
+
+    return NextResponse.json({ ...order, emailed }, { status: 201 })
   } catch (err) {
     if (err instanceof InsufficientStockError) {
       return NextResponse.json(

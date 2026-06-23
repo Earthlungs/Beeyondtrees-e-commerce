@@ -46,6 +46,7 @@ export default function PosPage() {
   const [cardRef, setCardRef] = useState("")
   const [customerName, setCustomerName] = useState("")
   const [customerPhone, setCustomerPhone] = useState("")
+  const [customerEmail, setCustomerEmail] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [notice, setNotice] = useState<{ text: string; tone: "error" | "success" } | null>(null)
 
@@ -118,7 +119,7 @@ export default function PosPage() {
 
   const resetSale = () => {
     setLines([]); setMethod(null); setCashReceived(""); setMpesaCode("")
-    setCardRef(""); setCustomerName(""); setCustomerPhone(""); setCartOpen(false)
+    setCardRef(""); setCustomerName(""); setCustomerPhone(""); setCustomerEmail(""); setCartOpen(false)
   }
 
   const change = method === "cash" && cashReceived ? Number(cashReceived) - total : 0
@@ -137,6 +138,7 @@ export default function PosPage() {
           paymentMethod: method,
           customerName: customerName || null,
           customerPhone: customerPhone || null,
+          customerEmail: customerEmail || null,
           cashReceived: method === "cash" ? Number(cashReceived) : null,
           mpesaCode: method === "mpesa" ? mpesaCode : null,
           cardRef: method === "card" ? cardRef : null,
@@ -283,6 +285,7 @@ export default function PosPage() {
               <div style={{ display: "flex", gap: 8 }}>
                 <Input placeholder="Customer name (optional)" value={customerName} onChange={(e) => setCustomerName(e.target.value)} style={{ fontSize: 12.5, height: 36 }} />
                 <Input placeholder="Phone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} style={{ fontSize: 12.5, height: 36 }} />
+                <Input type="email" placeholder="Email (emails receipt)" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} style={{ fontSize: 12.5, height: 36 }} />
               </div>
 
               {/* Payment method */}

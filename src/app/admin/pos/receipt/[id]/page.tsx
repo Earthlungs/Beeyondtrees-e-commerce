@@ -2,6 +2,7 @@ import { Suspense } from "react"
 import Link from "next/link"
 import { prisma } from "@/lib/db"
 import BrandedDoc, { DOC_GREEN } from "@/components/admin/BrandedDoc"
+import DocEmailButton from "@/components/admin/DocEmailButton"
 import PrintControls from "./print-controls"
 
 const ksh = (n: number) => `KSh ${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
@@ -100,6 +101,10 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
           Asante sana! Thank you for shopping with us.
         </div>
       </BrandedDoc>
+
+      <div className="no-print" style={{ display: "flex", justifyContent: "center", marginTop: 20 }}>
+        <DocEmailButton endpoint={`/api/pos/sale/${order.id}/email`} defaultEmail={order.customerEmail ?? ""} label="Email receipt" />
+      </div>
 
       <Suspense fallback={null}>
         <PrintControls />
