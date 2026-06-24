@@ -57,8 +57,13 @@ export default function ProductionProgress({ batchId, canLog, onPercent }: { bat
   }
   useEffect(() => { load() }, [batchId]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const remaining = Math.max(0, 100 - percent)
+
   const log = async () => {
     if (!f.label.trim()) { setError("Give the step a name (e.g. Cutting, Weaving, Finishing).") ; return }
+    const inc = Number(f.percent) || 0
+    if (inc <= 0) { setError("Enter how much progress (%) this step adds."); return }
+    if (inc > remaining) { setError(`Only ${remaining}% remaining — this step can add at most ${remaining}%.`); return }
     setSaving(true); setError("")
     try {
       const res = await fetch(`/api/tracing/batches/${batchId}/production-steps`, {
@@ -103,7 +108,7 @@ export default function ProductionProgress({ batchId, canLog, onPercent }: { bat
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
                     <span style={{ fontWeight: 600, color: TEXT, fontSize: 13.5 }}>{s.label}</span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: GREEN }}>{s.percent}%</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: GREEN }}>+{s.percent}%</span>
                     <span style={{ fontSize: 11, color: MUTED }}>{new Date(s.createdAt).toLocaleString("en-KE")}{s.createdBy ? ` · ${s.createdBy}` : ""}</span>
                   </div>
                   {s.note && <div style={{ fontSize: 12.5, color: MUTED, marginTop: 2 }}>{s.note}</div>}
@@ -140,8 +145,8 @@ export default function ProductionProgress({ batchId, canLog, onPercent }: { bat
                   </datalist>
                 </div>
                 <div>
-                  <label style={labelStyle}>% complete</label>
-                  <Input style={field} type="number" min={0} max={100} value={f.percent} onChange={(e) => setF({ ...f, percent: e.target.value })} placeholder="0–100" />
+                  <label style={labelStyle}>% this step (remaining: {remaining}%)</label>
+                  <Input style={field} type="number" min={1} max={remaining} value={f.percent} onChange={(e) => setF({ ...f, percent: e.target.value })} placeholder={`1–${remaining}`} />
                 </div>
               </div>
               <div>

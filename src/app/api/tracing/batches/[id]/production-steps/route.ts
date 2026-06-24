@@ -34,8 +34,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (auth instanceof NextResponse) return auth
   const { id } = await params
   const steps = await fetchSteps(id)
-  const percentComplete = steps.length ? Math.max(...steps.map((s) => s.percent || 0)) : 0
-  return NextResponse.json({ steps, percentComplete }, { headers: { "Cache-Control": "no-store" } })
+  return NextResponse.json({ steps, percentComplete: sumPercent(steps) }, { headers: { "Cache-Control": "no-store" } })
+}
+
+// Each step's percent is an INCREMENT — progress runs from 0 → 100 as the sum
+// of all logged steps (capped at 100).
+function sumPercent(steps: { percent: number }[]): number {
+  return Math.min(100, steps.reduce((s, x) => s + (x.percent || 0), 0))
 }
 
 // Log one production sub-step (e.g. "Cutting", "Weaving", "Finishing") with a
@@ -59,6 +64,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const note = typeof body?.note === "string" ? body.note.trim() || null : null
   let percent = Math.round(Number(body?.percent) || 0)
   percent = Math.max(0, Math.min(100, percent))
+  if (percent <= 0) return NextResponse.json({ error: "Enter a progress % greater than 0 for this step." }, { status: 400 })
+  // The increment can't push the running total past 100%.
+  const current = sumPercent(await fetchSteps(id))
+  const remaining = 100 - current
+  if (remaining <= 0) return NextResponse.json({ error: "Production is already at 100%." }, { status: 409 })
+  if (percent > remaining) return NextResponse.json({ error: `Only ${remaining}% remaining — this step can be at most ${remaining}%.` }, { status: 400 })
   const images = Array.isArray(body?.images) ? body.images : []
   const createdBy = (auth.token as { name?: string }).name || "Production Officer"
 
@@ -73,6 +84,5 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   const steps = await fetchSteps(id)
-  const percentComplete = steps.length ? Math.max(...steps.map((s) => s.percent || 0)) : 0
-  return NextResponse.json({ steps, percentComplete }, { status: 201 })
+  return NextResponse.json({ steps, percentComplete: sumPercent(steps) }, { status: 201 })
 }

@@ -309,7 +309,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         // Can't finalise production until progress reaches 100% (logged steps).
         try {
           const rows = await prisma.$queryRaw<{ pct: number }[]>`
-            SELECT COALESCE(MAX(percent), 0)::int AS pct FROM "ProductionStep" WHERE "batchId" = ${id}
+            SELECT LEAST(COALESCE(SUM(percent), 0), 100)::int AS pct FROM "ProductionStep" WHERE "batchId" = ${id}
           `
           const pct = rows[0]?.pct ?? 0
           if (pct < 100) {

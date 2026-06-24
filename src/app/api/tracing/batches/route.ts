@@ -29,7 +29,7 @@ async function fetchProductionPercents(ids: string[]): Promise<Map<string, numbe
   if (ids.length === 0) return new Map()
   try {
     const rows = await prisma.$queryRaw<{ batchId: string; pct: number }[]>`
-      SELECT "batchId", MAX(percent)::int AS pct FROM "ProductionStep"
+      SELECT "batchId", LEAST(SUM(percent), 100)::int AS pct FROM "ProductionStep"
       WHERE "batchId" = ANY(${ids}::text[]) GROUP BY "batchId"
     `
     return new Map(rows.map((r) => [r.batchId, r.pct]))
