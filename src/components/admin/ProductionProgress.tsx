@@ -35,7 +35,7 @@ function asUrls(v: unknown): string[] {
 // by the production officer (each with a completion % and photo evidence). Every
 // tracing-board viewer sees the timeline + progress; only the production officer
 // (or CEO) sees the logging form (canLog).
-export default function ProductionProgress({ batchId, canLog }: { batchId: string; canLog: boolean }) {
+export default function ProductionProgress({ batchId, canLog, onPercent }: { batchId: string; canLog: boolean; onPercent?: (p: number) => void }) {
   const [steps, setSteps] = useState<Step[]>([])
   const [percent, setPercent] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -51,6 +51,7 @@ export default function ProductionProgress({ batchId, canLog }: { batchId: strin
         const data = await res.json()
         setSteps(data.steps ?? [])
         setPercent(data.percentComplete ?? 0)
+        onPercent?.(data.percentComplete ?? 0)
       }
     } finally { setLoading(false) }
   }
@@ -66,7 +67,7 @@ export default function ProductionProgress({ batchId, canLog }: { batchId: strin
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error || "Could not save."); return }
-      setSteps(data.steps ?? []); setPercent(data.percentComplete ?? 0)
+      setSteps(data.steps ?? []); setPercent(data.percentComplete ?? 0); onPercent?.(data.percentComplete ?? 0)
       setF({ label: "", percent: "", note: "", images: [] }); setOpen(false)
     } catch { setError("Network error. Try again.") }
     finally { setSaving(false) }

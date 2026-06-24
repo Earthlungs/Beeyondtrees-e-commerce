@@ -130,6 +130,9 @@ export default function BatchDetail() {
   const [form, setForm] = useState<FormState>({})
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+  // Live production completion (lifted from ProductionProgress) — gates the
+  // "Submit & Advance" so production can't advance before it's 100% done.
+  const [prodPercent, setProdPercent] = useState(0)
 
   const load = useCallback(async () => {
     const bRes = await fetch(`/api/tracing/batches/${id}`)
@@ -307,7 +310,7 @@ export default function BatchDetail() {
               {/* Production progress — live sub-stage timeline + % (graphical, all viewers).
                   Only once production is reached (current or past), so a future/locked
                   stage doesn't show a non-interactive panel. */}
-              {stage === "production" && idx <= currentIdx && <ProductionProgress batchId={id} canLog={canAct} />}
+              {stage === "production" && idx <= currentIdx && <ProductionProgress batchId={id} canLog={canAct} onPercent={setProdPercent} />}
 
               {/* Read-only requisition rows */}
               {hasRecord && stage === "requisition" && (
@@ -413,6 +416,7 @@ export default function BatchDetail() {
                 <ProductionForm
                   saving={saving}
                   userName={userName}
+                  percent={prodPercent}
                   defaultMaterial={(batch.productName as string) || ((batch.issuance as { material?: string } | null)?.material) || ""}
                   onSubmit={(data) => submit("production", "submit", data)}
                 />
@@ -648,12 +652,14 @@ function IssuanceForm({ saving, requisitions, onIssue, onProceed }: {
 // Production cost capture — a dynamic list of named overhead costs (electricity,
 // labour, …) that sum to the production total. Material + Issued By are auto-filled
 // (read-only). Photo evidence + per-step % live in the ProductionProgress panel.
-function ProductionForm({ saving, userName, defaultMaterial, onSubmit }: {
+function ProductionForm({ saving, userName, percent, defaultMaterial, onSubmit }: {
   saving: boolean
   userName: string
+  percent: number
   defaultMaterial: string
   onSubmit: (data: Record<string, unknown>) => void
 }) {
+  const ready = percent >= 100
   const [costs, setCosts] = useState<{ name: string; amount: string }[]>([{ name: "", amount: "" }])
   const [date, setDate] = useState("")
   const [remarks, setRemarks] = useState("")
@@ -692,11 +698,17 @@ function ProductionForm({ saving, userName, defaultMaterial, onSubmit }: {
         <textarea style={{ ...field, height: 64, padding: 10 }} value={remarks} onChange={(e) => setRemarks(e.target.value)} />
       </div>
 
+      {!ready && (
+        <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#8a6d00", background: "#FFFBEB", border: "1px solid #FBD38D", borderRadius: 8, padding: "10px 12px" }}>
+          <Lock size={15} /> Production is at <b>&nbsp;{percent}%</b>&nbsp;— log steps to 100% above before you can finalise &amp; advance.
+        </div>
+      )}
       <Button
         onClick={() => onSubmit({ costs: costs.map((c) => ({ name: c.name.trim(), amount: Number(c.amount) || 0 })).filter((c) => c.name || c.amount), material: defaultMaterial, issuedBy: userName, date, remarks })}
-        disabled={saving}
-        style={{ background: GREEN, color: "white", marginTop: 14, gap: 6 }}>
-        {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} Submit & Advance
+        disabled={saving || !ready}
+        title={ready ? "" : `Production is only ${percent}% complete`}
+        style={{ background: ready ? GREEN : "var(--admin-border)", color: ready ? "white" : MUTED, marginTop: 14, gap: 6, cursor: ready ? "pointer" : "not-allowed" }}>
+        {saving ? <Loader2 size={16} className="animate-spin" /> : ready ? <Check size={16} /> : <Lock size={16} />} Finalise &amp; Advance
       </Button>
     </div>
   )

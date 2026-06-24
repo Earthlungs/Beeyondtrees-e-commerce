@@ -298,6 +298,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
       // ── Stage 7: Production officer ────────────────────────────────────────
       case "production": {
+        // Can't finalise production until progress reaches 100% (logged steps).
+        try {
+          const rows = await prisma.$queryRaw<{ pct: number }[]>`
+            SELECT COALESCE(MAX(percent), 0)::int AS pct FROM "ProductionStep" WHERE "batchId" = ${id}
+          `
+          const pct = rows[0]?.pct ?? 0
+          if (pct < 100) {
+            return NextResponse.json({ error: `Production is only ${pct}% complete — log steps to 100% before finalising.` }, { status: 409 })
+          }
+        } catch { /* steps table missing — allow (legacy) */ }
+
         // Production captures named overhead cost lines (electricity, labour, …).
         // totalCost is their sum — the figure the reconciliation rolls up.
         const rawCosts = Array.isArray(d.costs) ? d.costs : []
