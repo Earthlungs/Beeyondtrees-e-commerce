@@ -251,6 +251,7 @@ model Inspection {
   inspector        String
   storeLocation    String?
   images           Json     @default("[]")
+  remarks          String?  @db.Text
   createdAt        DateTime @default(now())
   batch            Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
 }
@@ -301,9 +302,13 @@ model Production {
   quantityIssued Float   @default(0)
   unitCost      Float    @default(0)
   totalCost     Float    @default(0)
+  // Named overhead cost lines: [{ name: "Electricity bill", amount: 5000 }, …].
+  // totalCost is their sum (the figure the reconciliation uses).
+  costs         Json     @default("[]")
   issuedBy      String
   receivedBy    String?
   date          DateTime?
+  remarks       String?  @db.Text
   createdAt     DateTime @default(now())
   batch         Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
 }
@@ -321,6 +326,7 @@ model BatchDispatch {
   dispatchedBy   String
   toBeReceivedBy String?
   date           DateTime?
+  remarks        String?  @db.Text
   createdAt      DateTime @default(now())
   batch          Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
 }

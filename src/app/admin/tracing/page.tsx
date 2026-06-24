@@ -7,7 +7,7 @@ import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Workflow, Plus, X, Loader2, ChevronRight, Search, ClipboardList } from "lucide-react"
-import { STAGE_LABELS, isAdminishRole, LIMITED_BOARD_STAGES, type Stage } from "@/lib/tracing-stages"
+import { STAGE_LABELS, STAGE_ROLES, isAdminishRole, LIMITED_BOARD_STAGES, type Stage } from "@/lib/tracing-stages"
 
 const TEXT = "var(--admin-text)"
 const MUTED = "var(--admin-muted)"
@@ -81,6 +81,12 @@ export default function TracingBoard() {
   const [rows, setRows] = useState<BatchRow[]>([])
   // Limited-board roles only see batches sitting at their allowed stages.
   const visibleRows = limitedStages ? rows.filter((b) => limitedStages.includes(b.stage)) : rows
+  // "Unfinished work awaiting YOU": in-progress batches sitting at a stage this
+  // role owns (or, for limited roles, in their stage subset). Surfaced on login
+  // so e.g. a production officer is reminded of incomplete production.
+  const myPending = visibleRows.filter((b) =>
+    b.status === "in_progress" && (limitedStages ? limitedStages.includes(b.stage) : STAGE_ROLES[b.stage] === role)
+  )
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -227,6 +233,21 @@ export default function TracingBoard() {
           </Button>
         )}
       </div>
+
+      {/* Unfinished-work reminder — shown to pipeline workers when batches await them */}
+      {!loading && !isAdmin && myPending.length > 0 && (
+        <div style={{ background: "#FFF7ED", border: `1px solid ${AMBER}`, borderRadius: 12, padding: "12px 16px", marginBottom: 18, display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 20 }}>⚠️</span>
+          <div style={{ fontSize: 13.5, color: "#7C2D12" }}>
+            You have <b>{myPending.length}</b> unfinished {myPending.length === 1 ? "job" : "jobs"} awaiting you
+            {" — "}
+            {myPending.slice(0, 3).map((b, i) => (
+              <span key={b.id}>{i > 0 ? ", " : ""}<Link href={`/admin/tracing/${b.id}`} style={{ color: BROWN, fontWeight: 700, textDecoration: "underline" }}>{b.code}</Link></span>
+            ))}
+            {myPending.length > 3 ? ` +${myPending.length - 3} more` : ""}.
+          </div>
+        </div>
+      )}
 
       {/* Approved LPOs tray — visible to factory_manager before opening the form */}
       {canCreate && !showForm && availableLpos.length > 0 && (

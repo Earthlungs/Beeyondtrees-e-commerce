@@ -127,7 +127,7 @@ export const ROLE_LABELS: Record<string, string> = {
 // but these fields are redacted (server strips them; client shows NOT_ALLOWED).
 export const COST_FIELDS = new Set([
   "estimatedUnitCost", "estimatedTotalCost", "laborCost", "transportCost",
-  "otherCosts", "totalHarvestCost", "unitCost", "totalCost",
+  "otherCosts", "totalHarvestCost", "unitCost", "totalCost", "costs",
 ])
 
 export const NOT_ALLOWED = "You are not allowed to view this detail"

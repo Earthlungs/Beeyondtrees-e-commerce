@@ -190,6 +190,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
                 inspector: str(d.inspector) || str(auth.token.name) || "Inspector",
                 storeLocation: str(d.storeLocation) || null,
                 images: imgs(d.images),
+                remarks: str(d.remarks) || null,
               },
             })
         )
@@ -247,38 +248,66 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       }
 
       // ── Stage 6: Agribusiness manager — issuance ───────────────────────────
+      // Issuance is NOT a fresh form — it is driven by the requisitions. The
+      // manager issues each requisition (auto-filled); once every requisition is
+      // issued the stage locks and they proceed to production.
       case "issuance": {
-        // Requisition ID is auto-pulled from the requisition stage.
-        const reqForIss = await prisma.requisition.findFirst({ where: { batchId: id }, orderBy: { createdAt: "asc" }, select: { requisitionId: true } })
+        const reqs = await prisma.requisition.findMany({ where: { batchId: id }, orderBy: { createdAt: "asc" } })
+        if (reqs.length === 0) {
+          return NextResponse.json({ error: "There are no requisitions to issue against." }, { status: 400 })
+        }
+
+        // Issue ONE requisition (mark it issued). The manager just confirms the
+        // auto-filled details — nothing to retype. Stays on the issuance stage.
+        if (action === "issue") {
+          const reqId = str(d.requisitionId)
+          const target = reqs.find((r) => r.id === reqId || r.requisitionId === reqId)
+          if (!target) return NextResponse.json({ error: "Requisition not found." }, { status: 404 })
+          if (target.status !== "issued") {
+            await prisma.requisition.update({ where: { id: target.id }, data: { status: "issued" } })
+          }
+          break // stay on issuance until everything is issued
+        }
+
+        // Proceed to production: every requisition must be issued first.
+        const pending = reqs.filter((r) => r.status !== "issued")
+        if (pending.length > 0) {
+          return NextResponse.json({ error: `Issue all requisitions first — ${pending.length} still pending.` }, { status: 400 })
+        }
+        const totalQty = reqs.reduce((s, r) => s + (r.quantityRequired || 0), 0)
+        const first = reqs[0]
+        // Single issuance summary, auto-derived from the requisitions + batch.
         await prisma.issuance.create({
           data: {
             batchId: id,
-            requisitionId: reqForIss?.requisitionId ?? null,
-            department: str(d.department),
-            product: str(d.product) || batch.productName || "",
-            customProductOrSample: str(d.customProductOrSample) || null,
-            numberToManufacture: Math.trunc(num(d.numberToManufacture)),
-            productImage: imgs(d.productImage),
-            material: str(d.material),
-            quantityRequired: num(d.quantityRequired),
-            purpose: str(d.purpose) || null,
-            requestedBy: str(d.requestedBy) || str(auth.token.name) || "Agribusiness Manager",
-            jobCardNumber: str(d.jobCardNumber) || null,
-            approvedBy: str(d.approvedBy) || null,
+            requisitionId: first.requisitionId,
+            department: first.department || "",
+            product: batch.productName || first.product || "",
+            numberToManufacture: Math.trunc(totalQty),
+            material: first.product || "",
+            quantityRequired: totalQty,
+            purpose: first.purpose || null,
+            requestedBy: first.requestedBy || str(auth.token.name) || "Agribusiness Manager",
+            approvedBy: str(auth.token.name) || null,
             status: "issued",
           },
         })
-        // Keep the finished-product name fresh for catalog matching.
-        if (str(d.product)) {
-          await prisma.batch.update({ where: { id }, data: { productName: str(d.product) } })
-        }
         await advance()
         break
       }
 
       // ── Stage 7: Production officer ────────────────────────────────────────
       case "production": {
-        const totalCost = num(d.totalCost) || +(num(d.quantityIssued) * num(d.unitCost)).toFixed(2)
+        // Production captures named overhead cost lines (electricity, labour, …).
+        // totalCost is their sum — the figure the reconciliation rolls up.
+        const rawCosts = Array.isArray(d.costs) ? d.costs : []
+        const costs = rawCosts
+          .map((c: unknown) => {
+            const r = (c ?? {}) as { name?: unknown; amount?: unknown }
+            return { name: str(r.name), amount: num(r.amount) }
+          })
+          .filter((c: { name: string; amount: number }) => c.name || c.amount)
+        const totalCost = +costs.reduce((s: number, c: { amount: number }) => s + c.amount, 0).toFixed(2)
         const reqForProd = await prisma.requisition.findFirst({ where: { batchId: id }, orderBy: { createdAt: "asc" }, select: { requisitionId: true } })
         await createNumbered(
           "ISS",
@@ -289,13 +318,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
                 batchId: id,
                 issueId,
                 requisitionId: reqForProd?.requisitionId ?? null,
-                material: str(d.material),
-                quantityIssued: num(d.quantityIssued),
-                unitCost: num(d.unitCost),
+                material: str(d.material) || batch.productName || "",
+                quantityIssued: 0,
+                unitCost: 0,
                 totalCost,
+                costs: costs as unknown as Prisma.InputJsonValue,
                 issuedBy: str(d.issuedBy) || str(auth.token.name) || "Production Officer",
                 receivedBy: str(d.receivedBy) || null,
                 date: parseDate(d.date),
+                remarks: str(d.remarks) || null,
               },
             })
         )
@@ -321,6 +352,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
                 dispatchedBy: str(d.dispatchedBy) || str(auth.token.name) || "Dispatch Officer",
                 toBeReceivedBy: str(d.toBeReceivedBy) || null,
                 date: parseDate(d.date),
+                remarks: str(d.remarks) || null,
               },
             })
         )

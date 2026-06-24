@@ -25,7 +25,9 @@ const sval = (f: FormState, k: string) => (typeof f[k] === "string" ? (f[k] as s
 const nval = (f: FormState, k: string) => Number(sval(f, k)) || 0
 
 type FieldType = "text" | "number" | "date" | "textarea" | "images" | "gps" | "computed" | "product-name"
-interface FieldDef { name: string; label: string; type?: FieldType; compute?: (f: FormState) => string }
+// `readOnly` fields are auto-filled (logged-in person / carried from a prior stage)
+// and shown locked so the user can't retype them.
+interface FieldDef { name: string; label: string; type?: FieldType; compute?: (f: FormState) => string; readOnly?: boolean }
 
 const STAGE_FIELDS: Partial<Record<Stage, FieldDef[]>> = {
   sourcing: [
@@ -45,38 +47,22 @@ const STAGE_FIELDS: Partial<Record<Stage, FieldDef[]>> = {
     { name: "quantityRejected", label: "Quantity Rejected", type: "number" },
     { name: "quantityAccepted", label: "Quantity Accepted (auto = delivered − rejected)", type: "computed", compute: (f) => String(Math.max(0, nval(f, "quantityDelivered") - nval(f, "quantityRejected"))) },
     { name: "qualityGrade", label: "Quality Grade" },
-    { name: "inspector", label: "Inspected By" },
+    { name: "inspector", label: "Inspected By", readOnly: true },
     { name: "storeLocation", label: "Store Location", type: "gps" },
     { name: "images", label: "Images", type: "images" },
+    { name: "remarks", label: "Remarks", type: "textarea" },
   ],
-  issuance: [
-    { name: "department", label: "Department" },
-    { name: "product", label: "Product", type: "product-name" },
-    { name: "customProductOrSample", label: "Custom Product or Sample" },
-    { name: "numberToManufacture", label: "No. of Products to Manufacture", type: "number" },
-    { name: "material", label: "Material", type: "product-name" },
-    { name: "quantityRequired", label: "Quantity Required", type: "number" },
-    { name: "jobCardNumber", label: "Job Card Number" },
-    { name: "requestedBy", label: "Requested By" },
-    { name: "approvedBy", label: "Approved By" },
-    { name: "productImage", label: "Product Image", type: "images" },
-    { name: "purpose", label: "Purpose", type: "textarea" },
-  ],
-  production: [
-    { name: "material", label: "Material", type: "product-name" },
-    { name: "quantityIssued", label: "Quantity Issued", type: "number" },
-    { name: "unitCost", label: "Unit Cost", type: "number" },
-    { name: "issuedBy", label: "Issued By" },
-    { name: "date", label: "Production Date", type: "date" },
-  ],
+  // issuance is handled by IssuanceForm (auto-filled from the requisitions)
+  // production is handled by ProductionForm (dynamic named cost lines)
   dispatch: [
     { name: "product", label: "Product", type: "product-name" },
     { name: "quantity", label: "Quantity", type: "number" },
     { name: "sourceLocation", label: "Source Location" },
     { name: "destination", label: "Destination" },
     { name: "transportCost", label: "Transport Cost", type: "number" },
-    { name: "dispatchedBy", label: "Dispatched By" },
+    { name: "dispatchedBy", label: "Dispatched By", readOnly: true },
     { name: "date", label: "Dispatch Date", type: "date" },
+    { name: "remarks", label: "Remarks", type: "textarea" },
   ],
   // receiving handled by ReceivingForm
 }
@@ -90,9 +76,19 @@ const RECORD_KEY: Record<Stage, string> = {
 const field: React.CSSProperties = { width: "100%", height: 40, borderRadius: 8, border: "1px solid var(--admin-border)", padding: "0 10px", color: TEXT }
 const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: MUTED, marginBottom: 4, display: "block" }
 
-const HIDDEN_KEYS = new Set(["id", "batchId", "createdAt", "images", "productImage"])
+const HIDDEN_KEYS = new Set(["id", "batchId", "createdAt", "images", "productImage", "costs", "quantityIssued", "unitCost"])
 function prettyKey(k: string) { return k.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase()) }
 function isHttp(s: unknown) { return typeof s === "string" && /^https?:\/\//.test(s) }
+
+// Friendly timestamp — date + time + seconds, 24h, Kenya locale.
+function fmtDateTime(v: unknown): string | null {
+  if (typeof v !== "string" && !(v instanceof Date)) return null
+  const d = new Date(v as string)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toLocaleString("en-KE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })
+}
+// Date-bearing keys we render as a friendly timestamp instead of a raw ISO string.
+function isDateKey(k: string) { return k === "date" || /At$/.test(k) || k === "expectedDate" }
 
 // Parse breakdown stored in `condition` field (JSON array or plain string)
 function parseBreakdown(condition: string | null | undefined): { qty: number; condition: string; grade: string }[] | null {
@@ -308,8 +304,10 @@ export default function BatchDetail() {
                 )}
               </div>
 
-              {/* Production progress — live sub-stage timeline + % (graphical, all viewers) */}
-              {stage === "production" && <ProductionProgress batchId={id} canLog={canAct} />}
+              {/* Production progress — live sub-stage timeline + % (graphical, all viewers).
+                  Only once production is reached (current or past), so a future/locked
+                  stage doesn't show a non-interactive panel. */}
+              {stage === "production" && idx <= currentIdx && <ProductionProgress batchId={id} canLog={canAct} />}
 
               {/* Read-only requisition rows */}
               {hasRecord && stage === "requisition" && (
@@ -337,11 +335,30 @@ export default function BatchDetail() {
                         <div key={k} style={{ fontSize: 13 }}>
                           <span style={{ color: MUTED }}>{prettyKey(k)}: </span>
                           <span style={{ color: TEXT, fontWeight: 500 }}>
-                            {isAdmin || !COST_FIELDS.has(k) ? String(v) : NOT_ALLOWED}
+                            {!isAdmin && COST_FIELDS.has(k) ? NOT_ALLOWED : (isDateKey(k) ? (fmtDateTime(v) ?? String(v)) : String(v))}
                           </span>
                         </div>
                       ))}
                   </div>
+                  {fmtDateTime((record as Record<string, unknown>).createdAt) && (
+                    <div style={{ marginTop: 8, fontSize: 12, color: MUTED }}>Recorded: <span style={{ color: TEXT, fontWeight: 600 }}>{fmtDateTime((record as Record<string, unknown>).createdAt)}</span></div>
+                  )}
+                  {/* Production overhead cost breakdown — admin only */}
+                  {isAdmin && stage === "production" && Array.isArray((record as Record<string, unknown>).costs) && ((record as { costs: unknown[] }).costs).length > 0 && (
+                    <div style={{ marginTop: 10, background: "var(--admin-card-2)", borderRadius: 8, padding: 10 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: MUTED, marginBottom: 6 }}>Production costs</div>
+                      {((record as { costs: { name: string; amount: number }[] }).costs).map((c, i) => (
+                        <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "3px 0" }}>
+                          <span style={{ color: TEXT }}>{c.name || "—"}</span>
+                          <span style={{ color: TEXT, fontWeight: 600 }}>{ksh(Number(c.amount) || 0)}</span>
+                        </div>
+                      ))}
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5, fontWeight: 800, borderTop: "1px solid var(--admin-border)", marginTop: 6, paddingTop: 6 }}>
+                        <span style={{ color: TEXT }}>Total</span>
+                        <span style={{ color: GREEN }}>{ksh(((record as { costs: { amount: number }[] }).costs).reduce((s, c) => s + (Number(c.amount) || 0), 0))}</span>
+                      </div>
+                    </div>
+                  )}
                   {!isAdmin && STAGES_WITH_COST.has(stage) && (
                     <div style={{ marginTop: 8, fontSize: 12.5, color: "#8a6d00", fontStyle: "italic" }}>Costs: {NOT_ALLOWED}</div>
                   )}
@@ -357,7 +374,7 @@ export default function BatchDetail() {
               )}
 
               {/* Editable actions */}
-              {canAct && stage === "approval" && <ApprovalForm saving={saving} onSubmit={submit} />}
+              {canAct && stage === "approval" && <ApprovalForm saving={saving} userName={userName} onSubmit={submit} />}
 
               {canAct && stage === "requisition" && reqClosed && (
                 <div style={{ marginTop: 8 }}>
@@ -383,6 +400,24 @@ export default function BatchDetail() {
                 />
               )}
 
+              {canAct && stage === "issuance" && (
+                <IssuanceForm
+                  saving={saving}
+                  requisitions={(batch.requisitions as IssuanceReq[]) ?? []}
+                  onIssue={(requisitionId) => submit("issuance", "issue", { requisitionId })}
+                  onProceed={() => submit("issuance", "advance", {})}
+                />
+              )}
+
+              {canAct && stage === "production" && (
+                <ProductionForm
+                  saving={saving}
+                  userName={userName}
+                  defaultMaterial={(batch.productName as string) || ((batch.issuance as { material?: string } | null)?.material) || ""}
+                  onSubmit={(data) => submit("production", "submit", data)}
+                />
+              )}
+
               {canAct && stage === "receiving" && (
                 <ReceivingForm
                   saving={saving}
@@ -398,13 +433,15 @@ export default function BatchDetail() {
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
                     {STAGE_FIELDS[stage]!.map((fd) => (
                       <div key={fd.name} style={fd.type === "textarea" || fd.type === "images" ? { gridColumn: "1 / -1" } : undefined}>
-                        <label style={labelStyle}>{fd.label}</label>
+                        <label style={labelStyle}>{fd.label}{fd.readOnly ? <span style={{ color: MUTED, fontWeight: 400 }}> · auto</span> : null}</label>
                         {fd.type === "images" ? (
                           <ImageUploader value={(form[fd.name] as string[]) ?? []} onChange={(v) => setForm({ ...form, [fd.name]: v })} />
                         ) : fd.type === "gps" ? (
                           <GpsField value={sval(form, fd.name)} onChange={(v) => setForm({ ...form, [fd.name]: v })} />
                         ) : fd.type === "computed" ? (
                           <Input style={{ ...field, background: "var(--admin-card-2)", fontWeight: 600 }} value={fd.compute ? fd.compute(form) : ""} readOnly />
+                        ) : fd.readOnly ? (
+                          <Input style={{ ...field, background: "var(--admin-card-2)", fontWeight: 600 }} value={sval(form, fd.name)} readOnly />
                         ) : fd.type === "textarea" ? (
                           <textarea style={{ ...field, height: 64, padding: 10 }} value={sval(form, fd.name)} onChange={(e) => setForm({ ...form, [fd.name]: e.target.value })} />
                         ) : fd.type === "product-name" ? (
@@ -545,13 +582,134 @@ function GpsField({ value, onChange }: { value: string; onChange: (v: string) =>
   )
 }
 
-function ApprovalForm({ saving, onSubmit }: { saving: boolean; onSubmit: (s: Stage, a: string, d: Record<string, unknown>) => void }) {
+interface IssuanceReq { id: string; requisitionId: string; department: string; product: string; quantityRequired: number; requestedBy: string; status: string }
+
+// Issuance is driven by the requisitions — the agribusiness manager doesn't fill
+// a fresh form, they ISSUE each requisition (auto-filled, read-only). Clickable
+// while units remain; once everything is issued it locks with a padlock + Proceed.
+function IssuanceForm({ saving, requisitions, onIssue, onProceed }: {
+  saving: boolean
+  requisitions: IssuanceReq[]
+  onIssue: (requisitionId: string) => void
+  onProceed: () => void
+}) {
+  const total = requisitions.reduce((s, r) => s + (Number(r.quantityRequired) || 0), 0)
+  const issuedQty = requisitions.filter((r) => r.status === "issued").reduce((s, r) => s + (Number(r.quantityRequired) || 0), 0)
+  const remaining = Math.max(0, total - issuedQty)
+  const allIssued = requisitions.length > 0 && remaining === 0
+
+  if (requisitions.length === 0) {
+    return <div style={{ marginTop: 12, fontSize: 13, color: MUTED }}>No requisitions to issue against.</div>
+  }
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 13, marginBottom: 10 }}>
+        <span style={{ color: MUTED }}>Requisitioned: <b style={{ color: TEXT }}>{total}</b></span>
+        <span style={{ color: MUTED }}>Issued: <b style={{ color: GREEN }}>{issuedQty}</b></span>
+        <span style={{ color: MUTED }}>Remaining: <b style={{ color: remaining ? AMBER : GREEN }}>{remaining}</b></span>
+      </div>
+      <div style={{ display: "grid", gap: 8 }}>
+        {requisitions.map((r) => {
+          const done = r.status === "issued"
+          return (
+            <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 12, background: "var(--admin-card-2)", borderRadius: 8, padding: "10px 12px" }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, color: TEXT, fontWeight: 600 }}>{r.product} × {r.quantityRequired}</div>
+                <div style={{ fontSize: 11.5, color: MUTED }}>{r.requisitionId} · {r.department || "—"} · by {r.requestedBy}</div>
+              </div>
+              {done ? (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, color: GREEN, fontSize: 12.5, fontWeight: 700 }}><Check size={15} /> Issued</span>
+              ) : (
+                <Button onClick={() => onIssue(r.id)} disabled={saving} style={{ background: GREEN, color: "white", gap: 6, height: 34, fontSize: 13 }}>
+                  <Check size={14} /> Issue
+                </Button>
+              )}
+            </div>
+          )
+        })}
+      </div>
+      {allIssued ? (
+        <div style={{ marginTop: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, color: GREEN, fontSize: 13, marginBottom: 10, fontWeight: 600 }}>
+            <Lock size={15} /> All requisitioned units issued. Ready to proceed.
+          </div>
+          <Button onClick={onProceed} disabled={saving} style={{ background: GREEN, color: "white", gap: 6 }}>
+            {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} Proceed to Production
+          </Button>
+        </div>
+      ) : (
+        <div style={{ marginTop: 12, fontSize: 12.5, color: MUTED }}>Issue every requisition to unlock production.</div>
+      )}
+    </div>
+  )
+}
+
+// Production cost capture — a dynamic list of named overhead costs (electricity,
+// labour, …) that sum to the production total. Material + Issued By are auto-filled
+// (read-only). Photo evidence + per-step % live in the ProductionProgress panel.
+function ProductionForm({ saving, userName, defaultMaterial, onSubmit }: {
+  saving: boolean
+  userName: string
+  defaultMaterial: string
+  onSubmit: (data: Record<string, unknown>) => void
+}) {
+  const [costs, setCosts] = useState<{ name: string; amount: string }[]>([{ name: "", amount: "" }])
+  const [date, setDate] = useState("")
+  const [remarks, setRemarks] = useState("")
+  const total = costs.reduce((s, c) => s + (Number(c.amount) || 0), 0)
+  const setCost = (i: number, patch: Partial<{ name: string; amount: string }>) =>
+    setCosts((cs) => cs.map((c, j) => (j === i ? { ...c, ...patch } : c)))
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+        <div><label style={labelStyle}>Material · auto</label><Input style={{ ...field, background: "var(--admin-card-2)", fontWeight: 600 }} value={defaultMaterial} readOnly /></div>
+        <div><label style={labelStyle}>Produced By · auto</label><Input style={{ ...field, background: "var(--admin-card-2)", fontWeight: 600 }} value={userName || "—"} readOnly /></div>
+      </div>
+
+      <label style={labelStyle}>Other related costs (e.g. Electricity bill, Labour)</label>
+      <div style={{ display: "grid", gap: 8 }}>
+        {costs.map((c, i) => (
+          <div key={i} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <Input style={{ ...field, flex: 2 }} placeholder="Cost name (e.g. Electricity bill)" value={c.name} onChange={(e) => setCost(i, { name: e.target.value })} />
+            <Input style={{ ...field, flex: 1 }} type="number" placeholder="Amount" value={c.amount} onChange={(e) => setCost(i, { amount: e.target.value })} />
+            <button type="button" onClick={() => setCosts((cs) => cs.length > 1 ? cs.filter((_, j) => j !== i) : cs)} style={{ background: "none", border: "none", cursor: "pointer", color: RED, padding: 4 }} aria-label="Remove cost"><Trash2 size={16} /></button>
+          </div>
+        ))}
+      </div>
+      <button type="button" onClick={() => setCosts((cs) => [...cs, { name: "", amount: "" }])} style={{ marginTop: 8, background: "none", border: `1px dashed var(--admin-border)`, borderRadius: 8, padding: "6px 12px", cursor: "pointer", color: TEXT, fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6 }}>
+        <Plus size={14} /> Add cost
+      </button>
+
+      <div style={{ marginTop: 12, fontSize: 14, fontWeight: 700, color: TEXT }}>Total production cost: <span style={{ color: GREEN }}>{ksh(total)}</span></div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
+        <div><label style={labelStyle}>Production Date</label><Input style={field} type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
+      </div>
+      <div style={{ marginTop: 12 }}>
+        <label style={labelStyle}>Remarks</label>
+        <textarea style={{ ...field, height: 64, padding: 10 }} value={remarks} onChange={(e) => setRemarks(e.target.value)} />
+      </div>
+
+      <Button
+        onClick={() => onSubmit({ costs: costs.map((c) => ({ name: c.name.trim(), amount: Number(c.amount) || 0 })).filter((c) => c.name || c.amount), material: defaultMaterial, issuedBy: userName, date, remarks })}
+        disabled={saving}
+        style={{ background: GREEN, color: "white", marginTop: 14, gap: 6 }}>
+        {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} Submit & Advance
+      </Button>
+    </div>
+  )
+}
+
+function ApprovalForm({ saving, userName, onSubmit }: { saving: boolean; userName: string; onSubmit: (s: Stage, a: string, d: Record<string, unknown>) => void }) {
   const [reason, setReason] = useState("")
-  const [approvedBy, setApprovedBy] = useState("")
+  // Auto-pick the logged-in person; the server also falls back to the token name.
+  const approvedBy = userName || "—"
   return (
     <div style={{ marginTop: 12 }}>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 10 }}>
-        <div><label style={labelStyle}>Approved / Decided By</label><Input style={field} value={approvedBy} onChange={(e) => setApprovedBy(e.target.value)} /></div>
+        <div><label style={labelStyle}>Approved / Decided By</label><Input style={{ ...field, background: "var(--admin-card-2)", fontWeight: 600 }} value={approvedBy} readOnly /></div>
         <div><label style={labelStyle}>Reason (required to reject)</label><Input style={field} value={reason} onChange={(e) => setReason(e.target.value)} /></div>
       </div>
       <div style={{ display: "flex", gap: 10 }}>

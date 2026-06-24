@@ -29,9 +29,24 @@ export default function AdminDashboard() {
   const [userStats, setUserStats] = useState<{ total: number; active: number; blocked: number } | null>(null)
   const [ordersExpanded, setOrdersExpanded] = useState(false)
   const [stockExpanded, setStockExpanded] = useState(false)
+  const [production, setProduction] = useState<{ id: string; code: string; productName: string | null; productionPercent: number | null }[]>([])
   const lowStock = products.filter((p) => p.stock <= 5)
 
   useEffect(() => { loadProducts() }, [loadProducts])
+
+  // CEO / Assistant CEO / admin / IT: live production completion per product.
+  useEffect(() => {
+    if (!isAdmin) return
+    let cancelled = false
+    fetch('/api/tracing/batches')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((rows) => {
+        if (cancelled || !Array.isArray(rows)) return
+        setProduction(rows.filter((b: { stage: string; status: string }) => b.stage === "production" && b.status === "in_progress"))
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [isAdmin])
 
   useEffect(() => {
     let cancelled = false
@@ -125,6 +140,30 @@ export default function AdminDashboard() {
             </Link>
           ))}
         </div>
+      )}
+
+      {/* Live production progress per product (CEO / Assistant CEO / admin / IT) */}
+      {isAdmin && production.length > 0 && (
+        <Card style={{ borderColor: '#A89F91', marginBottom: '24px' }}>
+          <CardHeader style={{ paddingBottom: '8px' }}>
+            <CardTitle style={{ fontSize: '16px', color: "var(--admin-text)" }}>Production in progress</CardTitle>
+          </CardHeader>
+          <CardContent style={{ display: 'grid', gap: '12px' }}>
+            {production.map((b) => (
+              <Link key={b.id} href={`/admin/tracing/${b.id}`} style={{ textDecoration: 'none' }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
+                    <span style={{ color: "var(--admin-text)", fontWeight: 600 }}>{b.productName || b.code}</span>
+                    <span style={{ color: (b.productionPercent ?? 0) >= 100 ? '#6B7D5C' : '#B8860B', fontWeight: 700 }}>{b.productionPercent ?? 0}%</span>
+                  </div>
+                  <div style={{ height: '8px', background: 'var(--admin-border)', borderRadius: '999px', overflow: 'hidden' }}>
+                    <div style={{ width: `${b.productionPercent ?? 0}%`, height: '100%', background: '#6B7D5C' }} />
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: '20px' }}>
