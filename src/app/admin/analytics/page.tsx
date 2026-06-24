@@ -110,7 +110,8 @@ export default function AnalyticsPage() {
             <Kpi icon={<Wallet size={18} />} label="Total Sales" value={ksh(data.totalSales)} sub={`${data.orderCount} orders`} accent={GREEN} />
             <Kpi icon={profitPositive ? <TrendingUp size={18} /> : <TrendingDown size={18} />} label="Net Profit" value={ksh(data.netProfit)} sub={`${data.margin.toFixed(1)}% margin`} accent={profitPositive ? GREEN : "#9B2C2C"} />
             <Kpi icon={<Globe size={18} />} label="Website Sales" value={ksh(data.onlineSales)} sub={`${pct(data.onlineSales, data.totalSales)} of sales`} accent="#3E6E8E" />
-            <Kpi icon={<Store size={18} />} label="POS Sales" value={ksh(data.posSales)} sub={`${pct(data.posSales, data.totalSales)} of sales`} accent={BROWN} />
+            <Kpi icon={<Store size={18} />} label="POS Sales" value={ksh(data.posSales)} sub="View seller breakdown →" accent={BROWN}
+              onClick={() => document.getElementById("seller-breakdown")?.scrollIntoView({ behavior: "smooth", block: "start" })} />
             <Kpi icon={<Boxes size={18} />} label="Stock Value (retail)" value={ksh(data.stockRetailValue)} sub={`cost ${ksh(data.stockCostValue)}`} accent={DARK} />
           </div>
 
@@ -122,7 +123,8 @@ export default function AnalyticsPage() {
             <MethodCard icon={<Globe size={18} />} label="Online (Paystack)" m={data.byMethod.online} accent={BROWN} />
           </div>
 
-          {/* Collections by staff */}
+          {/* Collections by staff — scroll target for the POS Sales tile */}
+          <div id="seller-breakdown" style={{ scrollMarginTop: 16 }} />
           <Panel title="Collections by staff — collected & receipted by" icon={<Receipt size={16} />}>
             {data.collectors.length === 0 ? (
               <p style={{ color: MUTED, fontSize: 13, padding: "12px 0" }}>No till collections in range.</p>
@@ -239,9 +241,11 @@ export default function AnalyticsPage() {
 const pct = (part: number, whole: number) => (whole > 0 ? `${Math.round((part / whole) * 100)}%` : "0%")
 const dateInput: React.CSSProperties = { border: "1px solid var(--admin-border)", borderRadius: 8, padding: "6px 8px", fontSize: 13, color: TEXT }
 
-function Kpi({ icon, label, value, sub, accent }: { icon: React.ReactNode; label: string; value: string; sub: string; accent: string }) {
+function Kpi({ icon, label, value, sub, accent, onClick }: { icon: React.ReactNode; label: string; value: string; sub: string; accent: string; onClick?: () => void }) {
   return (
-    <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 14, padding: 16 }}>
+    <div onClick={onClick} role={onClick ? "button" : undefined} tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") onClick() } : undefined}
+      style={{ background: "var(--admin-card)", border: `1px solid ${onClick ? accent : "var(--admin-border)"}`, borderRadius: 14, padding: 16, cursor: onClick ? "pointer" : undefined }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, color: accent, marginBottom: 8 }}>{icon}<span style={{ fontSize: 12.5, color: MUTED, fontWeight: 500 }}>{label}</span></div>
       <div style={{ fontSize: 24, fontWeight: 800, color: DARK }}>{value}</div>
       <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>{sub}</div>
