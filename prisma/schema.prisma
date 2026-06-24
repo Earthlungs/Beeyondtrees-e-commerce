@@ -23,6 +23,7 @@ model User {
   image              String?  // profile picture URL (Cloudinary)
   mustChangePassword Boolean  @default(false)
   theme              String   @default("system") // per-user UI theme: system | dark
+  lastSeenAt         DateTime? // updated as the user polls chat — powers "last seen / online"
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

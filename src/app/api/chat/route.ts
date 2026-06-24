@@ -14,6 +14,16 @@ async function meId(request: NextRequest): Promise<string | null> {
 export async function GET(request: NextRequest) {
   const me = await meId(request)
   if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  // Every poll updates the caller's "last seen" — cheap presence tracking.
+  prisma.user.update({ where: { id: me }, data: { lastSeenAt: new Date() } }).catch(() => {})
+
+  // Lightweight total-unread count for the sidebar "Chat" badge.
+  if (request.nextUrl.searchParams.get("count")) {
+    const total = await prisma.message.count({ where: { toUserId: me, readAt: null } })
+    return NextResponse.json({ total }, { headers: { "Cache-Control": "no-store" } })
+  }
+
   const withId = request.nextUrl.searchParams.get("with")
 
   if (withId) {
@@ -37,7 +47,7 @@ export async function GET(request: NextRequest) {
   const [users, unread] = await Promise.all([
     prisma.user.findMany({
       where: { active: true, NOT: { id: me } },
-      select: { id: true, name: true, role: true, image: true },
+      select: { id: true, name: true, role: true, image: true, lastSeenAt: true },
       orderBy: { name: "asc" },
     }),
     prisma.message.groupBy({

@@ -6,13 +6,28 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { MessageSquare, Send, Loader2, ArrowLeft, Check, CheckCheck, Megaphone, X } from "lucide-react"
 import { ROLE_LABELS, isAdminishRole } from "@/lib/tracing-stages"
+import ZoomImg from "@/components/admin/ZoomImg"
 
 const TEXT = "var(--admin-text)"
 const MUTED = "var(--admin-muted)"
 const GREEN = "#6B7D5C"
 const BLUE = "#2F80ED"
 
-interface Contact { id: string; name: string; role: string; image: string | null; unread: number }
+interface Contact { id: string; name: string; role: string; image: string | null; unread: number; lastSeenAt: string | null }
+
+// "Online" when seen within the last ~90s (chat polls ~6s), else a relative
+// "last seen" label.
+function presence(lastSeenAt: string | null): { online: boolean; label: string } {
+  if (!lastSeenAt) return { online: false, label: "Offline" }
+  const diff = Date.now() - new Date(lastSeenAt).getTime()
+  if (diff < 90_000) return { online: true, label: "Online" }
+  const mins = Math.floor(diff / 60_000)
+  if (mins < 60) return { online: false, label: `Last seen ${mins}m ago` }
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return { online: false, label: `Last seen ${hrs}h ago` }
+  const days = Math.floor(hrs / 24)
+  return { online: false, label: `Last seen ${days}d ago` }
+}
 interface Msg { id: string; fromUserId: string; toUserId: string; body: string; readAt: string | null; createdAt: string }
 
 // Single-column on phones, two-pane on desktop.
@@ -117,9 +132,12 @@ export default function ChatPage() {
   const showContacts = !isMobile || !active
   const showConvo = !isMobile || !!active
 
-  const Avatar = ({ c, size = 36 }: { c: Contact; size?: number }) => c.image
-    // eslint-disable-next-line @next/next/no-img-element
-    ? <img src={c.image} alt="" style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+  // `zoom` lets the avatar open the full picture on click (used in the open-thread header).
+  const Avatar = ({ c, size = 36, zoom = false }: { c: Contact; size?: number; zoom?: boolean }) => c.image
+    ? (zoom
+        ? <ZoomImg src={c.image} style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+        // eslint-disable-next-line @next/next/no-img-element
+        : <img src={c.image} alt="" style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />)
     : <div style={{ width: size, height: size, borderRadius: "50%", background: GREEN, color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, flexShrink: 0 }}>{c.name.charAt(0).toUpperCase()}</div>
 
   return (
@@ -190,7 +208,12 @@ export default function ChatPage() {
                 <Avatar c={c} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 600, color: TEXT, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.name}</div>
-                  <div style={{ fontSize: 11, color: MUTED }}>{ROLE_LABELS[c.role] ?? c.role}</div>
+                  <div style={{ fontSize: 11, color: MUTED, display: "flex", alignItems: "center", gap: 5 }}>
+                    {(() => { const p = presence(c.lastSeenAt); return <>
+                      <span>{ROLE_LABELS[c.role] ?? c.role}</span>
+                      {p.online && <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#1B7A3D", display: "inline-block" }} title="Online" />}
+                    </> })()}
+                  </div>
                 </div>
                 {c.unread > 0 && <span style={{ background: "#C0392B", color: "white", fontSize: 11, fontWeight: 700, borderRadius: 999, minWidth: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 6px" }}>{c.unread}</span>}
               </button>
@@ -211,10 +234,19 @@ export default function ChatPage() {
                       <ArrowLeft size={20} />
                     </button>
                   )}
-                  <Avatar c={active} size={32} />
+                  <Avatar c={active} size={32} zoom />
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontWeight: 700, color: TEXT, fontSize: 14 }}>{active.name}</div>
-                    <div style={{ fontSize: 11, color: MUTED }}>{ROLE_LABELS[active.role] ?? active.role}</div>
+                    {(() => { const p = presence(active.lastSeenAt); return (
+                      <div style={{ fontSize: 11, color: MUTED, display: "flex", alignItems: "center", gap: 6 }}>
+                        <span>{ROLE_LABELS[active.role] ?? active.role}</span>
+                        <span>·</span>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: p.online ? "#1B7A3D" : MUTED }}>
+                          {p.online && <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#1B7A3D", display: "inline-block" }} />}
+                          {p.label}
+                        </span>
+                      </div>
+                    ) })()}
                   </div>
                 </div>
 

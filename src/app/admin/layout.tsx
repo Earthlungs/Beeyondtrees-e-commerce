@@ -29,6 +29,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [unreadChat, setUnreadChat] = useState(0)
+
+  // Poll the total unread chat count for the sidebar "Chat" badge.
+  useEffect(() => {
+    if (status !== "authenticated") return
+    let cancelled = false
+    const load = () => fetch("/api/chat?count=1")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (!cancelled && d) setUnreadChat(d.total ?? 0) })
+      .catch(() => {})
+    load()
+    const t = setInterval(load, 10000)
+    return () => { cancelled = true; clearInterval(t) }
+  }, [status, pathname])
 
   // Sidebar is open by default on desktop, collapsed on mobile. The header
   // hamburger toggles it on EVERY screen size (so it collapses on desktop too).
@@ -194,9 +208,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               {group.items.map((item) => {
                 const Icon = item.icon
                 const active = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href))
+                const isChat = item.href === "/admin/chat"
                 return (
-                  <Link key={item.href} href={item.href} onClick={() => { if (isMobile) setSidebarOpen(false) }} style={linkStyle(active)}>
-                    <Icon size={18} /> {item.label}
+                  <Link key={item.href} href={item.href} onClick={() => { if (isMobile) setSidebarOpen(false) }} style={{ ...linkStyle(active), display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Icon size={18} /> <span style={{ flex: 1 }}>{item.label}</span>
+                    {isChat && unreadChat > 0 && (
+                      <span style={{ background: '#C0392B', color: 'white', fontSize: 11, fontWeight: 700, borderRadius: 999, minWidth: 20, height: 20, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 6px' }}>
+                        +{unreadChat}
+                      </span>
+                    )}
                   </Link>
                 )
               })}

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Users, Plus, X, Loader2, Ban, CheckCircle2, ShieldAlert, Trash2, UserCheck, UserX } from "lucide-react"
+import { Users, Plus, X, Loader2, Ban, CheckCircle2, ShieldAlert, Trash2, UserCheck, UserX, Search } from "lucide-react"
 import { ROLE_LABELS } from "@/lib/tracing-stages"
 import { ConfirmModal } from "@/components/admin/ConfirmModal"
 
@@ -18,28 +18,29 @@ interface U {
 
 // Selectable roles. The 9 *_officer/manager/executive roles drive the product
 // tracing pipeline (src/lib/tracing-stages.ts); cashier is till-only.
+// Ordered by power — CEO first, Merchant last (per the org hierarchy).
 const ROLE_OPTIONS: [string, string][] = [
-  // System / management
+  // Leadership
   ["admin", "CEO"],
   ["assistant_ceo", "Assistant CEO (all CEO rights)"],
-  ["it_specialist", "IT Specialist (full control)"],
   ["chief", "Chief (approves external procurement)"],
+  ["it_specialist", "IT Specialist (full control)"],
   ["finance", "Finance"],
-  ["assistant_administrator", "Assistant Administrator"],
-  ["merchant", "Merchant"],
-  ["cashier", "Cashier (till only)"],
-  // Pipeline roles
   ["factory_manager", "Factory Manager"],
   ["executive", "Factory Admin"],
+  // Procurement
   ["factory_procurement", "Factory Procurement"],
   ["external_procurement", "External Procurement (Bamboosa)"],
   ["procurement_officer", "Procurement Officer"],
-  ["quality_inspector", "Quality Inspector"],
-  ["requisition_officer", "Requisition Officer"],
+  // Pipeline / operations
   ["agribusiness_manager", "Agribusiness Manager"],
   ["production_officer", "Production Officer"],
+  ["quality_inspector", "Quality Inspector"],
+  ["requisition_officer", "Requisition Officer"],
   ["dispatch_officer", "Dispatch Officer"],
   ["receiving_officer", "Receiving Officer"],
+  ["assistant_administrator", "Assistant Administrator"],
+  ["cashier", "Cashier (till only)"],
   // Extended staff
   ["technician", "Technician"],
   ["engineering", "Engineering"],
@@ -57,6 +58,8 @@ const ROLE_OPTIONS: [string, string][] = [
   ["fiber_weaver", "Fiber Weaver"],
   ["glass_technician", "Glass Technician"],
   ["driver", "Driver"],
+  // Lowest power — last.
+  ["merchant", "Merchant"],
 ]
 
 export default function UsersPage() {
@@ -70,6 +73,7 @@ export default function UsersPage() {
   // Single creation flow: first name + phone + role. The username and the
   // @earthlungs.org email are derived; the phone is the initial password (the
   // user is forced to change it on first login).
+  const [search, setSearch] = useState("")
   const [showAdd, setShowAdd] = useState(false)
   const [pv, setPv] = useState({ firstName: "", phone: "", role: "merchant" })
   const [provisioning, setProvisioning] = useState(false)
@@ -128,6 +132,17 @@ export default function UsersPage() {
 
   const activeCount = users.filter((u) => u.active).length
   const blockedCount = users.filter((u) => !u.active).length
+
+  // Alphabetical, but the leadership "pillars" are pinned to the top in this order.
+  const PILLARS = ["admin", "assistant_ceo", "chief", "factory_manager", "it_specialist"]
+  const pillarRank = (role: string) => { const i = PILLARS.indexOf(role); return i === -1 ? 999 : i }
+  const q = search.trim().toLowerCase()
+  const displayed = users
+    .filter((u) => !q || u.name.toLowerCase().includes(q) || u.username.toLowerCase().includes(q) || (ROLE_LABELS[u.role] ?? u.role).toLowerCase().includes(q))
+    .sort((a, b) => {
+      const ra = pillarRank(a.role), rb = pillarRank(b.role)
+      return ra !== rb ? ra - rb : a.name.localeCompare(b.name)
+    })
 
   return (
     <div>
@@ -213,9 +228,18 @@ export default function UsersPage() {
         </div>
       )}
 
+      {!loading && (
+        <div style={{ position: "relative", marginBottom: 14, maxWidth: 360 }}>
+          <Search size={15} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: MUTED }} />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, username, or role…" style={{ paddingLeft: 34, height: 40 }} />
+        </div>
+      )}
+
       <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, overflow: "hidden" }}>
         {loading ? (
           <p style={{ padding: 24, color: MUTED }}>Loading…</p>
+        ) : displayed.length === 0 ? (
+          <p style={{ padding: 24, color: MUTED }}>No users match “{search}”.</p>
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
@@ -224,7 +248,7 @@ export default function UsersPage() {
               </tr>
             </thead>
             <tbody>
-              {users.map((u) => (
+              {displayed.map((u) => (
                 <tr key={u.id} style={{ borderTop: "1px solid var(--admin-border)", opacity: u.active ? 1 : 0.6 }}>
                   <td style={td}>
                     <div style={{ fontWeight: 600 }}>{u.name}</div>
