@@ -44,6 +44,11 @@ export default function PosPage() {
   const [method, setMethod] = useState<Method | null>(null)
   const [cashReceived, setCashReceived] = useState("")
   const [mpesaCode, setMpesaCode] = useState("")
+  const [mpesaPhone, setMpesaPhone] = useState("")
+  // M-Pesa STK-push flow: idle → sending (calling Paystack) → waiting (STK on the
+  // customer's phone, polling) → done (code captured) → failed.
+  const [mpesaStatus, setMpesaStatus] = useState<"idle" | "sending" | "waiting" | "done" | "failed">("idle")
+  const [mpesaMsg, setMpesaMsg] = useState("")
   const [cardRef, setCardRef] = useState("")
   const [customerName, setCustomerName] = useState("")
   const [customerPhone, setCustomerPhone] = useState("")
@@ -121,47 +126,92 @@ export default function PosPage() {
 
   const resetSale = () => {
     setLines([]); setMethod(null); setCashReceived(""); setMpesaCode("")
+    setMpesaPhone(""); setMpesaStatus("idle"); setMpesaMsg("")
     setCardRef(""); setCustomerName(""); setCustomerPhone(""); setCustomerEmail(""); setCartOpen(false)
   }
 
   const change = method === "cash" && cashReceived ? Number(cashReceived) - total : 0
-  const canComplete = lines.length > 0 && !!method && !submitting && (method !== "cash" || Number(cashReceived) >= total)
+  const mpesaReady = /^(?:\+?254|0)?7\d{8}$/.test(mpesaPhone.replace(/\s/g, ""))
+  const canComplete = lines.length > 0 && !!method && !submitting
+    && (method !== "cash" || Number(cashReceived) >= total)
+    && (method !== "mpesa" || mpesaReady || !!mpesaCode)
+
+  // Record the paid sale and finish (shared by all payment methods).
+  const recordSale = async (mpesaCodeFinal: string | null) => {
+    const res = await fetch("/api/pos/sale", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        lines: lines.map((l) => ({ productId: l.productId, quantity: l.quantity, pricingTier: l.tier })),
+        paymentMethod: method,
+        customerName: customerName || null,
+        customerPhone: customerPhone || mpesaPhone || null,
+        customerEmail: customerEmail || null,
+        cashReceived: method === "cash" ? Number(cashReceived) : null,
+        mpesaCode: method === "mpesa" ? mpesaCodeFinal : null,
+        cardRef: method === "card" ? cardRef : null,
+      }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      if (res.status === 409 && Array.isArray(data.items)) {
+        const detail = data.items.map((i: { productName: string; available: number }) => `${i.productName} (${i.available} left)`).join(", ")
+        setNotice({ text: `Not enough stock: ${detail}. Please adjust quantities.`, tone: "error" })
+        loadProducts(true)
+      } else {
+        setNotice({ text: data.error || "Could not complete the sale.", tone: "error" })
+      }
+      return
+    }
+    loadProducts(true)
+    resetSale()
+    setSaleSuccess({ id: data.id, receiptNo: String(data.id).slice(-8).toUpperCase(), emailed: !!data.emailed })
+  }
+
+  // M-Pesa: prompt the customer via Paystack STK push, poll until they pay, then
+  // capture the confirmation code and record the sale automatically.
+  const runMpesaCharge = async () => {
+    setMpesaStatus("sending"); setMpesaMsg("Sending prompt…"); setNotice(null)
+    try {
+      const cRes = await fetch("/api/pos/mpesa/charge", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: total, phone: mpesaPhone, email: customerEmail || null }),
+      })
+      const c = await cRes.json()
+      if (!cRes.ok) { setMpesaStatus("failed"); setMpesaMsg(c.error || "Could not start the M-Pesa prompt."); return }
+      const reference: string = c.reference
+      setMpesaStatus("waiting"); setMpesaMsg(c.display_text || `Prompt sent to ${mpesaPhone} — ask the customer to enter their M-Pesa PIN.`)
+
+      // Poll for up to ~2 minutes.
+      for (let i = 0; i < 40; i++) {
+        await new Promise((r) => setTimeout(r, 3000))
+        const vRes = await fetch("/api/pos/mpesa/verify", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reference }),
+        })
+        const v = await vRes.json()
+        if (v.status === "success") {
+          setMpesaCode(v.code || reference); setMpesaStatus("done"); setMpesaMsg(`Confirmed: ${v.code || reference}`)
+          await recordSale(v.code || reference)
+          return
+        }
+        if (v.status === "failed" || v.status === "abandoned") {
+          setMpesaStatus("failed"); setMpesaMsg("Payment was declined or cancelled on the phone."); return
+        }
+      }
+      setMpesaStatus("failed"); setMpesaMsg("Timed out waiting for the customer. You can retry, or enter the code manually.")
+    } catch {
+      setMpesaStatus("failed"); setMpesaMsg("Network error reaching the payment provider.")
+    }
+  }
 
   const completeSale = async () => {
     if (!canComplete || !method) return
-    setSubmitting(true)
-    setNotice(null)
+    // M-Pesa with no code yet → run the STK-push flow (which records the sale on success).
+    if (method === "mpesa" && !mpesaCode) { setSubmitting(true); try { await runMpesaCharge() } finally { setSubmitting(false) } return }
+    setSubmitting(true); setNotice(null)
     try {
-      const res = await fetch("/api/pos/sale", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          lines: lines.map((l) => ({ productId: l.productId, quantity: l.quantity, pricingTier: l.tier })),
-          paymentMethod: method,
-          customerName: customerName || null,
-          customerPhone: customerPhone || null,
-          customerEmail: customerEmail || null,
-          cashReceived: method === "cash" ? Number(cashReceived) : null,
-          mpesaCode: method === "mpesa" ? mpesaCode : null,
-          cardRef: method === "card" ? cardRef : null,
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        if (res.status === 409 && Array.isArray(data.items)) {
-          const detail = data.items.map((i: { productName: string; available: number }) => `${i.productName} (${i.available} left)`).join(", ")
-          setNotice({ text: `Not enough stock: ${detail}. Please adjust quantities.`, tone: "error" })
-          loadProducts(true)
-        } else {
-          setNotice({ text: data.error || "Could not complete the sale.", tone: "error" })
-        }
-        return
-      }
-      // Refresh shared stock, clear the till, and show a success alert with a
-      // one-click receipt print (and a note if it was emailed).
-      loadProducts(true)
-      resetSale()
-      setSaleSuccess({ id: data.id, receiptNo: String(data.id).slice(-8).toUpperCase(), emailed: !!data.emailed })
+      await recordSale(method === "mpesa" ? mpesaCode : null)
     } catch {
       setNotice({ text: "Network error — sale not recorded. Try again.", tone: "error" })
     } finally {
@@ -331,7 +381,32 @@ export default function PosPage() {
                   )}
                 </div>
               )}
-              {method === "mpesa" && <Input placeholder="M-Pesa confirmation code" value={mpesaCode} onChange={(e) => setMpesaCode(e.target.value.toUpperCase())} style={{ height: 38 }} />}
+              {method === "mpesa" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <Input
+                    placeholder="M-Pesa phone (e.g. 0712345678)"
+                    value={mpesaPhone}
+                    onChange={(e) => { setMpesaPhone(e.target.value); if (mpesaStatus !== "idle") { setMpesaStatus("idle"); setMpesaMsg("") } }}
+                    disabled={mpesaStatus === "sending" || mpesaStatus === "waiting" || mpesaStatus === "done"}
+                    style={{ height: 38 }}
+                  />
+                  {mpesaMsg && (
+                    <div style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 6, color: mpesaStatus === "done" ? GREEN : mpesaStatus === "failed" ? BROWN : "#8a6d00" }}>
+                      {(mpesaStatus === "sending" || mpesaStatus === "waiting") && <Loader2 size={13} className="animate-spin" />}
+                      {mpesaStatus === "done" && <CheckCircle2 size={13} />}
+                      {mpesaMsg}
+                    </div>
+                  )}
+                  {mpesaStatus === "failed" && (
+                    <button onClick={() => { setMpesaStatus("idle"); setMpesaMsg("") }} style={{ alignSelf: "flex-start", background: "none", border: "none", color: GREEN, fontSize: 12, cursor: "pointer", textDecoration: "underline" }}>
+                      Enter M-Pesa code manually instead
+                    </button>
+                  )}
+                  {mpesaStatus === "idle" && mpesaMsg === "" && mpesaCode === "" && (
+                    <Input placeholder="…or paste M-Pesa code manually" value={mpesaCode} onChange={(e) => setMpesaCode(e.target.value.toUpperCase())} style={{ height: 36, fontSize: 12.5 }} />
+                  )}
+                </div>
+              )}
               {method === "card" && <Input placeholder="Card / terminal reference" value={cardRef} onChange={(e) => setCardRef(e.target.value)} style={{ height: 38 }} />}
             </div>
 
@@ -342,7 +417,9 @@ export default function PosPage() {
                 <span style={{ fontSize: 24, fontWeight: 800, color: DARK }}>{ksh(total)}</span>
               </div>
               <Button onClick={completeSale} disabled={!canComplete} style={{ height: 48, background: canComplete ? GREEN : "#C9C7BF", color: "white", fontSize: 16, fontWeight: 700, gap: 8 }}>
-                {submitting ? <><Loader2 size={16} className="animate-spin" /> Processing…</> : `Complete Sale · ${ksh(total)}`}
+                {submitting
+                  ? <><Loader2 size={16} className="animate-spin" /> {method === "mpesa" && mpesaStatus === "waiting" ? "Waiting for M-Pesa…" : "Processing…"}</>
+                  : method === "mpesa" && !mpesaCode ? `Send M-Pesa prompt · ${ksh(total)}` : `Complete Sale · ${ksh(total)}`}
               </Button>
               <button onClick={resetSale} style={{ background: "none", border: "none", color: MUTED, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, justifyContent: "center" }}>
                 <X size={13} /> Clear sale

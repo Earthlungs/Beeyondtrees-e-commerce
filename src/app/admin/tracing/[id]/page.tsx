@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { ArrowLeft, Loader2, Check, X, Lock, CircleDot, CircleCheck, MapPin, Plus, Trash2 } from "lucide-react"
 import ImageUploader from "@/components/admin/ImageUploader"
 import ProductionProgress from "@/components/admin/ProductionProgress"
+import ZoomImg from "@/components/admin/ZoomImg"
 import { STAGES, STAGE_LABELS, STAGE_ROLES, ROLE_LABELS, stageIndex, COST_FIELDS, NOT_ALLOWED, isAdminishRole, type Stage } from "@/lib/tracing-stages"
 
 const STAGES_WITH_COST = new Set<Stage>(["bulk_request", "sourcing", "production", "dispatch"])
@@ -249,8 +250,7 @@ export default function BatchDetail() {
 
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
         {batchImage && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={batchImage} alt="" style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 10, border: "1px solid var(--admin-border)", flexShrink: 0 }} />
+          <ZoomImg src={batchImage} style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 10, border: "1px solid var(--admin-border)", flexShrink: 0 }} />
         )}
         <div>
           <h1 style={{ fontSize: 22, fontWeight: "bold", color: TEXT }}>{batch.code as string}</h1>
@@ -368,8 +368,7 @@ export default function BatchDetail() {
                   <ImageThumbs urls={[...((record as Record<string, unknown>).images as string[] ?? []), ...((record as Record<string, unknown>).productImage as string[] ?? [])]} />
                   {stage === "bulk_request" && batchImage && (
                     <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8 }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={batchImage} alt={matchedProduct?.name} style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 8, border: "1px solid var(--admin-border)" }} />
+                      <ZoomImg src={batchImage} alt={matchedProduct?.name ?? ""} style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 8, border: "1px solid var(--admin-border)" }} />
                       <div style={{ fontSize: 12, color: MUTED }}>Linked product: <span style={{ color: TEXT, fontWeight: 600 }}>{matchedProduct?.name}</span></div>
                     </div>
                   )}
@@ -554,8 +553,7 @@ function ImageThumbs({ urls }: { urls: string[] }) {
   return (
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
       {valid.map((u, i) => (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img key={i} src={u} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 8, border: "1px solid var(--admin-border)" }} />
+        <ZoomImg key={i} src={u} style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 8, border: "1px solid var(--admin-border)" }} />
       ))}
     </div>
   )

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Loader2, Plus, CheckCircle2, Camera } from "lucide-react"
 import ImageUploader from "@/components/admin/ImageUploader"
+import ZoomImg from "@/components/admin/ZoomImg"
 
 const TEXT = "var(--admin-text)"
 const MUTED = "var(--admin-muted)"
@@ -115,8 +116,7 @@ export default function ProductionProgress({ batchId, canLog, onPercent }: { bat
                   {urls.length > 0 && (
                     <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
                       {urls.map((u, j) => (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img key={j} src={u} alt="" style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 6, border: "1px solid var(--admin-border)" }} />
+                        <ZoomImg key={j} src={u} style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 6, border: "1px solid var(--admin-border)" }} />
                       ))}
                     </div>
                   )}
