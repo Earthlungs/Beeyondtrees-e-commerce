@@ -407,7 +407,7 @@ export default function BatchDetail() {
                 <IssuanceForm
                   saving={saving}
                   requisitions={(batch.requisitions as IssuanceReq[]) ?? []}
-                  onIssue={(requisitionId) => submit("issuance", "issue", { requisitionId })}
+                  onIssue={(requisitionId, quantity) => submit("issuance", "issue", { requisitionId, quantity })}
                   onProceed={() => submit("issuance", "advance", {})}
                 />
               )}
@@ -586,46 +586,70 @@ function GpsField({ value, onChange }: { value: string; onChange: (v: string) =>
   )
 }
 
-interface IssuanceReq { id: string; requisitionId: string; department: string; product: string; quantityRequired: number; requestedBy: string; status: string }
+interface IssuanceReq { id: string; requisitionId: string; department: string; product: string; quantityRequired: number; issuedQty?: number; requestedBy: string; status: string }
 
 // Issuance is driven by the requisitions — the agribusiness manager doesn't fill
-// a fresh form, they ISSUE each requisition (auto-filled, read-only). Clickable
-// while units remain; once everything is issued it locks with a padlock + Proceed.
+// a fresh form, they ISSUE against each requisition. Issuing is PARTIAL: a prompt
+// asks how much is being issued; any shortfall stays "owing" until fully issued.
+// Once every requisition is fully issued it locks with a padlock + Proceed.
 function IssuanceForm({ saving, requisitions, onIssue, onProceed }: {
   saving: boolean
   requisitions: IssuanceReq[]
-  onIssue: (requisitionId: string) => void
+  onIssue: (requisitionId: string, quantity: number) => void
   onProceed: () => void
 }) {
-  const total = requisitions.reduce((s, r) => s + (Number(r.quantityRequired) || 0), 0)
-  const issuedQty = requisitions.filter((r) => r.status === "issued").reduce((s, r) => s + (Number(r.quantityRequired) || 0), 0)
-  const remaining = Math.max(0, total - issuedQty)
-  const allIssued = requisitions.length > 0 && remaining === 0
+  // The "how much did you issue?" prompt (custom modal, not a browser alert).
+  const [prompt, setPrompt] = useState<{ req: IssuanceReq; remaining: number } | null>(null)
+  const [qty, setQty] = useState("")
+  const [perr, setPerr] = useState("")
+
+  const reqd = (r: IssuanceReq) => Number(r.quantityRequired) || 0
+  const iss = (r: IssuanceReq) => Number(r.issuedQty) || 0
+  const total = requisitions.reduce((s, r) => s + reqd(r), 0)
+  const issuedTotal = requisitions.reduce((s, r) => s + iss(r), 0)
+  const owing = Math.max(0, total - issuedTotal)
+  const allIssued = requisitions.length > 0 && owing === 0
 
   if (requisitions.length === 0) {
     return <div style={{ marginTop: 12, fontSize: 13, color: MUTED }}>No requisitions to issue against.</div>
+  }
+
+  const openIssue = (r: IssuanceReq) => {
+    const remaining = Math.max(0, reqd(r) - iss(r))
+    setPrompt({ req: r, remaining }); setQty(String(remaining)); setPerr("")
+  }
+  const confirmIssue = () => {
+    if (!prompt) return
+    const n = Number(qty)
+    if (!n || n <= 0) { setPerr("Enter how much you are issuing."); return }
+    if (n > prompt.remaining) { setPerr(`Only ${prompt.remaining} remaining on this requisition.`); return }
+    onIssue(prompt.req.id, n); setPrompt(null)
   }
 
   return (
     <div style={{ marginTop: 12 }}>
       <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 13, marginBottom: 10 }}>
         <span style={{ color: MUTED }}>Requisitioned: <b style={{ color: TEXT }}>{total}</b></span>
-        <span style={{ color: MUTED }}>Issued: <b style={{ color: GREEN }}>{issuedQty}</b></span>
-        <span style={{ color: MUTED }}>Remaining: <b style={{ color: remaining ? AMBER : GREEN }}>{remaining}</b></span>
+        <span style={{ color: MUTED }}>Issued: <b style={{ color: GREEN }}>{issuedTotal}</b></span>
+        <span style={{ color: MUTED }}>Owing: <b style={{ color: owing ? AMBER : GREEN }}>{owing}</b></span>
       </div>
       <div style={{ display: "grid", gap: 8 }}>
         {requisitions.map((r) => {
-          const done = r.status === "issued"
+          const remaining = Math.max(0, reqd(r) - iss(r))
+          const done = remaining === 0
           return (
             <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 12, background: "var(--admin-card-2)", borderRadius: 8, padding: "10px 12px" }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, color: TEXT, fontWeight: 600 }}>{r.product} × {r.quantityRequired}</div>
-                <div style={{ fontSize: 11.5, color: MUTED }}>{r.requisitionId} · {r.department || "—"} · by {r.requestedBy}</div>
+                <div style={{ fontSize: 13, color: TEXT, fontWeight: 600 }}>{r.product} · requested {reqd(r)}</div>
+                <div style={{ fontSize: 11.5, color: MUTED }}>
+                  {r.requisitionId} · {r.department || "—"} · by {r.requestedBy} · issued <b style={{ color: GREEN }}>{iss(r)}</b>
+                  {remaining > 0 ? <> · owing <b style={{ color: AMBER }}>{remaining}</b></> : null}
+                </div>
               </div>
               {done ? (
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, color: GREEN, fontSize: 12.5, fontWeight: 700 }}><Check size={15} /> Issued</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, color: GREEN, fontSize: 12.5, fontWeight: 700 }}><Check size={15} /> Fully issued</span>
               ) : (
-                <Button onClick={() => onIssue(r.id)} disabled={saving} style={{ background: GREEN, color: "white", gap: 6, height: 34, fontSize: 13 }}>
+                <Button onClick={() => openIssue(r)} disabled={saving} style={{ background: GREEN, color: "white", gap: 6, height: 34, fontSize: 13 }}>
                   <Check size={14} /> Issue
                 </Button>
               )}
@@ -636,14 +660,33 @@ function IssuanceForm({ saving, requisitions, onIssue, onProceed }: {
       {allIssued ? (
         <div style={{ marginTop: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, color: GREEN, fontSize: 13, marginBottom: 10, fontWeight: 600 }}>
-            <Lock size={15} /> All requisitioned units issued. Ready to proceed.
+            <Lock size={15} /> All requisitioned units fully issued. Ready to proceed.
           </div>
           <Button onClick={onProceed} disabled={saving} style={{ background: GREEN, color: "white", gap: 6 }}>
             {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} Proceed to Production
           </Button>
         </div>
       ) : (
-        <div style={{ marginTop: 12, fontSize: 12.5, color: MUTED }}>Issue every requisition to unlock production.</div>
+        <div style={{ marginTop: 12, fontSize: 12.5, color: MUTED }}>Fully issue every requisition to unlock production.</div>
+      )}
+
+      {/* Custom "how much did you issue?" prompt */}
+      {prompt && (
+        <div onClick={() => setPrompt(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--admin-card)", borderRadius: 12, padding: 20, width: "100%", maxWidth: 360, border: "1px solid var(--admin-border)" }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: TEXT, marginBottom: 4 }}>Issue against {prompt.req.requisitionId}</div>
+            <div style={{ fontSize: 12.5, color: MUTED, marginBottom: 12 }}>{prompt.req.product} — requested {reqd(prompt.req)}, remaining <b style={{ color: AMBER }}>{prompt.remaining}</b></div>
+            <label style={labelStyle}>How much are you issuing now?</label>
+            <Input autoFocus type="number" min={1} max={prompt.remaining} style={field} value={qty} onChange={(e) => setQty(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") confirmIssue() }} />
+            {perr && <div style={{ color: RED, fontSize: 12.5, marginTop: 6 }}>{perr}</div>}
+            <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "flex-end" }}>
+              <Button variant="outline" onClick={() => setPrompt(null)} disabled={saving} style={{ height: 38 }}>Cancel</Button>
+              <Button onClick={confirmIssue} disabled={saving} style={{ background: GREEN, color: "white", height: 38, gap: 6 }}>
+                {saving ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />} Confirm issue
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
@@ -767,7 +810,7 @@ function RequisitionForm({ saving, onAdd, onProceed, hasRows, acceptedTotal, acc
         </div>
         <div><label style={labelStyle}>Qty Required{acceptedTotal > 0 ? ` (max ${acceptedRemaining})` : ""}</label>
           <Input style={field} type="number" max={acceptedTotal > 0 ? acceptedRemaining : undefined} value={r.quantityRequired} onChange={(e) => setR({ ...r, quantityRequired: e.target.value })} /></div>
-        <div><label style={labelStyle}>Requested By</label><Input style={field} value={r.requestedBy} onChange={(e) => setR({ ...r, requestedBy: e.target.value })} /></div>
+        <div><label style={labelStyle}>Requested By · auto</label><Input style={{ ...field, background: "var(--admin-card-2)", fontWeight: 600 }} value={r.requestedBy} readOnly /></div>
         <div><label style={labelStyle}>Purpose</label><Input style={field} value={r.purpose} onChange={(e) => setR({ ...r, purpose: e.target.value })} /></div>
       </div>
       <div style={{ display: "flex", gap: 10, marginTop: 12 }}>

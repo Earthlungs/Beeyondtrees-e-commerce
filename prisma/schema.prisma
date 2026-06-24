@@ -264,9 +264,10 @@ model Requisition {
   department      String
   product         String
   quantityRequired Float   @default(0)
+  issuedQty       Float    @default(0) // cumulative issued at the issuance stage (partial allowed)
   purpose         String?  @db.Text
   requestedBy     String // the logged-in requisition officer
-  status          String   @default("pending")
+  status          String   @default("pending") // "issued" once issuedQty >= quantityRequired
   createdAt       DateTime @default(now())
   batch           Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
 }

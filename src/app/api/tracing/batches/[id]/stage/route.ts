@@ -257,22 +257,30 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           return NextResponse.json({ error: "There are no requisitions to issue against." }, { status: 400 })
         }
 
-        // Issue ONE requisition (mark it issued). The manager just confirms the
-        // auto-filled details — nothing to retype. Stays on the issuance stage.
+        // Issue PART (or all) of ONE requisition. The manager enters how much
+        // they're issuing; any shortfall stays owing until fully issued.
         if (action === "issue") {
           const reqId = str(d.requisitionId)
           const target = reqs.find((r) => r.id === reqId || r.requisitionId === reqId)
           if (!target) return NextResponse.json({ error: "Requisition not found." }, { status: 404 })
-          if (target.status !== "issued") {
-            await prisma.requisition.update({ where: { id: target.id }, data: { status: "issued" } })
-          }
-          break // stay on issuance until everything is issued
+          const remaining = Math.max(0, (target.quantityRequired || 0) - (target.issuedQty || 0))
+          if (remaining <= 0) break // already fully issued
+          const want = num(d.quantity)
+          if (want <= 0) return NextResponse.json({ error: "Enter how much you are issuing." }, { status: 400 })
+          if (want > remaining) return NextResponse.json({ error: `Only ${remaining} remaining on this requisition — can't issue ${want}.` }, { status: 400 })
+          const newIssued = (target.issuedQty || 0) + want
+          await prisma.requisition.update({
+            where: { id: target.id },
+            data: { issuedQty: newIssued, status: newIssued >= (target.quantityRequired || 0) ? "issued" : "pending" },
+          })
+          break // stay on issuance until everything is fully issued
         }
 
-        // Proceed to production: every requisition must be issued first.
-        const pending = reqs.filter((r) => r.status !== "issued")
+        // Proceed to production: every requisition must be FULLY issued first.
+        const pending = reqs.filter((r) => (r.issuedQty || 0) < (r.quantityRequired || 0))
         if (pending.length > 0) {
-          return NextResponse.json({ error: `Issue all requisitions first — ${pending.length} still pending.` }, { status: 400 })
+          const owed = pending.reduce((s, r) => s + ((r.quantityRequired || 0) - (r.issuedQty || 0)), 0)
+          return NextResponse.json({ error: `Issue everything first — ${owed} unit(s) still owing across ${pending.length} requisition(s).` }, { status: 400 })
         }
         const totalQty = reqs.reduce((s, r) => s + (r.quantityRequired || 0), 0)
         const first = reqs[0]
