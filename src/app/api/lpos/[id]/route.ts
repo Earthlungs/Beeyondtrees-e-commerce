@@ -8,6 +8,8 @@ import { lpoApprovedEmail, lpoExecApprovedEmail } from "@/lib/email-templates"
 import { sendLpoEmail } from "@/lib/doc-email"
 
 const BASE_URL = process.env.NEXTAUTH_URL || "http://localhost:3000"
+// Shared finance inbox that always gets a CEO-approval alert (overridable by env).
+const FINANCE_INBOX = process.env.FINANCE_INBOX || "finance@earthlungs.org"
 
 async function fetchExtras(id: string) {
   try {
@@ -170,17 +172,19 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         })
       }
 
-      // Finance is notified on every final (CEO) approval.
+      // Finance is notified on every final (CEO) approval. Always alert the shared
+      // finance inbox, plus any individual finance-role user accounts.
       try {
         const financeUsers = await prisma.user.findMany({ where: { role: "finance" }, select: { email: true } })
-        const finTo = financeUsers.flatMap((u) => u.email ? [u.email] : [])
-        if (finTo.length > 0) {
-          await sendMail({
-            to: finTo,
-            subject: `[Beeyond Trees] LPO ${lpoNumber} approved by CEO — for your records`,
-            html: lpoApprovedEmail({ lpoNumber, supplierName, total: lpoTotal, approvedBy: actor, lpoUrl }),
-          })
-        }
+        const finTo = [...new Set([
+          FINANCE_INBOX,
+          ...financeUsers.flatMap((u) => u.email ? [u.email] : []),
+        ])]
+        await sendMail({
+          to: finTo,
+          subject: `[Beeyond Trees] LPO ${lpoNumber} approved by CEO — for your records`,
+          html: lpoApprovedEmail({ lpoNumber, supplierName, total: lpoTotal, approvedBy: actor, lpoUrl }),
+        })
       } catch (e) { console.error("[mailer] LPO finance notify:", e) }
 
       // Assistant CEO approved on behalf — notify the CEO's dashboard/inbox.
