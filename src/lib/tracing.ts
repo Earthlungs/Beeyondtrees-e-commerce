@@ -41,7 +41,12 @@ export async function requireStage(
         const r = rows[0]
         const sub = (token as { sub?: string }).sub
         const name = (token as { name?: string }).name
-        if (r && ((r.uid && r.uid === sub) || (r.nm && name && r.nm === name))) allowed = true
+        // Prefer the reliable account-id match. Only fall back to name when the
+        // batch has NO creator id (legacy) — so two people sharing a name can't
+        // both receive.
+        const matchById = !!r?.uid && r.uid === sub
+        const matchByName = !r?.uid && !!r?.nm && !!name && r.nm === name
+        if (r && (matchById || matchByName)) allowed = true
       } catch { /* raw columns missing — fall through to 403 */ }
     }
   } else {
