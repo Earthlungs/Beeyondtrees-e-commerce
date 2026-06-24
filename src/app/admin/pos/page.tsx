@@ -131,7 +131,8 @@ export default function PosPage() {
   }
 
   const change = method === "cash" && cashReceived ? Number(cashReceived) - total : 0
-  const mpesaReady = /^(?:\+?254|0)?7\d{8}$/.test(mpesaPhone.replace(/\s/g, ""))
+  // Accept Safaricom 07xx / 01xx in any common format (0…, 254…, +254…).
+  const mpesaReady = /^(?:\+?254|0)?(7|1)\d{8}$/.test(mpesaPhone.replace(/\s/g, ""))
   const canComplete = lines.length > 0 && !!method && !submitting
     && (method !== "cash" || Number(cashReceived) >= total)
     && (method !== "mpesa" || mpesaReady || !!mpesaCode)
