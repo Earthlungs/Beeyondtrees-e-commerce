@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
     productId: String(l.productId),
     quantity: Number(l.quantity),
     pricingTier: l.pricingTier,
+    discount: l.discount != null ? Number(l.discount) : 0,
   }))
 
   try {

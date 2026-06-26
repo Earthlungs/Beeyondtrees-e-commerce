@@ -136,7 +136,9 @@ model OrderItem {
   orderId     String
   productId   String
   productName String
-  price       Float
+  price       Float   // actual sold unit price (after any POS discount)
+  markedPrice Float?  // POS: original tier price before the till discount; null = no discount
+  discount    Float   @default(0) // POS: KSh knocked off per unit at the till
   quantity    Int
   pricingTier String
   subtotal    Float

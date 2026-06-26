@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
   Search, Plus, Minus, Trash2, ShoppingCart, X,
-  Banknote, Smartphone, CreditCard, AlertTriangle, Loader2, CheckCircle2,
+  Banknote, Smartphone, CreditCard, AlertTriangle, Loader2, CheckCircle2, Tag,
 } from "lucide-react"
 import { useProductStore, productImageUrl, fuzzyMatch, type Product } from "@/store/product-store"
 import { SuccessModal } from "@/components/admin/ConfirmModal"
@@ -21,6 +21,7 @@ interface Line {
   quantity: number
   stock: number
   prices: { retail: number; wholesale: number; distributor: number }
+  discount: number // KSh off the marked unit price (entered at the till)
   updatedAt?: string
 }
 
@@ -32,7 +33,9 @@ const MUTED = "var(--admin-muted)"
 const BROWN = "#8C6A4A"
 
 const ksh = (n: number | null | undefined) => `KSh ${(Number(n) || 0).toLocaleString()}`
-const tierPrice = (l: Pick<Line, "prices" | "tier">) => l.prices[l.tier]
+const markedPrice = (l: Pick<Line, "prices" | "tier">) => l.prices[l.tier]
+// Actual price charged per unit after the till discount (never below 0).
+const soldPrice = (l: Pick<Line, "prices" | "tier" | "discount">) => Math.max(0, markedPrice(l) - (l.discount || 0))
 const keyOf = (productId: string, tier: Tier) => `${productId}::${tier}`
 
 export default function PosPage() {
@@ -82,7 +85,8 @@ export default function PosPage() {
     return list.slice(0, 60)
   }, [products, query])
 
-  const total = useMemo(() => lines.reduce((s, l) => s + tierPrice(l) * l.quantity, 0), [lines])
+  const total = useMemo(() => lines.reduce((s, l) => s + soldPrice(l) * l.quantity, 0), [lines])
+  const totalSaved = useMemo(() => lines.reduce((s, l) => s + Math.min(l.discount || 0, markedPrice(l)) * l.quantity, 0), [lines])
   const itemCount = useMemo(() => lines.reduce((s, l) => s + l.quantity, 0), [lines])
 
   const addProduct = (p: Product) => {
@@ -100,6 +104,7 @@ export default function PosPage() {
         {
           productId: p.id, name: p.name, tier: "retail", quantity: 1, stock: p.stock,
           prices: { retail: p.retailPrice, wholesale: p.wholesalePrice, distributor: p.distributorPrice },
+          discount: 0,
           updatedAt: p.updatedAt,
         },
       ]
@@ -122,6 +127,12 @@ export default function PosPage() {
       return prev.map((l) => (l === line ? { ...l, tier } : l))
     })
 
+  // Per-unit discount in KSh, clamped to [0, marked price] so the line can't go negative.
+  const setDiscount = (k: string, value: number) =>
+    setLines((prev) => prev.map((l) => (keyOf(l.productId, l.tier) === k
+      ? { ...l, discount: Math.max(0, Math.min(Number.isFinite(value) ? value : 0, markedPrice(l))) }
+      : l)))
+
   const removeLine = (k: string) => setLines((prev) => prev.filter((l) => keyOf(l.productId, l.tier) !== k))
 
   const resetSale = () => {
@@ -143,7 +154,7 @@ export default function PosPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        lines: lines.map((l) => ({ productId: l.productId, quantity: l.quantity, pricingTier: l.tier })),
+        lines: lines.map((l) => ({ productId: l.productId, quantity: l.quantity, pricingTier: l.tier, discount: l.discount || 0 })),
         paymentMethod: method,
         customerName: customerName || null,
         customerPhone: customerPhone || mpesaPhone || null,
@@ -341,7 +352,31 @@ export default function PosPage() {
                           <button onClick={() => setQty(k, l.quantity + 1)} disabled={l.quantity >= l.stock} style={stepBtn}><Plus size={13} /></button>
                         </div>
                       </div>
-                      <div style={{ textAlign: "right", fontSize: 13, fontWeight: 700, color: GREEN, marginTop: 4 }}>{ksh(tierPrice(l) * l.quantity)}</div>
+                      {/* Per-unit discount in KSh off the marked price */}
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8, gap: 8 }}>
+                        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: MUTED }}>
+                          <Tag size={13} /> Discount / unit
+                          <Input
+                            type="number" min={0} max={markedPrice(l)} value={l.discount ? String(l.discount) : ""}
+                            placeholder="0"
+                            onChange={(e) => setDiscount(k, e.target.value === "" ? 0 : Number(e.target.value))}
+                            style={{ width: 76, height: 30, fontSize: 12.5, padding: "0 8px" }}
+                          />
+                        </label>
+                        {l.discount > 0 && (
+                          <span style={{ fontSize: 11, fontWeight: 700, color: BROWN, background: "#F6EEE6", borderRadius: 6, padding: "2px 7px" }}>
+                            −{Math.round((Math.min(l.discount, markedPrice(l)) / (markedPrice(l) || 1)) * 100)}%
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ textAlign: "right", fontSize: 13, fontWeight: 700, color: GREEN, marginTop: 6 }}>
+                        {l.discount > 0 && (
+                          <span style={{ fontSize: 11.5, color: MUTED, fontWeight: 500, textDecoration: "line-through", marginRight: 8 }}>
+                            {ksh(markedPrice(l) * l.quantity)}
+                          </span>
+                        )}
+                        {ksh(soldPrice(l) * l.quantity)}
+                      </div>
                     </div>
                   )
                 })
@@ -413,6 +448,12 @@ export default function PosPage() {
 
             {/* Pinned footer — total + complete, no scrolling needed */}
             <div style={{ borderTop: "1px solid var(--admin-border)", padding: "14px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
+              {totalSaved > 0 && (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12.5 }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: 5, color: BROWN }}><Tag size={13} /> Discount</span>
+                  <span style={{ fontWeight: 700, color: BROWN }}>− {ksh(totalSaved)}</span>
+                </div>
+              )}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontSize: 14, color: TEXT }}>Total</span>
                 <span style={{ fontSize: 24, fontWeight: 800, color: DARK }}>{ksh(total)}</span>

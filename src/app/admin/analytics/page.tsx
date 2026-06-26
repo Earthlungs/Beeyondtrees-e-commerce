@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import {
   TrendingUp, TrendingDown, Wallet, Boxes, Globe, Store,
-  MapPin, Package, Clock, Loader2, Banknote, Smartphone, CreditCard, Receipt, Award,
+  MapPin, Package, Clock, Loader2, Banknote, Smartphone, CreditCard, Receipt, Award, Tag,
 } from "lucide-react"
 
 const TEXT = "var(--admin-text)", MUTED = "#A89F91", GREEN = "#6B7D5C", BROWN = "#8C6A4A", DARK = "#3D3226", CREAM = "var(--admin-card-2)"
@@ -21,6 +21,8 @@ interface Analytics {
   topSellers: { name: string; orders: number; revenue: number }[]
   byMethod: Record<string, { amount: number; count: number }>
   collectors: { name: string; total: number; cash: number; mpesa: number; card: number; orders: number }[]
+  totalDiscount: number
+  discounts: { seller: string; product: string; qty: number; marked: number; sold: number; discount: number; pct: number }[]
   hourly: { hour: number; online: number; pos: number }[]
   bonusYear: number; bonusRate: number; bonusTotal: number
   bonuses: { name: string; role: string | null; department: string; orders: number; revenue: number; bonus: number }[]
@@ -150,6 +152,43 @@ export default function AnalyticsPage() {
                         <td style={cellR}>{ksh(c.card)}</td>
                         <td style={{ ...cellR, color: MUTED }}>{c.orders}</td>
                         <td style={{ ...cellR, fontWeight: 800, color: GREEN }}>{ksh(c.total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Panel>
+
+          {/* Discounts given at the till — which seller discounted what, and by how much */}
+          <div style={{ marginTop: 18 }} />
+          <Panel title={`Discounts given at the till — ${ksh(data.totalDiscount)} total`} icon={<Tag size={16} />}>
+            {data.discounts.length === 0 ? (
+              <p style={{ color: MUTED, fontSize: 13, padding: "12px 0" }}>No till discounts given in range.</p>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 560, marginTop: 6 }}>
+                  <thead>
+                    <tr style={{ fontSize: 11.5, color: MUTED, textAlign: "left" }}>
+                      <th style={{ padding: "6px 8px" }}>Seller</th>
+                      <th style={{ padding: "6px 8px" }}>Product</th>
+                      <th style={{ padding: "6px 8px", textAlign: "right" }}>Qty</th>
+                      <th style={{ padding: "6px 8px", textAlign: "right" }}>Marked</th>
+                      <th style={{ padding: "6px 8px", textAlign: "right" }}>Sold</th>
+                      <th style={{ padding: "6px 8px", textAlign: "right" }}>Discount</th>
+                      <th style={{ padding: "6px 8px", textAlign: "right" }}>% off</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.discounts.map((d, i) => (
+                      <tr key={i} style={{ borderTop: "1px solid var(--admin-border)" }}>
+                        <td style={{ padding: "9px 8px", fontSize: 13, fontWeight: 600, color: TEXT }}>{d.seller}</td>
+                        <td style={{ padding: "9px 8px", fontSize: 12.5, color: TEXT }}>{d.product}</td>
+                        <td style={{ ...cellR, color: MUTED }}>{d.qty}</td>
+                        <td style={cellR}>{ksh(d.marked)}</td>
+                        <td style={cellR}>{ksh(d.sold)}</td>
+                        <td style={{ ...cellR, fontWeight: 700, color: BROWN }}>− {ksh(d.discount)}</td>
+                        <td style={{ ...cellR, fontWeight: 700, color: BROWN }}>{d.pct.toFixed(1)}%</td>
                       </tr>
                     ))}
                   </tbody>

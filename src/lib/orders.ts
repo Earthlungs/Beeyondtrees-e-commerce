@@ -66,6 +66,9 @@ export interface PosSaleLine {
   productId: string
   quantity: number
   pricingTier: PricingTier
+  // KSh knocked off the marked unit price at the till (per unit). Optional;
+  // clamped server-side to [0, markedPrice] so a sale can never go negative.
+  discount?: number
 }
 
 export interface PosSaleInput {
@@ -165,14 +168,22 @@ export async function recordPosSale(input: PosSaleInput) {
       }))
     if (short.length) throw new InsufficientStockError(short)
 
-    // Build order items with authoritative server-side prices.
+    // Build order items with authoritative server-side prices. The marked price
+    // is the live tier price; the till may knock off a per-unit discount, so the
+    // actual sold `price` is marked − discount. Both are snapshotted so reports
+    // can show "marked at X, sold at X−d = y% off" attributed to the seller.
     const items = saleLines.map((l) => {
       const p = byId.get(l.productId)!
-      const price = tierPrice(p, l.pricingTier)
+      const markedPrice = tierPrice(p, l.pricingTier)
+      // Clamp the discount to [0, markedPrice]: never negative, never below free.
+      const discount = Math.min(Math.max(0, Number(l.discount) || 0), markedPrice)
+      const price = markedPrice - discount
       return {
         productId: l.productId,
         productName: p.name,
         price,
+        markedPrice,
+        discount,
         quantity: l.quantity,
         pricingTier: l.pricingTier,
         subtotal: price * l.quantity,

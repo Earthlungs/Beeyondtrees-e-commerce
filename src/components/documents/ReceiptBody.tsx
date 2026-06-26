@@ -15,7 +15,7 @@ export interface ReceiptRecord {
   cardRef: string | null
   cashReceived: number | null
   total: number
-  items: { id: string; productName: string; price: number; quantity: number; pricingTier: string; subtotal: number }[]
+  items: { id: string; productName: string; price: number; markedPrice?: number | null; discount?: number | null; quantity: number; pricingTier: string; subtotal: number }[]
 }
 
 // Inner content of the branded RECEIPT document. Shared by the admin receipt
@@ -25,6 +25,13 @@ export default function ReceiptBody({ order }: { order: ReceiptRecord }) {
     order.paymentMethod === "cash" && order.cashReceived != null
       ? order.cashReceived - order.total
       : null
+  // Total knocked off across all lines (marked price − sold price). Only POS
+  // sales with a till discount carry markedPrice, so this is 0 otherwise.
+  const totalSaved = order.items.reduce(
+    (s, it) => s + (it.markedPrice != null && it.markedPrice > it.price ? (it.markedPrice - it.price) * it.quantity : 0),
+    0
+  )
+  const grossTotal = order.total + totalSaved
   return (
     <>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20, fontSize: 13, flexWrap: "wrap", gap: 12 }}>
@@ -57,15 +64,29 @@ export default function ReceiptBody({ order }: { order: ReceiptRecord }) {
           </tr>
         </thead>
         <tbody>
-          {order.items.map((it) => (
-            <tr key={it.id} style={{ borderBottom: "1px solid #EEE" }}>
-              <td style={{ padding: "8px 6px" }}>{it.productName}</td>
-              <td style={{ padding: "8px 6px" }}>{it.quantity}</td>
-              <td style={{ padding: "8px 6px" }}>{ksh(it.price)}</td>
-              <td style={{ padding: "8px 6px", textTransform: "capitalize", color: "#777" }}>{it.pricingTier}</td>
-              <td style={{ padding: "8px 6px", textAlign: "right" }}>{ksh(it.subtotal)}</td>
-            </tr>
-          ))}
+          {order.items.map((it) => {
+            const discounted = it.markedPrice != null && it.markedPrice > it.price
+            const offPct = discounted ? Math.round(((it.markedPrice! - it.price) / it.markedPrice!) * 100) : 0
+            return (
+              <tr key={it.id} style={{ borderBottom: "1px solid #EEE" }}>
+                <td style={{ padding: "8px 6px" }}>
+                  {it.productName}
+                  {discounted && (
+                    <span style={{ color: DOC_GREEN, fontSize: 11, fontWeight: 700, marginLeft: 6 }}>−{offPct}%</span>
+                  )}
+                </td>
+                <td style={{ padding: "8px 6px" }}>{it.quantity}</td>
+                <td style={{ padding: "8px 6px" }}>
+                  {discounted && (
+                    <span style={{ color: "#999", textDecoration: "line-through", marginRight: 5 }}>{ksh(it.markedPrice!)}</span>
+                  )}
+                  {ksh(it.price)}
+                </td>
+                <td style={{ padding: "8px 6px", textTransform: "capitalize", color: "#777" }}>{it.pricingTier}</td>
+                <td style={{ padding: "8px 6px", textAlign: "right" }}>{ksh(it.subtotal)}</td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
 
@@ -81,6 +102,13 @@ export default function ReceiptBody({ order }: { order: ReceiptRecord }) {
           )}
         </div>
         <div style={{ width: 240, fontSize: 14 }}>
+          {totalSaved > 0 && (
+            <>
+              <Row label="Subtotal" value={ksh(grossTotal)} />
+              <Row label="Discount" value={`− ${ksh(totalSaved)}`} />
+              <div style={{ borderTop: `1px solid #EEE`, margin: "6px 0" }} />
+            </>
+          )}
           <Row label="Total" value={ksh(order.total)} bold />
           {order.paymentMethod === "cash" && order.cashReceived != null && (
             <>
