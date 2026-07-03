@@ -58,7 +58,7 @@ export function batchApprovedEmail({
     <h2 style="margin:0 0 8px;font-size:18px;color:${GREEN};">✓ Batch Approved</h2>
     <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 16px;">
       Your bulk request <strong>${batchCode}</strong> (${productName || "—"}) has been <strong style="color:${GREEN};">approved</strong> by ${approvedBy}.
-      The batch is now moving to the Sourcing stage.
+      The batch is now moving to the Resourced Allocation stage.
     </p>
     ${btn("View Batch", batchUrl)}
   `)

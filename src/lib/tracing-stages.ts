@@ -71,7 +71,7 @@ export const LIMITED_BOARD_STAGES: Record<string, Stage[]> = {
 export const STAGE_LABELS: Record<Stage, string> = {
   bulk_request: "Bulk Request",
   approval: "Approval",
-  sourcing: "Sourcing",
+  sourcing: "Resourced Allocation",
   inspection: "Inspection",
   requisition: "Requisition",
   issuance: "Issuance",
