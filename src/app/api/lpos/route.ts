@@ -50,19 +50,22 @@ type ExtraFields = {
   createdByName: string | null
   onBehalf: boolean
   attachmentUrl: string | null
+  paid: boolean
+  paidBy: string | null
+  paidAt: Date | null
 }
 
 const EXTRA_DEFAULTS: ExtraFields = {
   status: "approved", approvedBy: null, approvedAt: null, rejectionReason: null,
   destinationOfGoods: null, amended: false, origin: "internal", createdByName: null, onBehalf: false,
-  attachmentUrl: null,
+  attachmentUrl: null, paid: false, paidBy: null, paidAt: null,
 }
 
 async function fetchExtras(ids: string[]): Promise<Map<string, ExtraFields>> {
   if (ids.length === 0) return new Map()
   try {
     const rows = await prisma.$queryRaw<(ExtraFields & { id: string })[]>`
-      SELECT id, status, "approvedBy", "approvedAt", "rejectionReason", "destinationOfGoods", "amended", "origin", "createdByName", "onBehalf", "attachmentUrl"
+      SELECT id, status, "approvedBy", "approvedAt", "rejectionReason", "destinationOfGoods", "amended", "origin", "createdByName", "onBehalf", "attachmentUrl", paid, "paidBy", "paidAt"
       FROM "Lpo"
       WHERE id = ANY(${ids}::text[])
     `

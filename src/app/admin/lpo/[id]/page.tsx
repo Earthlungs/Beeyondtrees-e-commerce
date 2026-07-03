@@ -30,9 +30,11 @@ export default async function LpoDocPage({ params }: { params: Promise<{ id: str
   let amended = false
   let origin: string | null = null
   let attachmentUrl: string | null = null
+  let paid = false
+  let paidBy: string | null = null
   try {
-    const rows = await prisma.$queryRaw<{ status: string; rejectionReason: string | null; destinationOfGoods: string | null; recipientEmail: string | null; amended: boolean; origin: string | null; attachmentUrl: string | null }[]>`
-      SELECT status, "rejectionReason", "destinationOfGoods", "recipientEmail", "amended", "origin", "attachmentUrl" FROM "Lpo" WHERE id = ${id}
+    const rows = await prisma.$queryRaw<{ status: string; rejectionReason: string | null; destinationOfGoods: string | null; recipientEmail: string | null; amended: boolean; origin: string | null; attachmentUrl: string | null; paid: boolean; paidBy: string | null }[]>`
+      SELECT status, "rejectionReason", "destinationOfGoods", "recipientEmail", "amended", "origin", "attachmentUrl", paid, "paidBy" FROM "Lpo" WHERE id = ${id}
     `
     if (rows[0]) {
       status = rows[0].status
@@ -42,6 +44,8 @@ export default async function LpoDocPage({ params }: { params: Promise<{ id: str
       amended = rows[0].amended ?? false
       origin = rows[0].origin
       attachmentUrl = rows[0].attachmentUrl
+      paid = rows[0].paid ?? false
+      paidBy = rows[0].paidBy
     }
   } catch { /* pre-migration — treat as approved */ }
 
@@ -105,8 +109,13 @@ export default async function LpoDocPage({ params }: { params: Promise<{ id: str
         )}
         {/* Status badges in header area */}
         {(status === "approved" || amended) && (
-          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+          <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
             <span style={{ background: DOC_GREEN, color: "white", fontSize: 11, fontWeight: 700, padding: "3px 11px", borderRadius: 999 }}>Approved</span>
+            {status === "approved" && (
+              paid
+                ? <span style={{ background: "#DCFCE7", color: "#166534", fontSize: 11, fontWeight: 700, padding: "3px 11px", borderRadius: 999 }}>✓ Paid{paidBy ? ` — ${paidBy}` : ""}</span>
+                : <span style={{ background: "#FEF3C7", color: "#92400E", fontSize: 11, fontWeight: 700, padding: "3px 11px", borderRadius: 999 }}>Awaiting payment</span>
+            )}
             {amended && <span style={{ background: "#ccfbf1", color: "#0F766E", fontSize: 11, fontWeight: 700, padding: "3px 11px", borderRadius: 999 }}>Amended</span>}
           </div>
         )}

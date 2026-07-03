@@ -13,8 +13,8 @@ const FINANCE_INBOX = process.env.FINANCE_INBOX || "finance@earthlungs.org"
 
 async function fetchExtras(id: string) {
   try {
-    const rows = await prisma.$queryRaw<{ status: string; approvedBy: string | null; approvedAt: Date | null; rejectionReason: string | null; destinationOfGoods: string | null; amended: boolean; origin: string | null; createdByName: string | null; createdByUserId: string | null; onBehalf: boolean; chiefApprovedBy: string | null; attachmentUrl: string | null }[]>`
-      SELECT status, "approvedBy", "approvedAt", "rejectionReason", "destinationOfGoods", "amended", "origin", "createdByName", "createdByUserId", "onBehalf", "chiefApprovedBy", "attachmentUrl"
+    const rows = await prisma.$queryRaw<{ status: string; approvedBy: string | null; approvedAt: Date | null; rejectionReason: string | null; destinationOfGoods: string | null; amended: boolean; origin: string | null; createdByName: string | null; createdByUserId: string | null; onBehalf: boolean; chiefApprovedBy: string | null; attachmentUrl: string | null; paid: boolean; paidBy: string | null; paidAt: Date | null }[]>`
+      SELECT status, "approvedBy", "approvedAt", "rejectionReason", "destinationOfGoods", "amended", "origin", "createdByName", "createdByUserId", "onBehalf", "chiefApprovedBy", "attachmentUrl", paid, "paidBy", "paidAt"
       FROM "Lpo" WHERE id = ${id}
     `
     return rows[0] ?? null

@@ -27,7 +27,7 @@ export default function LpoBody({ lpo, destinationOfGoods }: { lpo: LpoRecord; d
     <>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "18px 24px", marginBottom: 24, fontSize: 13 }}>
         <div>
-          <div style={{ fontWeight: 800, fontSize: 14 }}>Shipping Address</div>
+          <div style={{ fontWeight: 800, fontSize: 14 }}>Source of Supply</div>
           <div style={{ color: "#555", whiteSpace: "pre-wrap" }}>{lpo.shippingAddress || "—"}</div>
         </div>
         <div>

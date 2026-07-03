@@ -33,6 +33,8 @@ interface Lpo {
   onBehalf?: boolean
   createdByName?: string | null
   attachmentUrl?: string | null
+  paid?: boolean
+  paidBy?: string | null
 }
 
 export default function LpoPage() {
@@ -139,6 +141,12 @@ export default function LpoPage() {
       <span style={{ display: "inline-flex", gap: 4, alignItems: "center", flexWrap: "wrap" }}>
         {originChip(l)}
         {s === "approved" && pill(GREEN, "Approved")}
+        {/* Payment state — set by Finance from /admin/finance */}
+        {s === "approved" && (
+          l.paid
+            ? <span title={l.paidBy ? `Paid — marked by ${l.paidBy}` : "Paid"} style={{ background: "#DCFCE7", color: "#166534", fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 999 }}>✓ Paid</span>
+            : <span style={{ background: "#FEF3C7", color: "#92400E", fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 999 }}>Awaiting payment</span>
+        )}
         {s === "approved" && l.onBehalf && pill("#ede9fe", "Approved on behalf", "#6d28d9")}
         {s === "approved" && l.amended && <span style={{ background: "#ccfbf1", color: TEAL, fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 999 }}>Amended</span>}
         {s === "exec_approved" && pill(TEAL, "Factory Admin Approved")}
@@ -241,7 +249,7 @@ export default function LpoPage() {
             <Field label="Purchase representative"><Input value={purchaseRep} onChange={(e) => setPurchaseRep(e.target.value)} /></Field>
             <Field label="Order date"><Input type="date" value={orderDate} onChange={(e) => setOrderDate(e.target.value)} /></Field>
             <Field label="Expected arrival"><Input type="date" value={expectedArrival} onChange={(e) => setExpectedArrival(e.target.value)} /></Field>
-            <Field label="Shipping address"><Input value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} /></Field>
+            <Field label="Source of supply"><Input value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} /></Field>
             <Field label="Destination of goods"><Input value={destinationOfGoods} onChange={(e) => setDestinationOfGoods(e.target.value)} placeholder="e.g. Nairobi Warehouse" /></Field>
             <Field label="Email LPO to"><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="supplier@email.com — emailed when approved" /></Field>
           </div>

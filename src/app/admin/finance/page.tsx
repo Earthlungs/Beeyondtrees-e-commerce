@@ -3,10 +3,12 @@
 import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 import {
   Banknote, ClipboardList, CheckCircle2, Hourglass, Ban, Timer,
-  Paperclip, Search, Eye, CalendarDays,
+  Paperclip, Search, Eye, CalendarDays, Loader2, Wallet,
 } from "lucide-react"
+import { ConfirmModal } from "@/components/admin/ConfirmModal"
 
 const TEXT = "var(--admin-text)"
 const MUTED = "var(--admin-muted)"
@@ -36,6 +38,9 @@ interface FinLpo {
   chiefApprovedBy?: string | null
   chiefApprovedAt?: string | null
   attachmentUrl?: string | null
+  paid?: boolean
+  paidBy?: string | null
+  paidAt?: string | null
 }
 
 // Display buckets for the approval pipeline. "In approval" = anything between
@@ -73,6 +78,28 @@ export default function FinanceDashboard() {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [originFilter, setOriginFilter] = useState("all")
+  const [payTarget, setPayTarget] = useState<FinLpo | null>(null)
+  const [payingId, setPayingId] = useState<string | null>(null)
+  const [notice, setNotice] = useState("")
+
+  const markPaid = async (l: FinLpo) => {
+    setPayingId(l.id)
+    setNotice("")
+    try {
+      const res = await fetch("/api/finance/lpos", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: l.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setNotice(data.error || "Could not mark as paid."); return }
+      setLpos((prev) => prev.map((x) => (x.id === l.id ? { ...x, paid: true, paidBy: data.paidBy, paidAt: data.paidAt } : x)))
+      setNotice(data.emailed
+        ? `${l.number} marked as paid — ${l.createdByName || "the person who raised it"} has been emailed.`
+        : `${l.number} marked as paid. (No email sent — the raiser has no email on file.)`)
+    } catch { setNotice("Network error. Try again.") }
+    finally { setPayingId(null) }
+  }
 
   useEffect(() => {
     fetch("/api/finance/lpos")
@@ -106,7 +133,12 @@ export default function FinanceDashboard() {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime()
     const thisMonth = lpos.filter((l) => new Date(l.createdAt).getTime() >= monthStart)
 
+    const unpaid = approved.filter((l) => !l.paid)
+    const paid = approved.filter((l) => l.paid)
+
     return {
+      unpaid: unpaid.length, unpaidValue: sum(unpaid),
+      paid: paid.length, paidValue: sum(paid),
       total: lpos.length, totalValue: sum(lpos),
       approved: approved.length, approvedValue: sum(approved),
       pending: pending.length, pendingValue: sum(pending),
@@ -156,6 +188,7 @@ export default function FinanceDashboard() {
   const tiles = [
     { label: "All LPOs", value: String(stats.total), sub: ksh(stats.totalValue), icon: ClipboardList, color: "#2C5282" },
     { label: "Approved", value: String(stats.approved), sub: ksh(stats.approvedValue), icon: CheckCircle2, color: GREEN },
+    { label: "Awaiting payment", value: String(stats.unpaid), sub: ksh(stats.unpaidValue), icon: Wallet, color: "#92400E" },
     { label: "In approval", value: String(stats.pending), sub: ksh(stats.pendingValue), icon: Hourglass, color: AMBER },
     { label: "Rejected", value: String(stats.rejected), sub: ksh(stats.rejectedValue), icon: Ban, color: RED },
     { label: "Avg. approval time", value: stats.avgLabel, sub: "submission → CEO sign-off", icon: Timer, color: TEAL },
@@ -173,6 +206,18 @@ export default function FinanceDashboard() {
       </div>
 
       {error && <div style={{ background: "#FBEAEA", color: "#9B2C2C", padding: "10px 14px", borderRadius: 8, fontSize: 13, marginBottom: 16 }}>{error}</div>}
+      {notice && (
+        <div style={{ background: "#EAF3EA", color: "#2F5D2F", padding: "10px 14px", borderRadius: 8, fontSize: 13, marginBottom: 16 }}>{notice}</div>
+      )}
+
+      <ConfirmModal
+        open={!!payTarget}
+        title={`Mark ${payTarget?.number} as paid?`}
+        message={`Confirm that ${ksh(Number(payTarget?.total) || 0)} for ${payTarget?.supplierName} has been paid. ${payTarget?.createdByName || "The person who raised this LPO"} will be notified by email. This cannot be undone from here.`}
+        confirmLabel="Mark as paid"
+        onConfirm={() => { if (payTarget) { markPaid(payTarget); setPayTarget(null) } }}
+        onCancel={() => setPayTarget(null)}
+      />
 
       {loading ? (
         <p style={{ padding: 24, color: MUTED }}>Loading…</p>
@@ -266,7 +311,7 @@ export default function FinanceDashboard() {
               <p style={{ padding: 24, color: MUTED, textAlign: "center" }}>No purchase orders match.</p>
             ) : (
               <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1050 }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1180 }}>
                   <thead>
                     <tr style={{ background: "var(--admin-card-2)", fontSize: 12, color: MUTED, textAlign: "left" }}>
                       <th style={th}>Number</th>
@@ -278,6 +323,7 @@ export default function FinanceDashboard() {
                       <th style={th}>1st approval</th>
                       <th style={th}>Final (CEO)</th>
                       <th style={th}>Turnaround</th>
+                      <th style={th}>Payment</th>
                       <th style={{ ...th, textAlign: "right" }} />
                     </tr>
                   </thead>
@@ -337,6 +383,23 @@ export default function FinanceDashboard() {
                           </td>
                           <td style={{ ...td, whiteSpace: "nowrap" }}>
                             {finalTurnaround ? <span style={{ fontWeight: 600, color: TEXT }}>{finalTurnaround}</span> : <span style={{ color: MUTED }}>—</span>}
+                          </td>
+                          <td style={{ ...td, whiteSpace: "nowrap" }}>
+                            {s !== "approved" ? (
+                              <span style={{ color: MUTED }}>—</span>
+                            ) : l.paid ? (
+                              <>
+                                <span style={{ background: "#DCFCE7", color: "#166534", fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 999 }}>✓ Paid</span>
+                                <div style={{ fontSize: 11, color: MUTED, marginTop: 3 }}>{l.paidBy || "—"} · {fmtDateTime(l.paidAt)}</div>
+                              </>
+                            ) : (
+                              <Button
+                                onClick={() => setPayTarget(l)}
+                                disabled={payingId === l.id}
+                                style={{ background: GREEN, color: "white", gap: 6, fontSize: 12, height: 30, padding: "0 12px" }}>
+                                {payingId === l.id ? <Loader2 size={13} className="animate-spin" /> : <Banknote size={13} />} Mark paid
+                              </Button>
+                            )}
                           </td>
                           <td style={{ ...td, textAlign: "right" }}>
                             <Link href={`/admin/lpo/${l.id}`} style={{ display: "inline-flex", alignItems: "center", gap: 5, color: "#555", fontWeight: 600, fontSize: 12.5, textDecoration: "none", padding: "5px 10px", border: "1px solid var(--admin-border)", borderRadius: 8, whiteSpace: "nowrap" }}>

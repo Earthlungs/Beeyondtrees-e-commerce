@@ -110,6 +110,21 @@ export function lpoApprovedEmail({
   `)
 }
 
+export function lpoPaidEmail({
+  lpoNumber, supplierName, total, paidBy, lpoUrl,
+}: {
+  lpoNumber: string; supplierName: string; total: number; paidBy: string; lpoUrl: string
+}) {
+  return layout(`
+    <h2 style="margin:0 0 8px;font-size:18px;color:${GREEN};">✓ LPO Paid</h2>
+    <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 12px;">
+      Your purchase order <strong>${lpoNumber}</strong> (${supplierName}) for <strong>${ksh(total)}</strong>
+      has been marked as <strong style="color:${GREEN};">PAID</strong> by ${paidBy} (Finance).
+    </p>
+    ${btn("View LPO →", lpoUrl)}
+  `)
+}
+
 export function lpoExecApprovedEmail({
   lpoNumber, supplierName, total, approvedBy, lpoUrl,
 }: {
@@ -304,7 +319,7 @@ export function lpoDocEmail({
   const body = `
     ${metaGrid([
       { label: "Supplier", value: supplierName },
-      { label: "Shipping Address", value: shippingAddress || "" },
+      { label: "Source of Supply", value: shippingAddress || "" },
       { label: "Purchase Representative", value: purchaseRep || "" },
       { label: "Order Date", value: orderDate },
       { label: "Expected Arrival", value: expectedArrival || "" },

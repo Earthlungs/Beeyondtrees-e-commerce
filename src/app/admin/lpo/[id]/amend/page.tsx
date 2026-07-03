@@ -143,7 +143,7 @@ export default function AmendLpoPage() {
           <Field label="Expected arrival">
             <Input type="date" value={expectedArrival} onChange={(e) => setExpectedArrival(e.target.value)} />
           </Field>
-          <Field label="Shipping address">
+          <Field label="Source of supply">
             <Input value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} />
           </Field>
           <Field label="Destination of goods">
