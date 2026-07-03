@@ -38,11 +38,11 @@ export default function QuotationBody({ quotation }: { quotation: QuotationRecor
         <div>
           <div style={{ fontWeight: 800, fontSize: 14 }}>Quotation Number</div>
           <div style={{ color: "#555" }}>{quotation.number}</div>
-          <div style={{ fontWeight: 800, fontSize: 14, marginTop: 12 }}>Supplier</div>
+          <div style={{ fontWeight: 800, fontSize: 14, marginTop: 12 }}>Supplier Representative</div>
           <div style={{ color: "#555" }}>{quotation.supplierName}</div>
         </div>
         <div>
-          <div style={{ fontWeight: 800, fontSize: 14 }}>Expected Arrival</div>
+          <div style={{ fontWeight: 800, fontSize: 14 }}>Expected Supply Date</div>
           <div style={{ color: "#555" }}>{fmtDate(quotation.expectedArrival)}</div>
           {quotation.destinationOfGoods && (
             <>

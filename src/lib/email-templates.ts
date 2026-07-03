@@ -347,11 +347,11 @@ export function quotationDocEmail({
 }) {
   const body = `
     ${metaGrid([
-      { label: "Supplier", value: supplierName },
+      { label: "Supplier Representative", value: supplierName },
       { label: "Source of Supply", value: shippingAddress || "" },
       { label: "Purchase Representative", value: purchaseRep || "" },
       { label: "Date", value: orderDate },
-      { label: "Expected Arrival", value: expectedArrival || "" },
+      { label: "Expected Supply Date", value: expectedArrival || "" },
       ...(destinationOfGoods ? [{ label: "Destination of Goods", value: destinationOfGoods }] : []),
     ])}
     ${lineItemsTable(items, "tax")}

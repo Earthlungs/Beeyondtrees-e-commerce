@@ -82,7 +82,7 @@ export default function AmendQuotationPage() {
 
   const save = async () => {
     setError("")
-    if (!supplierName.trim()) { setError("Supplier name is required."); return }
+    if (!supplierName.trim()) { setError("Supplier representative is required."); return }
     setSaving(true)
     try {
       const res = await fetch(`/api/quotations/${id}`, {
@@ -128,7 +128,7 @@ export default function AmendQuotationPage() {
         {error && <div style={{ background: "#FBEAEA", color: "#9B2C2C", padding: "8px 12px", borderRadius: 8, fontSize: 13, marginBottom: 14 }}>{error}</div>}
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 200px), 1fr))", gap: 14, marginBottom: 20 }}>
-          <Field label="Supplier name *">
+          <Field label="Supplier representative *">
             <Input value={supplierName} onChange={(e) => setSupplierName(e.target.value)} />
           </Field>
           <Field label="Purchase representative">
@@ -137,7 +137,7 @@ export default function AmendQuotationPage() {
           <Field label="Date">
             <Input type="date" value={orderDate} onChange={(e) => setOrderDate(e.target.value)} />
           </Field>
-          <Field label="Expected arrival">
+          <Field label="Expected supply date">
             <Input type="date" value={expectedArrival} onChange={(e) => setExpectedArrival(e.target.value)} />
           </Field>
           <Field label="Source of supply">

@@ -85,7 +85,7 @@ export default function QuotationsPage() {
 
   const save = async () => {
     setError("")
-    if (!supplierName.trim()) { setError("Supplier name is required."); return }
+    if (!supplierName.trim()) { setError("Supplier representative is required."); return }
     setSaving(true)
     try {
       const res = await fetch("/api/quotations", {
@@ -225,10 +225,10 @@ export default function QuotationsPage() {
         <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, padding: "16px clamp(12px, 4vw, 20px)", marginBottom: 24, overflowX: "hidden" }}>
           {error && <div style={{ background: "#FBEAEA", color: "#9B2C2C", padding: "8px 12px", borderRadius: 8, fontSize: 13, marginBottom: 12 }}>{error}</div>}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 200px), 1fr))", gap: 12, marginBottom: 16 }}>
-            <Field label="Supplier name *"><Input value={supplierName} onChange={(e) => setSupplierName(e.target.value)} /></Field>
+            <Field label="Supplier representative *"><Input value={supplierName} onChange={(e) => setSupplierName(e.target.value)} /></Field>
             <Field label="Purchase representative"><Input value={purchaseRep} onChange={(e) => setPurchaseRep(e.target.value)} /></Field>
             <Field label="Date"><Input type="date" value={orderDate} onChange={(e) => setOrderDate(e.target.value)} /></Field>
-            <Field label="Expected arrival"><Input type="date" value={expectedArrival} onChange={(e) => setExpectedArrival(e.target.value)} /></Field>
+            <Field label="Expected supply date"><Input type="date" value={expectedArrival} onChange={(e) => setExpectedArrival(e.target.value)} /></Field>
             <Field label="Source of supply"><Input value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} /></Field>
             <Field label="Destination of goods"><Input value={destinationOfGoods} onChange={(e) => setDestinationOfGoods(e.target.value)} placeholder="e.g. Nairobi Warehouse" /></Field>
             <Field label="Email quotation to"><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="supplier@email.com — emailed when approved" /></Field>
@@ -257,7 +257,7 @@ export default function QuotationsPage() {
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
             <thead>
               <tr style={{ background: "var(--admin-card-2)", fontSize: 12, color: MUTED, textAlign: "left" }}>
-                <th style={th}>Number</th><th style={th}>Supplier</th><th style={th}>Date</th>
+                <th style={th}>Number</th><th style={th}>Supplier Rep</th><th style={th}>Date</th>
                 <th style={{ ...th, textAlign: "right" }}>Total</th><th style={th}>Status</th><th style={{ ...th, textAlign: "right" }} />
               </tr>
             </thead>

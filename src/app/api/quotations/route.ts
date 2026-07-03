@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null)
   if (!body) return NextResponse.json({ error: "Invalid body" }, { status: 400 })
   if (!body.supplierName?.trim()) {
-    return NextResponse.json({ error: "Supplier name is required." }, { status: 400 })
+    return NextResponse.json({ error: "Supplier representative is required." }, { status: 400 })
   }
 
   const { items, subtotal, vat, total } = normalizeLines(body.items)
