@@ -22,7 +22,7 @@ interface U {
 const ROLE_OPTIONS: [string, string][] = [
   // Leadership
   ["admin", "CEO"],
-  ["assistant_ceo", "Assistant CEO (all CEO rights)"],
+  ["assistant_ceo", "Chief Operating Officer — COO (all CEO rights)"],
   ["chief", "Chief (approves external procurement)"],
   ["it_specialist", "IT Specialist (full control)"],
   ["finance", "Finance"],

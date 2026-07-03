@@ -93,7 +93,7 @@ export const ROLE_LABELS: Record<string, string> = {
   factory_procurement: "Factory Procurement",
   external_procurement: "External Procurement",
   chief: "Chief",
-  assistant_ceo: "Assistant CEO",
+  assistant_ceo: "Chief Operating Officer (COO)",
   finance: "Finance",
   procurement_officer: "Procurement Officer",
   quality_inspector: "Quality Inspector",

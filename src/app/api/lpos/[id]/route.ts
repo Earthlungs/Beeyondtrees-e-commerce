@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db"
 import { requireDocRole, normalizeLines, parseDate } from "@/lib/docs"
 import { requireRole, isAdminish, isAssistantCeo } from "@/lib/authz"
 import { sendMail } from "@/lib/mailer"
-import { lpoApprovedEmail, lpoExecApprovedEmail } from "@/lib/email-templates"
+import { lpoApprovedEmail, lpoExecApprovedEmail, lpoRejectedEmail } from "@/lib/email-templates"
 import { sendLpoEmail } from "@/lib/doc-email"
 
 const BASE_URL = process.env.NEXTAUTH_URL || "http://localhost:3000"
@@ -205,7 +205,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             await sendMail({
               to: ceoTo,
               subject: `[Beeyond Trees] LPO ${lpoNumber} approved ON YOUR BEHALF by ${actor}`,
-              html: lpoApprovedEmail({ lpoNumber, supplierName, total: lpoTotal, approvedBy: `${actor} (Assistant CEO, on your behalf)`, lpoUrl }),
+              html: lpoApprovedEmail({ lpoNumber, supplierName, total: lpoTotal, approvedBy: `${actor} (COO, on your behalf)`, lpoUrl }),
             })
           }
         } catch (e) { console.error("[mailer] LPO on-behalf CEO notify:", e) }
@@ -231,6 +231,18 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           to,
           subject: `[Beeyond Trees] LPO ${lpoNumber} awaiting your final approval`,
           html: lpoExecApprovedEmail({ lpoNumber, supplierName, total: lpoTotal, approvedBy: actor, lpoUrl }),
+        })
+      }
+    } else if (newStatus === "rejected") {
+      // Every rejection (Chief, COO on behalf, or the CEO himself) alerts the
+      // CEO's inbox so nothing is killed quietly.
+      const adminUsers = await prisma.user.findMany({ where: { role: "admin" }, select: { email: true } })
+      const to = adminUsers.flatMap((u) => u.email ? [u.email] : [])
+      if (to.length > 0) {
+        await sendMail({
+          to,
+          subject: `[Beeyond Trees] LPO ${lpoNumber} REJECTED by ${actor}`,
+          html: lpoRejectedEmail({ lpoNumber, supplierName, total: lpoTotal, rejectedBy: actor, reason, lpoUrl }),
         })
       }
     }

@@ -135,7 +135,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             await sendMail({
               to: ceoTo,
               subject: `[Beeyond Trees] Quotation ${updated.number} approved ON YOUR BEHALF by ${actor}`,
-              html: lpoApprovedEmail({ lpoNumber: updated.number, supplierName: updated.supplierName, total: updated.total, approvedBy: `${actor} (Assistant CEO, on your behalf)`, lpoUrl: url }),
+              html: lpoApprovedEmail({ lpoNumber: updated.number, supplierName: updated.supplierName, total: updated.total, approvedBy: `${actor} (COO, on your behalf)`, lpoUrl: url }),
             })
           }
         } catch (e) { console.error("[mailer] Quotation on-behalf CEO notify:", e) }

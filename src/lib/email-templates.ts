@@ -110,6 +110,24 @@ export function lpoApprovedEmail({
   `)
 }
 
+export function lpoRejectedEmail({
+  lpoNumber, supplierName, total, rejectedBy, reason, lpoUrl,
+}: {
+  lpoNumber: string; supplierName: string; total: number; rejectedBy: string; reason: string; lpoUrl: string
+}) {
+  return layout(`
+    <h2 style="margin:0 0 8px;font-size:18px;color:${RED};">✕ LPO Rejected</h2>
+    <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 12px;">
+      LPO <strong>${lpoNumber}</strong> (${supplierName}) for <strong>${ksh(total)}</strong>
+      has been <strong style="color:${RED};">rejected</strong> by <strong>${rejectedBy}</strong>.
+    </p>
+    <div style="background:#FFF5F5;border:1px solid #FED7D7;border-radius:8px;padding:10px 14px;font-size:13px;color:#9B2C2C;">
+      <strong>Reason:</strong> ${reason || "No reason given."}
+    </div>
+    ${btn("View LPO →", lpoUrl, RED)}
+  `)
+}
+
 export function lpoPaidEmail({
   lpoNumber, supplierName, total, paidBy, lpoUrl,
 }: {
