@@ -81,6 +81,48 @@ model Lpo {
   updatedAt       DateTime  @updatedAt
 }
 
+// Quotation — LPO clone minus payment details (no notes / paid tracking).
+// New table, so ALL columns are modelled here (no raw-column split like Lpo).
+model Quotation {
+  id                 String    @id @default(cuid())
+  number             String    @unique // e.g. QUO-0001
+  orderDate          DateTime  @default(now())
+  expectedArrival    DateTime?
+  supplierName       String
+  shippingAddress    String?   @db.Text // "Source of Supply" on the doc
+  purchaseRep        String?
+  items              Json      @default("[]")
+  subtotal           Float     @default(0)
+  vat                Float     @default(0)
+  total              Float     @default(0)
+  status             String    @default("pending")
+  approvedBy         String?
+  approvedAt         DateTime?
+  rejectionReason    String?   @db.Text
+  destinationOfGoods String?
+  amended            Boolean   @default(false)
+  onBehalf           Boolean   @default(false)
+  origin             String?
+  createdByUserId    String?
+  createdByName      String?
+  chiefApprovedBy    String?
+  chiefApprovedAt    DateTime?
+  recipientEmail     String?
+  attachmentUrl      String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+}
+
+// PDF document attachments stored in Postgres (Cloudinary blocks PDF delivery
+// on this plan). Served by /api/attachments/[id].
+model DocAttachment {
+  id        String   @id
+  filename  String?
+  mime      String   @default("application/pdf")
+  data      Bytes
+  createdAt DateTime @default(now())
+}
+
 model Product {
   id               String      @id @default(cuid())
   name             String

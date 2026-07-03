@@ -6,8 +6,24 @@ import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Workflow, Plus, X, Loader2, ChevronRight, Search, ClipboardList } from "lucide-react"
+import { Workflow, Plus, X, Loader2, ChevronRight, Search, ClipboardList, FileText } from "lucide-react"
 import { STAGE_LABELS, STAGE_ROLES, isAdminishRole, LIMITED_BOARD_STAGES, type Stage } from "@/lib/tracing-stages"
+import { isPdfUrl } from "@/lib/attachments"
+
+// LPO attachment thumbnail — image preview, or a small PDF tile that opens it.
+function AttachmentThumb({ url, size = 40 }: { url: string; size?: number }) {
+  if (isPdfUrl(url)) {
+    return (
+      <a href={url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+        style={{ width: size, height: size, borderRadius: 6, border: "1px solid var(--admin-border)", background: "#FEF2F2", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0, textDecoration: "none" }}>
+        <FileText size={size * 0.42} color="#C0392B" />
+        <span style={{ fontSize: 8, fontWeight: 700, color: "#C0392B" }}>PDF</span>
+      </a>
+    )
+  }
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={url} alt="" style={{ width: size, height: size, objectFit: "cover", borderRadius: 6, border: "1px solid var(--admin-border)", flexShrink: 0 }} />
+}
 
 const TEXT = "var(--admin-text)"
 const MUTED = "var(--admin-muted)"
@@ -263,10 +279,7 @@ export default function TracingBoard() {
           <div style={{ display: "grid", gap: 8 }}>
             {availableLpos.map((lpo) => (
               <div key={lpo.id} className="lpo-tray-row">
-                {lpo.attachmentUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={lpo.attachmentUrl} alt="" style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 6, border: "1px solid var(--admin-border)", flexShrink: 0 }} />
-                )}
+                {lpo.attachmentUrl && <AttachmentThumb url={lpo.attachmentUrl} />}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, color: GREEN, fontSize: 13 }}>{lpo.number}</div>
                   <div style={{ fontSize: 12, color: MUTED, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -300,8 +313,7 @@ export default function TracingBoard() {
             {selectedLpo ? (
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "#F0FDF4", border: `2px solid ${GREEN}`, borderRadius: 10 }}>
                 {selectedLpo.attachmentUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={selectedLpo.attachmentUrl} alt="" style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 6, border: "1px solid var(--admin-border)", flexShrink: 0 }} />
+                  <AttachmentThumb url={selectedLpo.attachmentUrl} />
                 ) : (
                   <ClipboardList size={16} color={GREEN} style={{ flexShrink: 0 }} />
                 )}
@@ -435,8 +447,9 @@ export default function TracingBoard() {
           {visibleRows.map((b) => {
             const rowProduct = b.matchedProductId ? catalogProducts.find((p) => p.id === b.matchedProductId) : null
             // Prefer the matched catalog product image; fall back to the image
-            // attached to the originating LPO so it follows the batch.
-            const rowThumb = rowProduct?.images?.[0] || b.lpoAttachmentUrl || null
+            // attached to the originating LPO so it follows the batch. PDF
+            // attachments aren't renderable as a thumbnail — skip those here.
+            const rowThumb = rowProduct?.images?.[0] || (isPdfUrl(b.lpoAttachmentUrl) ? null : b.lpoAttachmentUrl) || null
             return (
             <Link key={b.id} href={`/admin/tracing/${b.id}`} style={{ textDecoration: "none" }}>
               <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, padding: 16, display: "flex", alignItems: "center", gap: 16 }}>

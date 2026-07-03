@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db"
 import BrandedDoc from "@/components/admin/BrandedDoc"
 import LpoBody from "@/components/documents/LpoBody"
+import AttachmentBlock from "@/components/documents/AttachmentBlock"
 import PublicDocControls from "@/components/documents/PublicDocControls"
 import { verifyDoc } from "@/lib/doc-token"
 import InvalidLink from "@/components/documents/InvalidLink"
@@ -41,13 +42,7 @@ export default async function PublicLpoPage({
       <div style={{ padding: "24px 12px 48px" }}>
         <BrandedDoc title="PURCHASE ORDER">
           <LpoBody lpo={lpo} destinationOfGoods={destinationOfGoods} />
-          {attachmentUrl && (
-            <div style={{ marginTop: 30 }}>
-              <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 8 }}>Attachment</div>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={attachmentUrl} alt="LPO attachment" style={{ maxWidth: "100%", maxHeight: 420, borderRadius: 8, border: "1px solid #EEE" }} />
-            </div>
-          )}
+          <AttachmentBlock url={attachmentUrl} />
         </BrandedDoc>
       </div>
     </div>

@@ -6,6 +6,7 @@ import BrandedDoc, { DOC_GREEN } from "@/components/admin/BrandedDoc"
 import DocPrintControls from "@/components/admin/DocPrintControls"
 import DocEmailButton from "@/components/admin/DocEmailButton"
 import LpoBody from "@/components/documents/LpoBody"
+import AttachmentBlock from "@/components/documents/AttachmentBlock"
 import { authOptions } from "@/lib/auth"
 import { isAdminish } from "@/lib/authz"
 
@@ -121,16 +122,7 @@ export default async function LpoDocPage({ params }: { params: Promise<{ id: str
         )}
 
         <LpoBody lpo={lpo} destinationOfGoods={destinationOfGoods} />
-
-        {attachmentUrl && (
-          <div style={{ marginTop: 30 }}>
-            <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 8 }}>Attachment</div>
-            <a href={attachmentUrl} target="_blank" rel="noopener noreferrer">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={attachmentUrl} alt="LPO attachment" style={{ maxWidth: "100%", maxHeight: 420, borderRadius: 8, border: "1px solid #EEE" }} />
-            </a>
-          </div>
-        )}
+        <AttachmentBlock url={attachmentUrl} />
       </BrandedDoc>
 
       {/* Print + email controls only for fully approved LPOs */}

@@ -17,10 +17,10 @@ const GREEN = "#6B7D5C"
 const TEAL = "#0F766E"
 const ksh = (n: number) => `KSh ${n.toLocaleString()}`
 
-interface LpoDetail {
+interface QuotationDetail {
   id: string; number: string; supplierName: string; shippingAddress: string | null
   purchaseRep: string | null; orderDate: string; expectedArrival: string | null
-  destinationOfGoods: string | null; notes: string | null; items: DocLine[]
+  destinationOfGoods: string | null; items: DocLine[]
   subtotal: number; vat: number; total: number; status: string | null
   attachmentUrl?: string | null
 }
@@ -35,7 +35,7 @@ function toEditLines(items: DocLine[]): EditLine[] {
   }))
 }
 
-export default function AmendLpoPage() {
+export default function AmendQuotationPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
   const id = params.id
@@ -44,7 +44,7 @@ export default function AmendLpoPage() {
   const isExec = role === "executive"
   const action = isExec ? "exec_amend" : "amend"
 
-  const [lpo, setLpo] = useState<LpoDetail | null>(null)
+  const [quotation, setQuotation] = useState<QuotationDetail | null>(null)
   const [fetching, setFetching] = useState(true)
   const [fetchError, setFetchError] = useState("")
   const [saving, setSaving] = useState(false)
@@ -56,29 +56,27 @@ export default function AmendLpoPage() {
   const [orderDate, setOrderDate] = useState("")
   const [expectedArrival, setExpectedArrival] = useState("")
   const [destinationOfGoods, setDestinationOfGoods] = useState("")
-  const [notes, setNotes] = useState("")
   const [lines, setLines] = useState<EditLine[]>([emptyLine()])
   const [attachment, setAttachment] = useState<string[]>([])
 
   useEffect(() => {
-    fetch(`/api/lpos/${id}`)
+    fetch(`/api/quotations/${id}`)
       .then((r) => {
         if (!r.ok) throw new Error("Not found")
         return r.json()
       })
-      .then((data: LpoDetail) => {
-        setLpo(data)
+      .then((data: QuotationDetail) => {
+        setQuotation(data)
         setSupplierName(data.supplierName ?? "")
         setShippingAddress(data.shippingAddress ?? "")
         setPurchaseRep(data.purchaseRep ?? "")
         setOrderDate(data.orderDate ? data.orderDate.slice(0, 10) : "")
         setExpectedArrival(data.expectedArrival ? data.expectedArrival.slice(0, 10) : "")
         setDestinationOfGoods(data.destinationOfGoods ?? "")
-        setNotes(data.notes ?? "")
         setLines(toEditLines(data.items))
         setAttachment(data.attachmentUrl ? [data.attachmentUrl] : [])
       })
-      .catch(() => setFetchError("Could not load this LPO."))
+      .catch(() => setFetchError("Could not load this quotation."))
       .finally(() => setFetching(false))
   }, [id])
 
@@ -87,7 +85,7 @@ export default function AmendLpoPage() {
     if (!supplierName.trim()) { setError("Supplier name is required."); return }
     setSaving(true)
     try {
-      const res = await fetch(`/api/lpos/${id}`, {
+      const res = await fetch(`/api/quotations/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -95,13 +93,13 @@ export default function AmendLpoPage() {
           supplierName, shippingAddress, purchaseRep,
           orderDate, expectedArrival: expectedArrival || null,
           destinationOfGoods: destinationOfGoods || null,
-          notes, items: lines,
+          items: lines,
           attachmentUrl: attachment[0] || null,
         }),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error || "Could not save."); return }
-      router.push(`/admin/lpo/${id}`)
+      router.push(`/admin/quotations/${id}`)
     } catch { setError("Network error. Try again.") }
     finally { setSaving(false) }
   }
@@ -111,19 +109,18 @@ export default function AmendLpoPage() {
   if (fetching) return <p style={{ padding: 40, color: MUTED }}>Loading…</p>
   if (fetchError) return (
     <div style={{ padding: 40, textAlign: "center", color: MUTED }}>
-      {fetchError} <Link href="/admin/lpo" style={{ color: GREEN }}>Back</Link>
+      {fetchError} <Link href="/admin/quotations" style={{ color: GREEN }}>Back</Link>
     </div>
   )
 
   return (
     <div style={{ maxWidth: 900, margin: "0 auto" }}>
-      {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
-        <Link href="/admin/lpo" style={{ display: "flex", alignItems: "center", color: MUTED, textDecoration: "none" }}>
+        <Link href="/admin/quotations" style={{ display: "flex", alignItems: "center", color: MUTED, textDecoration: "none" }}>
           <ArrowLeft size={18} />
         </Link>
         <Pencil size={20} color={TEAL} />
-        <h1 style={{ fontSize: 20, fontWeight: 800, color: TEXT }}>Amend {lpo?.number}</h1>
+        <h1 style={{ fontSize: 20, fontWeight: 800, color: TEXT }}>Amend {quotation?.number}</h1>
         <span style={{ fontSize: 12, color: "white", background: TEAL, padding: "2px 10px", borderRadius: 999, fontWeight: 700, marginLeft: 4 }}>Amended on save</span>
       </div>
 
@@ -137,7 +134,7 @@ export default function AmendLpoPage() {
           <Field label="Purchase representative">
             <Input value={purchaseRep} onChange={(e) => setPurchaseRep(e.target.value)} />
           </Field>
-          <Field label="Order date">
+          <Field label="Date">
             <Input type="date" value={orderDate} onChange={(e) => setOrderDate(e.target.value)} />
           </Field>
           <Field label="Expected arrival">
@@ -154,21 +151,15 @@ export default function AmendLpoPage() {
         <DocLineItems lines={lines} setLines={setLines} />
 
         <div style={{ marginTop: 16 }}>
-          <Field label="Attached image or PDF (quote / delivery note / photo of goods)">
+          <Field label="Attached image or PDF (supplier quote / spec / photo)">
             <ImageUploader value={attachment} onChange={setAttachment} single allowPdf />
-          </Field>
-        </div>
-
-        <div style={{ marginTop: 16 }}>
-          <Field label="Payment details / notes">
-            <Input value={notes} onChange={(e) => setNotes(e.target.value)} />
           </Field>
         </div>
 
         <div style={{ marginTop: 20, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
           <span style={{ fontSize: 15, fontWeight: 700, color: TEXT }}>New total: {ksh(total)}</span>
           <div style={{ display: "flex", gap: 10 }}>
-            <Link href="/admin/lpo">
+            <Link href="/admin/quotations">
               <Button variant="outline" style={{ height: 42 }}>Cancel</Button>
             </Link>
             <Button onClick={save} disabled={saving} style={{ background: TEAL, color: "white", gap: 8, height: 42 }}>

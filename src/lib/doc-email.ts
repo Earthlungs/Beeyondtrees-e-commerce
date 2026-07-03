@@ -2,6 +2,7 @@ import { sendMail } from "@/lib/mailer"
 import {
   invoiceDocEmail,
   lpoDocEmail,
+  quotationDocEmail,
   receiptDocEmail,
   type DocEmailLine,
 } from "@/lib/email-templates"
@@ -11,7 +12,7 @@ import { signDoc } from "@/lib/doc-token"
 const BASE_URL = process.env.NEXTAUTH_URL || "https://www.beeyondtrees.org"
 
 // Public, login-free link for a document emailed to a client (carries a signed token).
-function publicUrl(type: "invoice" | "lpo" | "receipt", id: string): string {
+function publicUrl(type: "invoice" | "lpo" | "receipt" | "quotation", id: string): string {
   return `${BASE_URL}/doc/${type}/${id}?t=${signDoc(type, id)}`
 }
 
@@ -76,6 +77,27 @@ export async function sendLpoEmail(lpo: {
     viewUrl: publicUrl("lpo", lpo.id),
   })
   await sendMail({ to, subject: `Purchase Order ${lpo.number} from Beeyond Trees`, html })
+}
+
+export async function sendQuotationEmail(q: {
+  id: string; number: string; orderDate: Date; expectedArrival: Date | null
+  supplierName: string; shippingAddress: string | null; purchaseRep: string | null
+  destinationOfGoods?: string | null
+  items: unknown; subtotal: number; vat: number; total: number
+}, to: string) {
+  const html = quotationDocEmail({
+    number: q.number,
+    orderDate: fmtDate(q.orderDate),
+    expectedArrival: q.expectedArrival ? fmtDate(q.expectedArrival) : null,
+    supplierName: q.supplierName,
+    shippingAddress: q.shippingAddress,
+    purchaseRep: q.purchaseRep,
+    destinationOfGoods: q.destinationOfGoods ?? null,
+    items: toEmailLines((q.items as DocLine[]) ?? []),
+    subtotal: q.subtotal, vat: q.vat, total: q.total,
+    viewUrl: publicUrl("quotation", q.id),
+  })
+  await sendMail({ to, subject: `Quotation ${q.number} from Beeyond Trees`, html })
 }
 
 export async function sendReceiptEmail(order: {

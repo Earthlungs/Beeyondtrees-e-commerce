@@ -5,7 +5,7 @@ import { createHmac, timingSafeEqual } from "crypto"
 // Only someone who received the emailed link can open the document — the id
 // alone is not enough, and ids can't be enumerated into valid links.
 
-export type DocType = "invoice" | "lpo" | "receipt"
+export type DocType = "invoice" | "lpo" | "receipt" | "quotation"
 
 // NEXTAUTH_SECRET is always set in every environment that runs auth; reuse it so
 // there's no extra secret to manage. Fall back keeps local dev from crashing.

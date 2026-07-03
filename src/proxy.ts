@@ -42,7 +42,7 @@ export default async function proxy(request: NextRequest) {
     const canDoc = role && DOC_ROLES.includes(role)
     // factory_manager may view approved LPOs (read-only) so they can pick one when starting a batch
     const canLpoView = role === "factory_manager" && path.startsWith("/admin/lpo")
-    const docPath = path.startsWith("/admin/lpo") || path.startsWith("/admin/invoicing")
+    const docPath = path.startsWith("/admin/lpo") || path.startsWith("/admin/invoicing") || path.startsWith("/admin/quotations")
     if (role && TRACING_ROLES.includes(role) && !path.startsWith("/admin/tracing") && !(canDoc && docPath) && !canLpoView && !COMMON) {
       return NextResponse.redirect(new URL("/admin/tracing", request.url))
     }
@@ -52,7 +52,9 @@ export default async function proxy(request: NextRequest) {
     // dashboard at /admin/finance. Everything else bounces to /admin/lpo.
     const APPROVAL_ROLES = ["chief", "finance"]
     const canFinance = role === "finance" && path.startsWith("/admin/finance")
-    if (role && APPROVAL_ROLES.includes(role) && !path.startsWith("/admin/lpo") && !canFinance && !COMMON) {
+    // Chief also approves external quotations, so both approval roles may open them.
+    const approvalDocPath = path.startsWith("/admin/lpo") || path.startsWith("/admin/quotations")
+    if (role && APPROVAL_ROLES.includes(role) && !approvalDocPath && !canFinance && !COMMON) {
       return NextResponse.redirect(new URL("/admin/lpo", request.url))
     }
     // assistant_ceo is intentionally unconfined here — isAdminish() treats it as

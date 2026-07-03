@@ -6,8 +6,9 @@ import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ArrowLeft, Loader2, Check, X, Lock, CircleDot, CircleCheck, MapPin, Plus, Trash2 } from "lucide-react"
+import { ArrowLeft, Loader2, Check, X, Lock, CircleDot, CircleCheck, MapPin, Plus, Trash2, FileText } from "lucide-react"
 import ImageUploader from "@/components/admin/ImageUploader"
+import { isPdfUrl } from "@/lib/attachments"
 import ProductionProgress from "@/components/admin/ProductionProgress"
 import ZoomImg from "@/components/admin/ZoomImg"
 import { STAGES, STAGE_LABELS, STAGE_ROLES, ROLE_LABELS, stageIndex, COST_FIELDS, NOT_ALLOWED, isAdminishRole, type Stage } from "@/lib/tracing-stages"
@@ -257,7 +258,14 @@ export default function BatchDetail() {
         )}
         {lpoAttachment && (
           <div style={{ position: "relative", flexShrink: 0 }}>
-            <ZoomImg src={lpoAttachment} alt="LPO attachment" style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 10, border: "1px solid var(--admin-border)" }} />
+            {isPdfUrl(lpoAttachment) ? (
+              <a href={lpoAttachment} target="_blank" rel="noopener noreferrer"
+                style={{ width: 52, height: 52, borderRadius: 10, border: "1px solid var(--admin-border)", background: "#FEF2F2", display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none" }}>
+                <FileText size={22} color={RED} />
+              </a>
+            ) : (
+              <ZoomImg src={lpoAttachment} alt="LPO attachment" style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 10, border: "1px solid var(--admin-border)" }} />
+            )}
             <span style={{ position: "absolute", bottom: -6, left: "50%", transform: "translateX(-50%)", background: "#8C6A4A", color: "white", fontSize: 8.5, fontWeight: 700, padding: "1px 6px", borderRadius: 999, whiteSpace: "nowrap" }}>LPO</span>
           </div>
         )}
@@ -383,7 +391,15 @@ export default function BatchDetail() {
                   )}
                   {stage === "bulk_request" && lpoAttachment && (
                     <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8 }}>
-                      <ZoomImg src={lpoAttachment} alt="LPO attachment" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 8, border: "1px solid var(--admin-border)" }} />
+                      {isPdfUrl(lpoAttachment) ? (
+                        <a href={lpoAttachment} target="_blank" rel="noopener noreferrer"
+                          style={{ width: 56, height: 56, borderRadius: 8, border: "1px solid var(--admin-border)", background: "#FEF2F2", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, textDecoration: "none", flexShrink: 0 }}>
+                          <FileText size={20} color={RED} />
+                          <span style={{ fontSize: 8.5, fontWeight: 700, color: RED }}>PDF</span>
+                        </a>
+                      ) : (
+                        <ZoomImg src={lpoAttachment} alt="LPO attachment" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 8, border: "1px solid var(--admin-border)" }} />
+                      )}
                       <div style={{ fontSize: 12, color: MUTED }}>
                         Attachment from {lpoNumber ? <span style={{ color: TEXT, fontWeight: 600 }}>{lpoNumber}</span> : "the LPO"} — follows this batch through all stages
                       </div>

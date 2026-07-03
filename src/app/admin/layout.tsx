@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import {
   LayoutDashboard, Package, Truck, LogOut, Menu, X, Users, TrendingUp,
   Settings, Store, ShoppingCart, FileText, ClipboardList, UserCog, Workflow,
-  BarChart3, MessageSquare, Code2, Banknote,
+  BarChart3, MessageSquare, Code2, Banknote, ScrollText,
 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { ROLE_LABELS } from "@/lib/tracing-stages"
@@ -112,7 +112,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const financeDash: NavItem[] = role === "finance"
       ? [{ href: "/admin/finance", label: "Finance Dashboard", icon: Banknote }]
       : []
-    groups = [{ title: role === "chief" ? "Approvals" : "Finance", items: [...financeDash, { href: "/admin/lpo", label: "LPO", icon: ClipboardList }, pos, chat] }]
+    // Chief approves external quotations too.
+    const quotations: NavItem[] = role === "chief"
+      ? [{ href: "/admin/quotations", label: "Quotation", icon: ScrollText }]
+      : []
+    groups = [{ title: role === "chief" ? "Approvals" : "Finance", items: [...financeDash, { href: "/admin/lpo", label: "LPO", icon: ClipboardList }, ...quotations, pos, chat] }]
   } else if (isTracing && !canDoc) {
     // factory_manager can view approved LPOs to pick one when starting a batch
     const lpoItems: NavItem[] = role === "factory_manager"
@@ -125,6 +129,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         title: "Documents",
         items: [
           { href: "/admin/lpo", label: "LPO", icon: ClipboardList },
+          { href: "/admin/quotations", label: "Quotation", icon: ScrollText },
           { href: "/admin/invoicing", label: "Invoicing", icon: FileText },
         ],
       },
@@ -144,6 +149,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           { href: "/admin/deliveries", label: "Deliveries", icon: Truck },
           ...(isAdmin ? [
             { href: "/admin/lpo", label: "LPO", icon: ClipboardList },
+            { href: "/admin/quotations", label: "Quotation", icon: ScrollText },
             { href: "/admin/invoicing", label: "Invoicing", icon: FileText },
             { href: "/admin/finance", label: "Finance", icon: Banknote },
             { href: "/admin/analytics", label: "Analytics", icon: TrendingUp },

@@ -336,6 +336,34 @@ export function lpoDocEmail({
   return docLayout({ title: "PURCHASE ORDER", docNumber: number, body, viewUrl, viewLabel: "View / Print LPO →" })
 }
 
+// Quotation — same shape as the LPO doc email but no Payment Details block.
+export function quotationDocEmail({
+  number, orderDate, expectedArrival, supplierName, shippingAddress, purchaseRep,
+  destinationOfGoods, items, subtotal, vat, total, viewUrl,
+}: {
+  number: string; orderDate: string; expectedArrival: string | null; supplierName: string
+  shippingAddress: string | null; purchaseRep: string | null; destinationOfGoods: string | null
+  items: DocEmailLine[]; subtotal: number; vat: number; total: number; viewUrl?: string
+}) {
+  const body = `
+    ${metaGrid([
+      { label: "Supplier", value: supplierName },
+      { label: "Source of Supply", value: shippingAddress || "" },
+      { label: "Purchase Representative", value: purchaseRep || "" },
+      { label: "Date", value: orderDate },
+      { label: "Expected Arrival", value: expectedArrival || "" },
+      ...(destinationOfGoods ? [{ label: "Destination of Goods", value: destinationOfGoods }] : []),
+    ])}
+    ${lineItemsTable(items, "tax")}
+    ${totalsBlock([
+      { label: "Amount", value: ksh(subtotal) },
+      { label: "VAT", value: ksh(vat) },
+      { label: "Total", value: ksh(total), bold: true },
+    ])}
+  `
+  return docLayout({ title: "QUOTATION", docNumber: number, body, viewUrl, viewLabel: "View / Print Quotation →" })
+}
+
 export function receiptDocEmail({
   receiptNo, date, customerName, soldBy, paymentMethod, mpesaCode, cardRef,
   items, total, cashReceived, change, viewUrl,
