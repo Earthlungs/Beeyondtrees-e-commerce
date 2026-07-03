@@ -11,12 +11,15 @@ const BASE_URL = process.env.NEXTAUTH_URL || "http://localhost:3000"
 // Anyone in the pipeline (or CEO-level) can see the board.
 const VIEW_ROLES = [...TRACING_ROLES, "admin", "it_specialist", "assistant_ceo"]
 
-// Raw columns on Batch (origin / LPO creator) not modelled in Prisma.
-async function fetchBatchOrigins(ids: string[]): Promise<Map<string, { origin: string | null; lpoCreatedByName: string | null; lpoCreatedByUserId: string | null }>> {
+// Raw columns on Batch (origin / LPO creator) not modelled in Prisma, plus the
+// linked LPO's image attachment so it follows the batch across the board.
+async function fetchBatchOrigins(ids: string[]): Promise<Map<string, { origin: string | null; lpoCreatedByName: string | null; lpoCreatedByUserId: string | null; lpoAttachmentUrl: string | null }>> {
   if (ids.length === 0) return new Map()
   try {
-    const rows = await prisma.$queryRaw<{ id: string; origin: string | null; lpoCreatedByName: string | null; lpoCreatedByUserId: string | null }[]>`
-      SELECT id, "origin", "lpoCreatedByName", "lpoCreatedByUserId" FROM "Batch" WHERE id = ANY(${ids}::text[])
+    const rows = await prisma.$queryRaw<{ id: string; origin: string | null; lpoCreatedByName: string | null; lpoCreatedByUserId: string | null; lpoAttachmentUrl: string | null }[]>`
+      SELECT b.id, b."origin", b."lpoCreatedByName", b."lpoCreatedByUserId", l."attachmentUrl" AS "lpoAttachmentUrl"
+      FROM "Batch" b LEFT JOIN "Lpo" l ON l.id = b."lpoId"
+      WHERE b.id = ANY(${ids}::text[])
     `
     return new Map(rows.map((r) => [r.id, r]))
   } catch {
@@ -80,6 +83,7 @@ export async function GET(request: NextRequest) {
         matchedProductId: b.matchedProductId ?? null,
         origin: origins.get(b.id)?.origin ?? null,
         lpoCreatedByName: origins.get(b.id)?.lpoCreatedByName ?? null,
+        lpoAttachmentUrl: origins.get(b.id)?.lpoAttachmentUrl ?? null,
         productionPercent: prodPercents.get(b.id) ?? null,
         summary,
       }

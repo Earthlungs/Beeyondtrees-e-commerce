@@ -33,7 +33,7 @@ export function Footer() {
             <h4 style={{ fontWeight: 600, marginBottom: 14, color: "white", fontSize: 14, letterSpacing: "0.05em" }}>Reach us</h4>
             <div style={{ display: "flex", flexDirection: "column", gap: 11, fontSize: 14, color: "#B8A99A" }}>
               <span style={{ display: "flex", alignItems: "center", gap: 8 }}><MapPin size={15} /> Nairobi, Kenya</span>
-              <span style={{ display: "flex", alignItems: "center", gap: 8 }}><Phone size={15} /> +254 718 681 684</span>
+              <span style={{ display: "flex", alignItems: "center", gap: 8 }}><Phone size={15} /> +254 790 279 826</span>
               <span style={{ display: "flex", alignItems: "center", gap: 8 }}><Mail size={15} /> beeyondtrees@earthlungs.org</span>
             </div>
           </div>

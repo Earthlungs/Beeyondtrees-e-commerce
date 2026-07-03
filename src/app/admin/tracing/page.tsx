@@ -28,6 +28,7 @@ interface BatchRow {
   createdAt: string
   matchedProductId: string | null
   origin: string | null // "internal" | "external" — where the LPO came from
+  lpoAttachmentUrl: string | null // image attached to the originating LPO
   productionPercent: number | null // live production completion (when at production stage)
   summary: { costPerUnit: number; verdict: string } | null
 }
@@ -52,6 +53,7 @@ interface AvailableLpo {
   supplierName: string
   items: { description: string; qty: number; unitPrice: number }[]
   total: number
+  attachmentUrl: string | null
 }
 
 const field: React.CSSProperties = {
@@ -261,6 +263,10 @@ export default function TracingBoard() {
           <div style={{ display: "grid", gap: 8 }}>
             {availableLpos.map((lpo) => (
               <div key={lpo.id} className="lpo-tray-row">
+                {lpo.attachmentUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={lpo.attachmentUrl} alt="" style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 6, border: "1px solid var(--admin-border)", flexShrink: 0 }} />
+                )}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, color: GREEN, fontSize: 13 }}>{lpo.number}</div>
                   <div style={{ fontSize: 12, color: MUTED, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -293,7 +299,12 @@ export default function TracingBoard() {
 
             {selectedLpo ? (
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "#F0FDF4", border: `2px solid ${GREEN}`, borderRadius: 10 }}>
-                <ClipboardList size={16} color={GREEN} style={{ flexShrink: 0 }} />
+                {selectedLpo.attachmentUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={selectedLpo.attachmentUrl} alt="" style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 6, border: "1px solid var(--admin-border)", flexShrink: 0 }} />
+                ) : (
+                  <ClipboardList size={16} color={GREEN} style={{ flexShrink: 0 }} />
+                )}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, color: GREEN, fontSize: 13 }}>{selectedLpo.number}</div>
                   <div style={{ fontSize: 12, color: MUTED, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -423,7 +434,9 @@ export default function TracingBoard() {
         <div style={{ display: "grid", gap: 10 }}>
           {visibleRows.map((b) => {
             const rowProduct = b.matchedProductId ? catalogProducts.find((p) => p.id === b.matchedProductId) : null
-            const rowThumb = rowProduct?.images?.[0] || null
+            // Prefer the matched catalog product image; fall back to the image
+            // attached to the originating LPO so it follows the batch.
+            const rowThumb = rowProduct?.images?.[0] || b.lpoAttachmentUrl || null
             return (
             <Link key={b.id} href={`/admin/tracing/${b.id}`} style={{ textDecoration: "none" }}>
               <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, padding: 16, display: "flex", alignItems: "center", gap: 16 }}>

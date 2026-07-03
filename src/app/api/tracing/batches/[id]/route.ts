@@ -45,11 +45,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
 
   // Raw columns (origin + LPO creator) for the origin badge and the receiving
-  // gate ("whoever created the LPO receives the goods").
-  let extra: { origin: string | null; lpoCreatedByName: string | null; lpoCreatedByUserId: string | null } = { origin: null, lpoCreatedByName: null, lpoCreatedByUserId: null }
+  // gate ("whoever created the LPO receives the goods"), plus the linked LPO's
+  // number and image attachment so it stays visible through every stage.
+  let extra: { origin: string | null; lpoCreatedByName: string | null; lpoCreatedByUserId: string | null; lpoNumber: string | null; lpoAttachmentUrl: string | null } = { origin: null, lpoCreatedByName: null, lpoCreatedByUserId: null, lpoNumber: null, lpoAttachmentUrl: null }
   try {
     const rows = await prisma.$queryRaw<typeof extra[]>`
-      SELECT "origin", "lpoCreatedByName", "lpoCreatedByUserId" FROM "Batch" WHERE id = ${id}
+      SELECT b."origin", b."lpoCreatedByName", b."lpoCreatedByUserId", l.number AS "lpoNumber", l."attachmentUrl" AS "lpoAttachmentUrl"
+      FROM "Batch" b LEFT JOIN "Lpo" l ON l.id = b."lpoId"
+      WHERE b.id = ${id}
     `
     if (rows[0]) extra = rows[0]
   } catch { /* columns not present yet */ }

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Loader2, Pencil, ArrowLeft, Check } from "lucide-react"
 import DocLineItems, { EditLine, emptyLine, lineTotals } from "@/components/admin/DocLineItems"
+import ImageUploader from "@/components/admin/ImageUploader"
 import type { DocLine } from "@/lib/docs"
 
 const TEXT = "var(--admin-text)"
@@ -21,6 +22,7 @@ interface LpoDetail {
   purchaseRep: string | null; orderDate: string; expectedArrival: string | null
   destinationOfGoods: string | null; notes: string | null; items: DocLine[]
   subtotal: number; vat: number; total: number; status: string | null
+  attachmentUrl?: string | null
 }
 
 function toEditLines(items: DocLine[]): EditLine[] {
@@ -56,6 +58,7 @@ export default function AmendLpoPage() {
   const [destinationOfGoods, setDestinationOfGoods] = useState("")
   const [notes, setNotes] = useState("")
   const [lines, setLines] = useState<EditLine[]>([emptyLine()])
+  const [attachment, setAttachment] = useState<string[]>([])
 
   useEffect(() => {
     fetch(`/api/lpos/${id}`)
@@ -73,6 +76,7 @@ export default function AmendLpoPage() {
         setDestinationOfGoods(data.destinationOfGoods ?? "")
         setNotes(data.notes ?? "")
         setLines(toEditLines(data.items))
+        setAttachment(data.attachmentUrl ? [data.attachmentUrl] : [])
       })
       .catch(() => setFetchError("Could not load this LPO."))
       .finally(() => setFetching(false))
@@ -92,6 +96,7 @@ export default function AmendLpoPage() {
           orderDate, expectedArrival: expectedArrival || null,
           destinationOfGoods: destinationOfGoods || null,
           notes, items: lines,
+          attachmentUrl: attachment[0] || null,
         }),
       })
       const data = await res.json()
@@ -147,6 +152,12 @@ export default function AmendLpoPage() {
         </div>
 
         <DocLineItems lines={lines} setLines={setLines} />
+
+        <div style={{ marginTop: 16 }}>
+          <Field label="Attached image (quote / delivery note / photo of goods)">
+            <ImageUploader value={attachment} onChange={setAttachment} single />
+          </Field>
+        </div>
 
         <div style={{ marginTop: 16 }}>
           <Field label="Payment details / notes">

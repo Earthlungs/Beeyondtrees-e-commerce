@@ -15,8 +15,9 @@ export async function GET(request: NextRequest) {
       supplierName: string
       items: unknown
       total: number
+      attachmentUrl: string | null
     }[]>`
-      SELECT l.id, l.number, l."supplierName", l.items, l.total
+      SELECT l.id, l.number, l."supplierName", l.items, l.total, l."attachmentUrl"
       FROM "Lpo" l
       WHERE l.status = 'approved'
         AND l.id NOT IN (

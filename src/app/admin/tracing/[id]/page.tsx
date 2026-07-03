@@ -198,6 +198,9 @@ export default function BatchDetail() {
   const currentIdx = stageIndex(currentStage)
   const matchedProduct = products.find((p) => p.id === (batch.matchedProductId as string | null))
   const batchImage = matchedProduct?.images?.[0] || null
+  // Image attached to the originating LPO — follows the batch through every stage.
+  const lpoAttachment = (batch.lpoAttachmentUrl as string | null) || null
+  const lpoNumber = (batch.lpoNumber as string | null) || null
   const inspection = batch.inspection as { quantityAccepted?: number } | null
   const dispatch = batch.dispatch as { quantity?: number } | null
   const requisitions = (batch.requisitions as { quantityRequired?: number; requestedBy?: string }[]) ?? []
@@ -251,6 +254,12 @@ export default function BatchDetail() {
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
         {batchImage && (
           <ZoomImg src={batchImage} style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 10, border: "1px solid var(--admin-border)", flexShrink: 0 }} />
+        )}
+        {lpoAttachment && (
+          <div style={{ position: "relative", flexShrink: 0 }}>
+            <ZoomImg src={lpoAttachment} alt="LPO attachment" style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 10, border: "1px solid var(--admin-border)" }} />
+            <span style={{ position: "absolute", bottom: -6, left: "50%", transform: "translateX(-50%)", background: "#8C6A4A", color: "white", fontSize: 8.5, fontWeight: 700, padding: "1px 6px", borderRadius: 999, whiteSpace: "nowrap" }}>LPO</span>
+          </div>
         )}
         <div>
           <h1 style={{ fontSize: 22, fontWeight: "bold", color: TEXT }}>{batch.code as string}</h1>
@@ -370,6 +379,14 @@ export default function BatchDetail() {
                     <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8 }}>
                       <ZoomImg src={batchImage} alt={matchedProduct?.name ?? ""} style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 8, border: "1px solid var(--admin-border)" }} />
                       <div style={{ fontSize: 12, color: MUTED }}>Linked product: <span style={{ color: TEXT, fontWeight: 600 }}>{matchedProduct?.name}</span></div>
+                    </div>
+                  )}
+                  {stage === "bulk_request" && lpoAttachment && (
+                    <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8 }}>
+                      <ZoomImg src={lpoAttachment} alt="LPO attachment" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 8, border: "1px solid var(--admin-border)" }} />
+                      <div style={{ fontSize: 12, color: MUTED }}>
+                        Attachment from {lpoNumber ? <span style={{ color: TEXT, fontWeight: 600 }}>{lpoNumber}</span> : "the LPO"} — follows this batch through all stages
+                      </div>
                     </div>
                   )}
                 </>

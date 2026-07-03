@@ -48,9 +48,11 @@ export default async function proxy(request: NextRequest) {
     }
     // Chief + Finance are approval/oversight roles: confine them to the LPO
     // documents (chief approves external LPOs; finance is notified on CEO
-    // approval) plus POS/chat/account. Everything else bounces to /admin/lpo.
+    // approval) plus POS/chat/account. Finance additionally gets its own LPO
+    // dashboard at /admin/finance. Everything else bounces to /admin/lpo.
     const APPROVAL_ROLES = ["chief", "finance"]
-    if (role && APPROVAL_ROLES.includes(role) && !path.startsWith("/admin/lpo") && !COMMON) {
+    const canFinance = role === "finance" && path.startsWith("/admin/finance")
+    if (role && APPROVAL_ROLES.includes(role) && !path.startsWith("/admin/lpo") && !canFinance && !COMMON) {
       return NextResponse.redirect(new URL("/admin/lpo", request.url))
     }
     // assistant_ceo is intentionally unconfined here — isAdminish() treats it as

@@ -50,7 +50,7 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <p style={{ fontSize: '12px', color: '#A89F91', marginBottom: '2px' }}>Phone</p>
-                    <p style={{ fontWeight: '500', color: '#4A3F2F', fontSize: '15px' }}>+254 718 681 684</p>
+                    <p style={{ fontWeight: '500', color: '#4A3F2F', fontSize: '15px' }}>+254 790 279 826</p>
                   </div>
                 </CardContent>
               </Card>

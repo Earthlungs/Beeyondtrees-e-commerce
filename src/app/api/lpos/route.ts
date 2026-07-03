@@ -49,18 +49,20 @@ type ExtraFields = {
   origin: string | null
   createdByName: string | null
   onBehalf: boolean
+  attachmentUrl: string | null
 }
 
 const EXTRA_DEFAULTS: ExtraFields = {
   status: "approved", approvedBy: null, approvedAt: null, rejectionReason: null,
   destinationOfGoods: null, amended: false, origin: "internal", createdByName: null, onBehalf: false,
+  attachmentUrl: null,
 }
 
 async function fetchExtras(ids: string[]): Promise<Map<string, ExtraFields>> {
   if (ids.length === 0) return new Map()
   try {
     const rows = await prisma.$queryRaw<(ExtraFields & { id: string })[]>`
-      SELECT id, status, "approvedBy", "approvedAt", "rejectionReason", "destinationOfGoods", "amended", "origin", "createdByName", "onBehalf"
+      SELECT id, status, "approvedBy", "approvedAt", "rejectionReason", "destinationOfGoods", "amended", "origin", "createdByName", "onBehalf", "attachmentUrl"
       FROM "Lpo"
       WHERE id = ANY(${ids}::text[])
     `
@@ -123,6 +125,11 @@ export async function POST(request: NextRequest) {
   // Where to email the generated LPO. Stored now; sent immediately if the admin
   // creates it (already approved), otherwise sent on final approval (PATCH).
   const recipientEmail = typeof body.email === "string" && isValidEmail(body.email.trim()) ? body.email.trim() : null
+  // Optional image attachment (quote / delivery note / photo of goods) — a
+  // Cloudinary secure URL uploaded from the browser. Follows the LPO through
+  // approval and into the tracing pipeline.
+  const attachmentUrl = typeof body.attachmentUrl === "string" && /^https?:\/\//.test(body.attachmentUrl.trim())
+    ? body.attachmentUrl.trim() : null
 
   try {
     const lpo = await createNumbered(
@@ -156,6 +163,7 @@ export async function POST(request: NextRequest) {
             "approvedAt" = ${approvedAt}::timestamp,
             "destinationOfGoods" = ${destinationOfGoods}::text,
             "recipientEmail" = ${recipientEmail}::text,
+            "attachmentUrl" = ${attachmentUrl}::text,
             "origin" = ${origin}::text,
             "createdByUserId" = ${creatorId}::text,
             "createdByName" = ${creatorName}::text
@@ -220,7 +228,7 @@ export async function POST(request: NextRequest) {
       } catch (e) { console.error("[mailer] LPO copy:", e) }
     }
 
-    return NextResponse.json({ ...lpo, status, approvedBy: isAdmin ? approver : null, approvedAt, destinationOfGoods, recipientEmail, emailed, amended: false }, { status: 201 })
+    return NextResponse.json({ ...lpo, status, approvedBy: isAdmin ? approver : null, approvedAt, destinationOfGoods, recipientEmail, attachmentUrl, emailed, amended: false }, { status: 201 })
   } catch (e) {
     console.error("LPO create failed:", e)
     return NextResponse.json({ error: "Could not save the LPO. Please try again." }, { status: 500 })

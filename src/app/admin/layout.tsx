@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import {
   LayoutDashboard, Package, Truck, LogOut, Menu, X, Users, TrendingUp,
   Settings, Store, ShoppingCart, FileText, ClipboardList, UserCog, Workflow,
-  BarChart3, MessageSquare, Code2,
+  BarChart3, MessageSquare, Code2, Banknote,
 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { ROLE_LABELS } from "@/lib/tracing-stages"
@@ -108,7 +108,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     groups = [{ items: [pos, chat] }]
   } else if (isApproval) {
     // Chief (approves external LPOs) / Finance (notified on CEO approval): LPO + POS.
-    groups = [{ title: role === "chief" ? "Approvals" : "Finance", items: [{ href: "/admin/lpo", label: "LPO", icon: ClipboardList }, pos, chat] }]
+    // Finance also gets its own LPO oversight dashboard.
+    const financeDash: NavItem[] = role === "finance"
+      ? [{ href: "/admin/finance", label: "Finance Dashboard", icon: Banknote }]
+      : []
+    groups = [{ title: role === "chief" ? "Approvals" : "Finance", items: [...financeDash, { href: "/admin/lpo", label: "LPO", icon: ClipboardList }, pos, chat] }]
   } else if (isTracing && !canDoc) {
     // factory_manager can view approved LPOs to pick one when starting a batch
     const lpoItems: NavItem[] = role === "factory_manager"
@@ -141,6 +145,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           ...(isAdmin ? [
             { href: "/admin/lpo", label: "LPO", icon: ClipboardList },
             { href: "/admin/invoicing", label: "Invoicing", icon: FileText },
+            { href: "/admin/finance", label: "Finance", icon: Banknote },
             { href: "/admin/analytics", label: "Analytics", icon: TrendingUp },
             { href: "/admin/customers", label: "Customers", icon: Users },
           ] : [chat]),

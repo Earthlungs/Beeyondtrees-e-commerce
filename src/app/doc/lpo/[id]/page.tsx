@@ -20,14 +20,15 @@ export default async function PublicLpoPage({
   const lpo = await prisma.lpo.findUnique({ where: { id } })
   if (!lpo) return <InvalidLink message="This purchase order could not be found." />
 
-  // status/destinationOfGoods are raw columns. Treat missing columns as approved.
+  // status/destinationOfGoods/attachmentUrl are raw columns. Treat missing columns as approved.
   let status: string | null = "approved"
   let destinationOfGoods: string | null = null
+  let attachmentUrl: string | null = null
   try {
-    const rows = await prisma.$queryRaw<{ status: string; destinationOfGoods: string | null }[]>`
-      SELECT status, "destinationOfGoods" FROM "Lpo" WHERE id = ${id}
+    const rows = await prisma.$queryRaw<{ status: string; destinationOfGoods: string | null; attachmentUrl: string | null }[]>`
+      SELECT status, "destinationOfGoods", "attachmentUrl" FROM "Lpo" WHERE id = ${id}
     `
-    if (rows[0]) { status = rows[0].status; destinationOfGoods = rows[0].destinationOfGoods }
+    if (rows[0]) { status = rows[0].status; destinationOfGoods = rows[0].destinationOfGoods; attachmentUrl = rows[0].attachmentUrl }
   } catch { /* pre-migration — treat as approved */ }
 
   if (status && status !== "approved") {
@@ -40,6 +41,13 @@ export default async function PublicLpoPage({
       <div style={{ padding: "24px 12px 48px" }}>
         <BrandedDoc title="PURCHASE ORDER">
           <LpoBody lpo={lpo} destinationOfGoods={destinationOfGoods} />
+          {attachmentUrl && (
+            <div style={{ marginTop: 30 }}>
+              <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 8 }}>Attachment</div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={attachmentUrl} alt="LPO attachment" style={{ maxWidth: "100%", maxHeight: 420, borderRadius: 8, border: "1px solid #EEE" }} />
+            </div>
+          )}
         </BrandedDoc>
       </div>
     </div>

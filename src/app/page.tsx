@@ -90,7 +90,19 @@ export default function Home() {
                   initial={{ y: "110%" }} animate={{ y: 0 }}
                   transition={{ duration: 0.9, delay: 0.25 + i * 0.12, ease: [0.22, 1, 0.36, 1] }}
                 >
-                  {word}
+                  {i === 0 ? (
+                    <>
+                      BEEy
+                      <motion.span
+                        animate={{ rotate: 360 }}
+                        transition={{ repeat: Infinity, duration: 1.4, ease: "linear" }}
+                        style={{ display: "inline-block", fontSize: "0.78em", verticalAlign: "middle", lineHeight: 1, filter: "drop-shadow(0 0 6px rgba(255,255,255,0.4))" }}
+                      >
+                        ⚽
+                      </motion.span>
+                      nd
+                    </>
+                  ) : word}
                 </motion.span>
               </span>
             ))}
@@ -369,7 +381,7 @@ export default function Home() {
               <h4 style={{ fontWeight: 600, marginBottom: 14, color: "white", fontSize: 14, letterSpacing: "0.05em" }}>Reach us</h4>
               <div style={{ display: "flex", flexDirection: "column", gap: 11, fontSize: 14, color: "#B8A99A" }}>
                 <span style={{ display: "flex", alignItems: "center", gap: 8 }}><MapPin size={15} /> Nairobi, Kenya</span>
-                <span style={{ display: "flex", alignItems: "center", gap: 8 }}><Phone size={15} /> +254 718 681 684</span>
+                <span style={{ display: "flex", alignItems: "center", gap: 8 }}><Phone size={15} /> +254 790 279 826</span>
                 <span style={{ display: "flex", alignItems: "center", gap: 8 }}><Mail size={15} /> beeyondtrees@earthlungs.org</span>
               </div>
             </div>

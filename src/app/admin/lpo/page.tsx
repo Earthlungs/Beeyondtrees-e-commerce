@@ -6,8 +6,9 @@ import { useSession } from "next-auth/react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ClipboardList, Plus, X, Loader2, Printer, Check, Ban, Eye, Pencil } from "lucide-react"
+import { ClipboardList, Plus, X, Loader2, Printer, Check, Ban, Eye, Pencil, Paperclip } from "lucide-react"
 import DocLineItems, { EditLine, emptyLine } from "@/components/admin/DocLineItems"
+import ImageUploader from "@/components/admin/ImageUploader"
 import { ConfirmModal, PromptModal, SuccessModal } from "@/components/admin/ConfirmModal"
 import { isAdminishRole } from "@/lib/tracing-stages"
 
@@ -31,6 +32,7 @@ interface Lpo {
   origin?: string | null // "internal" | "external"
   onBehalf?: boolean
   createdByName?: string | null
+  attachmentUrl?: string | null
 }
 
 export default function LpoPage() {
@@ -41,7 +43,9 @@ export default function LpoPage() {
   const isExec = role === "executive"
   const isChief = role === "chief"
   // Originators: Procurement Officer (internal) + External Procurement (external).
-  const canCreate = role === "procurement_officer" || role === "external_procurement" || isAdmin
+  // Factory Admin (executive) may also raise internal LPOs — the backend
+  // auto-approves their own stage (exec_approved) and forwards to the CEO.
+  const canCreate = role === "procurement_officer" || role === "external_procurement" || isExec || isAdmin
   const [lpos, setLpos] = useState<Lpo[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -66,6 +70,9 @@ export default function LpoPage() {
   const [email, setEmail] = useState("")
   const [notes, setNotes] = useState("")
   const [lines, setLines] = useState<EditLine[]>([emptyLine()])
+  // Single image attachment (quote / delivery note / photo) — follows the LPO
+  // through approval and into the tracing pipeline.
+  const [attachment, setAttachment] = useState<string[]>([])
 
   const load = async () => {
     try {
@@ -78,6 +85,7 @@ export default function LpoPage() {
   const resetForm = () => {
     setSupplierName(""); setShippingAddress(""); setPurchaseRep(""); setOrderDate(today)
     setExpectedArrival(""); setDestinationOfGoods(""); setEmail(""); setNotes(""); setLines([emptyLine()])
+    setAttachment([])
   }
 
   const save = async () => {
@@ -88,7 +96,7 @@ export default function LpoPage() {
       const res = await fetch("/api/lpos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ supplierName, shippingAddress, purchaseRep, orderDate, expectedArrival: expectedArrival || null, destinationOfGoods: destinationOfGoods || null, email: email || null, notes, items: lines }),
+        body: JSON.stringify({ supplierName, shippingAddress, purchaseRep, orderDate, expectedArrival: expectedArrival || null, destinationOfGoods: destinationOfGoods || null, email: email || null, notes, items: lines, attachmentUrl: attachment[0] || null }),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error || "Could not save LPO."); return }
@@ -239,6 +247,11 @@ export default function LpoPage() {
           </div>
           <DocLineItems lines={lines} setLines={setLines} />
           <div style={{ marginTop: 16 }}>
+            <Field label="Attach image (quote / delivery note / photo of goods)">
+              <ImageUploader value={attachment} onChange={setAttachment} single />
+            </Field>
+          </div>
+          <div style={{ marginTop: 16 }}>
             <Field label="Payment details / notes"><Input value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
           </div>
           <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end" }}>
@@ -266,7 +279,12 @@ export default function LpoPage() {
             <tbody>
               {lpos.map((l) => (
                 <tr key={l.id} style={{ borderTop: "1px solid var(--admin-border)" }}>
-                  <td style={{ ...td, fontWeight: 600 }}>{l.number}</td>
+                  <td style={{ ...td, fontWeight: 600 }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                      {l.number}
+                      {l.attachmentUrl && <Paperclip size={12} color={MUTED} aria-label="Has attachment" />}
+                    </span>
+                  </td>
                   <td style={td}>{l.supplierName}</td>
                   <td style={td}>{new Date(l.orderDate).toLocaleDateString("en-KE")}</td>
                   <td style={{ ...td, textAlign: "right", fontWeight: 600 }}>{ksh(l.total)}</td>

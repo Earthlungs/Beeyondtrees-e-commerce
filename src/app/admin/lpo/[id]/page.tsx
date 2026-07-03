@@ -29,9 +29,10 @@ export default async function LpoDocPage({ params }: { params: Promise<{ id: str
   let recipientEmail: string | null = null
   let amended = false
   let origin: string | null = null
+  let attachmentUrl: string | null = null
   try {
-    const rows = await prisma.$queryRaw<{ status: string; rejectionReason: string | null; destinationOfGoods: string | null; recipientEmail: string | null; amended: boolean; origin: string | null }[]>`
-      SELECT status, "rejectionReason", "destinationOfGoods", "recipientEmail", "amended", "origin" FROM "Lpo" WHERE id = ${id}
+    const rows = await prisma.$queryRaw<{ status: string; rejectionReason: string | null; destinationOfGoods: string | null; recipientEmail: string | null; amended: boolean; origin: string | null; attachmentUrl: string | null }[]>`
+      SELECT status, "rejectionReason", "destinationOfGoods", "recipientEmail", "amended", "origin", "attachmentUrl" FROM "Lpo" WHERE id = ${id}
     `
     if (rows[0]) {
       status = rows[0].status
@@ -40,6 +41,7 @@ export default async function LpoDocPage({ params }: { params: Promise<{ id: str
       recipientEmail = rows[0].recipientEmail
       amended = rows[0].amended ?? false
       origin = rows[0].origin
+      attachmentUrl = rows[0].attachmentUrl
     }
   } catch { /* pre-migration — treat as approved */ }
 
@@ -110,6 +112,16 @@ export default async function LpoDocPage({ params }: { params: Promise<{ id: str
         )}
 
         <LpoBody lpo={lpo} destinationOfGoods={destinationOfGoods} />
+
+        {attachmentUrl && (
+          <div style={{ marginTop: 30 }}>
+            <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 8 }}>Attachment</div>
+            <a href={attachmentUrl} target="_blank" rel="noopener noreferrer">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={attachmentUrl} alt="LPO attachment" style={{ maxWidth: "100%", maxHeight: 420, borderRadius: 8, border: "1px solid #EEE" }} />
+            </a>
+          </div>
+        )}
       </BrandedDoc>
 
       {/* Print + email controls only for fully approved LPOs */}

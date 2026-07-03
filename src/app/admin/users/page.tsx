@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Users, Plus, X, Loader2, Ban, CheckCircle2, ShieldAlert, Trash2, UserCheck, UserX, Search } from "lucide-react"
+import { Users, Plus, X, Loader2, Ban, CheckCircle2, ShieldAlert, Trash2, UserCheck, UserX, Search, KeyRound } from "lucide-react"
 import { ROLE_LABELS } from "@/lib/tracing-stages"
-import { ConfirmModal } from "@/components/admin/ConfirmModal"
+import { ConfirmModal, PromptModal } from "@/components/admin/ConfirmModal"
 
 const TEXT = "var(--admin-text)"
 const MUTED = "var(--admin-muted)"
@@ -69,6 +69,10 @@ export default function UsersPage() {
   const [busyId, setBusyId] = useState<string | null>(null)
   const [notice, setNotice] = useState<{ text: string; tone: "error" | "success" } | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<U | null>(null)
+  // Admin password reset — no current password needed; the user is forced to
+  // change it on their next login.
+  const [pwTarget, setPwTarget] = useState<U | null>(null)
+  const [pwValue, setPwValue] = useState("")
 
   // Single creation flow: first name + phone + role. The username and the
   // @earthlungs.org email are derived; the phone is the initial password (the
@@ -109,6 +113,17 @@ export default function UsersPage() {
       const data = await res.json()
       if (!res.ok) { setNotice({ text: data.error || "Update failed.", tone: "error" }); return }
       setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, ...data } : u)))
+    } catch { setNotice({ text: "Network error.", tone: "error" }) }
+    finally { setBusyId(null) }
+  }
+
+  const resetPassword = async (u: U, password: string) => {
+    setBusyId(u.id)
+    try {
+      const res = await fetch("/api/users", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: u.id, password }) })
+      const data = await res.json()
+      if (!res.ok) { setNotice({ text: data.error || "Password reset failed.", tone: "error" }); return }
+      setNotice({ text: `Password for @${u.username} was reset — they must change it on their next login.`, tone: "success" })
     } catch { setNotice({ text: "Network error.", tone: "error" }) }
     finally { setBusyId(null) }
   }
@@ -166,6 +181,26 @@ export default function UsersPage() {
           ))}
         </div>
       )}
+
+      <PromptModal
+        open={!!pwTarget}
+        title={`Reset password for @${pwTarget?.username}?`}
+        message={`Set a new password for ${pwTarget?.name} — no current password needed. They will be forced to change it on their next login.`}
+        placeholder="New password (min 6 characters)…"
+        confirmLabel="Reset password"
+        value={pwValue}
+        onChange={setPwValue}
+        onConfirm={() => {
+          if (pwTarget && pwValue.trim().length >= 6) {
+            resetPassword(pwTarget, pwValue.trim())
+            setPwTarget(null)
+            setPwValue("")
+          } else {
+            setNotice({ text: "Password must be at least 6 characters.", tone: "error" })
+          }
+        }}
+        onCancel={() => { setPwTarget(null); setPwValue("") }}
+      />
 
       <ConfirmModal
         open={!!deleteTarget}
@@ -277,6 +312,9 @@ export default function UsersPage() {
                           <CheckCircle2 size={14} /> Reactivate
                         </Button>
                       )}
+                      <Button onClick={() => { setPwTarget(u); setPwValue("") }} disabled={busyId === u.id} variant="outline" style={{ color: "#2C5282", borderColor: "#2C5282", gap: 6, fontSize: 12, height: 32 }}>
+                        <KeyRound size={14} /> Reset password
+                      </Button>
                       <Button onClick={() => setDeleteTarget(u)} disabled={busyId === u.id} variant="outline" style={{ color: "#C0392B", borderColor: "#C0392B", gap: 6, fontSize: 12, height: 32 }}>
                         <Trash2 size={14} /> Delete
                       </Button>
