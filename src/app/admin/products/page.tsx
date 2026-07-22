@@ -195,6 +195,7 @@ export default function AdminProductsPage() {
                   <option value="Home & Living">Home & Living</option>
                   <option value="Pottery">Pottery</option>
                   <option value="Ornamental & Curios">Ornamental & Curios</option>
+                  <option value="Mushrooms">Mushrooms</option>
                 </select>
               </div>
               <div><label style={{ fontSize: '12px', fontWeight: '500', color: "var(--admin-text)", marginBottom: '4px', display: 'block' }}>Retail Price (KSh) *</label><Input type="number" value={form.retailPrice} onChange={e => setForm({...form, retailPrice: e.target.value})} /></div>

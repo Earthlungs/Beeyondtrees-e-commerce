@@ -393,3 +393,98 @@ model Receiving {
   createdAt       DateTime @default(now())
   batch           Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
 }
+
+// ── Mycology (mushroom cultivation) subsystem ──────────────────────────────
+// A separate, smaller pipeline for in-house mushroom growing — spawn is
+// independent inventory consumed across many batches; MycoBatch is the
+// substrate-to-harvest cycle, strictly-sequential like Batch above but with
+// its own (shorter) stage list, all owned by the `fungiculturist` role.
+
+// Grain spawn, produced independently and consumed across many MycoBatches.
+model MycoSpawn {
+  id                  String    @id @default(cuid())
+  code                String    @unique // SPN-0001
+  grainType           String    // wheat | rye | oats | millet
+  quantityKg          Float     @default(0)
+  sterilizedAt        DateTime?
+  inoculatedAt        DateTime?
+  colonizationPercent Float?
+  breakShakeAt        DateTime?
+  status              String    @default("sterilizing") // sterilizing | incubating | ready | depleted | contaminated
+  remarks             String?   @db.Text
+  createdBy           String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
+
+model MycoBatch {
+  id        String   @id @default(cuid())
+  code      String   @unique // MYC-0001
+  stage     String   @default("substrate_prep") // substrate_prep | incubation | harvest | dehydration_packaging
+  status    String   @default("in_progress")    // in_progress | completed
+  spawnId   String?  // read-only link to MycoSpawn.id, no FK — same convention as Batch.lpoId
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  substrate   MycoSubstrate?
+  incubation  MycoIncubation?
+  harvest     MycoHarvest?
+  dehydration MycoDehydration?
+}
+
+// Stage 1 — substrate preparation (chop, mix, soak, pack, pasteurize, cool)
+model MycoSubstrate {
+  id               String    @id @default(cuid())
+  batchId          String    @unique
+  strawKg          Float     @default(0)
+  limeKg           Float     @default(0)
+  branKg           Float     @default(0)
+  cottonSeedCakeKg Float     @default(0)
+  soakHours        Float     @default(12)
+  bagCount         Int       @default(0)
+  bagWeightKg      Float     @default(2)
+  pasteurizeHours  Float     @default(4)
+  coolHours        Float     @default(4)
+  remarks          String?   @db.Text
+  createdAt        DateTime  @default(now())
+  batch            MycoBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+}
+
+// Stage 2 — inoculation through pinning (hung in Growing House 2)
+model MycoIncubation {
+  id           String    @id @default(cuid())
+  batchId      String    @unique
+  inoculatedAt DateTime?
+  hangAt       DateTime? // moved to Growing House 2
+  pinningAt    DateTime?
+  images       Json      @default("[]")
+  remarks      String?   @db.Text
+  createdAt    DateTime  @default(now())
+  batch        MycoBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+}
+
+// Stage 3 — harvest, split between fresh punnets and drying stock
+model MycoHarvest {
+  id                String    @id @default(cuid())
+  batchId           String    @unique
+  harvestedAt       DateTime  @default(now())
+  totalWeightKg     Float     @default(0)
+  freshPunnets250g  Int       @default(0) // fresh, packed for orders
+  weightForDryingKg Float     @default(0) // remainder, sliced for dehydrator
+  harvestedBy       String?
+  images            Json      @default("[]")
+  remarks           String?   @db.Text
+  batch             MycoBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+}
+
+// Stage 4 (final) — dehydration + packaging
+model MycoDehydration {
+  id            String    @id @default(cuid())
+  batchId       String    @unique
+  driedAt       DateTime?
+  driedWeightKg Float     @default(0)
+  packagingType String?   // paper tube | moisture-proof pouch
+  packagedUnits Int       @default(0)
+  remarks       String?   @db.Text
+  batch         MycoBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+}

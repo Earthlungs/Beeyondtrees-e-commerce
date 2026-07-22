@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import {
   LayoutDashboard, Package, Truck, LogOut, Menu, X, Users, TrendingUp,
   Settings, Store, ShoppingCart, FileText, ClipboardList, UserCog, Workflow,
-  BarChart3, MessageSquare, Code2, Banknote, ScrollText,
+  BarChart3, MessageSquare, Code2, Banknote, ScrollText, Sprout,
 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { ROLE_LABELS } from "@/lib/tracing-stages"
@@ -19,6 +19,8 @@ const TRACING_ROLES = [
 ]
 // Chief + Finance: approval/oversight roles confined to the LPO documents.
 const APPROVAL_ROLES = ["chief", "finance"]
+// Fungiculturist: confined to the mycology (mushroom) pipeline.
+const MYCOLOGY_ROLES = ["fungiculturist"]
 
 interface NavItem { href: string; label: string; icon: React.ComponentType<{ size?: number }> }
 interface NavGroup { title?: string; items: NavItem[] }
@@ -93,6 +95,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const isAdmin = role === "admin" || role === "it_specialist" || role === "assistant_ceo" // full control (Assistant CEO = all CEO rights)
   const isTracing = TRACING_ROLES.includes(role)
   const isApproval = APPROVAL_ROLES.includes(role)
+  const isMycology = MYCOLOGY_ROLES.includes(role)
   // LPO + invoicing: Procurement Officer (internal) / External Procurement originate,
   // Factory Admin (executive) approves internal LPOs.
   const canDoc = role === "procurement_officer" || role === "external_procurement" || role === "executive"
@@ -117,6 +120,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       ? [{ href: "/admin/quotations", label: "Quotation", icon: ScrollText }]
       : []
     groups = [{ title: role === "chief" ? "Approvals" : "Finance", items: [...financeDash, { href: "/admin/lpo", label: "LPO", icon: ClipboardList }, ...quotations, pos, chat] }]
+  } else if (isMycology) {
+    groups = [{ title: "Mycology", items: [{ href: "/admin/mycology", label: "Mycology", icon: Sprout }, pos, chat] }]
   } else if (isTracing && !canDoc) {
     // factory_manager can view approved LPOs to pick one when starting a batch
     const lpoItems: NavItem[] = role === "factory_manager"
@@ -196,7 +201,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       }}>
         <div style={{ padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Link href={isTracing ? "/admin/tracing" : "/admin"} style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', color: 'white' }}>
+            <Link href={isMycology ? "/admin/mycology" : isTracing ? "/admin/tracing" : "/admin"} style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', color: 'white' }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/icons/icon-192.png" alt="BEEyond Trees" width={38} height={38} style={{ width: 38, height: 38, objectFit: 'contain', borderRadius: 8 }} />
               <div>
@@ -254,7 +259,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             style={{ width: '100%', backgroundColor: 'rgba(255,255,255,0.08)', color: '#E8D5C4', border: 'none', justifyContent: 'center', gap: '8px', fontSize: '13px', height: '38px' }}>
             <LogOut size={15} /> Sign Out
           </Button>
-          {!isTracing && role !== "cashier" && (
+          {!isTracing && !isMycology && role !== "cashier" && (
             <Link href="/" style={{ display: 'block', textAlign: 'center', marginTop: '10px', fontSize: '12px', color: '#A89F91', textDecoration: 'none' }}>
               <Store size={14} style={{ display: 'inline', marginRight: '4px' }} /> View Store
             </Link>

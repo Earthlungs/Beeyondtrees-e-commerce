@@ -46,6 +46,11 @@ export default async function proxy(request: NextRequest) {
     if (role && TRACING_ROLES.includes(role) && !path.startsWith("/admin/tracing") && !(canDoc && docPath) && !canLpoView && !COMMON) {
       return NextResponse.redirect(new URL("/admin/tracing", request.url))
     }
+    // Fungiculturist only gets the mycology (mushroom) pipeline (+ POS/chat/account).
+    const MYCOLOGY_ROLES = ["fungiculturist"]
+    if (role && MYCOLOGY_ROLES.includes(role) && !path.startsWith("/admin/mycology") && !COMMON) {
+      return NextResponse.redirect(new URL("/admin/mycology", request.url))
+    }
     // Chief + Finance are approval/oversight roles: confine them to the LPO
     // documents (chief approves external LPOs; finance is notified on CEO
     // approval) plus POS/chat/account. Finance additionally gets its own LPO
