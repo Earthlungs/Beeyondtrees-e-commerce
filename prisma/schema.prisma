@@ -20,6 +20,7 @@ model User {
   // change it. email is auto-filled firstname@earthlungs.org.
   email              String?  @unique
   phone              String?
+  country            String   @default("Kenya") // Kenya | Tanzania
   image              String?  // profile picture URL (Cloudinary)
   mustChangePassword Boolean  @default(false)
   theme              String   @default("system") // per-user UI theme: system | dark

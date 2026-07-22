@@ -19,8 +19,9 @@ const ROLES = new Set([
   "nursery", "shop_attendant", "fiber_weaver", "glass_technician", "driver",
 ])
 const EMAIL_DOMAIN = "earthlungs.org"
+const COUNTRIES = new Set(["Kenya", "Tanzania"])
 const ADMINISH = [...ADMINISH_ROLES]
-const select = { id: true, username: true, name: true, role: true, active: true, email: true, phone: true, image: true, mustChangePassword: true, createdAt: true }
+const select = { id: true, username: true, name: true, role: true, active: true, email: true, phone: true, country: true, image: true, mustChangePassword: true, createdAt: true }
 
 // User management — admin or IT Specialist (IT has full control).
 export async function GET(request: NextRequest) {
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest) {
   if (!body) return NextResponse.json({ error: "Invalid body." }, { status: 400 })
 
   const role = ROLES.has(body.role) ? body.role : "merchant"
+  const country = COUNTRIES.has(body.country) ? body.country : "Kenya"
 
   try {
     // Provisioning mode
@@ -69,6 +71,7 @@ export async function POST(request: NextRequest) {
           name: firstName,
           email: `${username}@${EMAIL_DOMAIN}`,
           phone,
+          country,
           password: await bcrypt.hash(phone, 10),
           role,
           mustChangePassword: true,
@@ -91,6 +94,7 @@ export async function POST(request: NextRequest) {
         name: body.name.trim(),
         password: await bcrypt.hash(String(body.password), 10),
         role,
+        country,
       },
       select,
     })
@@ -118,9 +122,10 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "You can't block or demote your own account." }, { status: 400 })
   }
 
-  const data: { active?: boolean; role?: string; password?: string; mustChangePassword?: boolean } = {}
+  const data: { active?: boolean; role?: string; country?: string; password?: string; mustChangePassword?: boolean } = {}
   if (typeof body.active === "boolean") data.active = body.active
   if (body.role && ROLES.has(body.role)) data.role = body.role
+  if (body.country && COUNTRIES.has(body.country)) data.country = body.country
   if (body.password) {
     if (String(body.password).length < 6) return NextResponse.json({ error: "Password too short." }, { status: 400 })
     data.password = await bcrypt.hash(String(body.password), 10)

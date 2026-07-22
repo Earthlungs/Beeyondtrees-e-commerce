@@ -13,8 +13,10 @@ const GREEN = "#6B7D5C"
 const BROWN = "#8C6A4A"
 
 interface U {
-  id: string; username: string; name: string; role: string; active: boolean; createdAt: string
+  id: string; username: string; name: string; role: string; country: string; active: boolean; createdAt: string
 }
+
+const COUNTRY_OPTIONS = ["Kenya", "Tanzania"]
 
 // Selectable roles. The 9 *_officer/manager/executive roles drive the product
 // tracing pipeline (src/lib/tracing-stages.ts); cashier is till-only.
@@ -79,7 +81,7 @@ export default function UsersPage() {
   // user is forced to change it on first login).
   const [search, setSearch] = useState("")
   const [showAdd, setShowAdd] = useState(false)
-  const [pv, setPv] = useState({ firstName: "", phone: "", role: "merchant" })
+  const [pv, setPv] = useState({ firstName: "", phone: "", role: "merchant", country: "Kenya" })
   const [provisioning, setProvisioning] = useState(false)
 
   const load = async () => {
@@ -99,7 +101,7 @@ export default function UsersPage() {
       const data = await res.json()
       if (!res.ok) { setNotice({ text: data.error || "Could not create user.", tone: "error" }); return }
       setNotice({ text: `Created ${data.username} (${data.email}) — login password = phone, must change on first login.`, tone: "success" })
-      setPv({ firstName: "", phone: "", role: "merchant" })
+      setPv({ firstName: "", phone: "", role: "merchant", country: "Kenya" })
       setShowAdd(false)
       load()
     } catch { setNotice({ text: "Network error.", tone: "error" }) }
@@ -249,6 +251,11 @@ export default function UsersPage() {
                 {ROLE_OPTIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
             </Field>
+            <Field label="Country">
+              <select value={pv.country} onChange={(e) => setPv({ ...pv, country: e.target.value })} style={{ width: "100%", height: 40, borderRadius: 8, border: "1px solid var(--admin-border)", padding: "0 10px", color: TEXT }}>
+                {COUNTRY_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </Field>
           </div>
           {pv.firstName.trim() && (
             <p style={{ fontSize: 12, color: GREEN, marginTop: 10 }}>
@@ -279,7 +286,7 @@ export default function UsersPage() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "var(--admin-card-2)", fontSize: 12, color: MUTED, textAlign: "left" }}>
-                <th style={th}>User</th><th style={th}>Role</th><th style={th}>Status</th><th style={{ ...th, textAlign: "right" }}>Actions</th>
+                <th style={th}>User</th><th style={th}>Role</th><th style={th}>Country</th><th style={th}>Status</th><th style={{ ...th, textAlign: "right" }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -295,6 +302,12 @@ export default function UsersPage() {
                       {ROLE_OPTIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                     </select>{" "}
                     {roleBadge(u.role)}
+                  </td>
+                  <td style={td}>
+                    <select value={u.country} disabled={busyId === u.id} onChange={(e) => patch(u.id, { country: e.target.value })}
+                      style={{ border: "1px solid var(--admin-border)", borderRadius: 6, padding: "4px 6px", fontSize: 12, color: TEXT, background: "var(--admin-card)" }}>
+                      {COUNTRY_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
                   </td>
                   <td style={td}>
                     {u.active
