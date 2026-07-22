@@ -90,19 +90,7 @@ export default function Home() {
                   initial={{ y: "110%" }} animate={{ y: 0 }}
                   transition={{ duration: 0.9, delay: 0.25 + i * 0.12, ease: [0.22, 1, 0.36, 1] }}
                 >
-                  {i === 0 ? (
-                    <>
-                      BEEy
-                      <motion.span
-                        animate={{ rotate: 360 }}
-                        transition={{ repeat: Infinity, duration: 1.4, ease: "linear" }}
-                        style={{ display: "inline-block", fontSize: "0.78em", verticalAlign: "middle", lineHeight: 1, filter: "drop-shadow(0 0 6px rgba(255,255,255,0.4))" }}
-                      >
-                        ⚽
-                      </motion.span>
-                      nd
-                    </>
-                  ) : word}
+                  {word}
                 </motion.span>
               </span>
             ))}
