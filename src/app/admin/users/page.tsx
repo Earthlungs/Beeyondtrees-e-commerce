@@ -60,6 +60,8 @@ const ROLE_OPTIONS: [string, string][] = [
   ["fiber_weaver", "Fiber Weaver"],
   ["glass_technician", "Glass Technician"],
   ["driver", "Driver"],
+  // Mycology (mushroom cultivation) pipeline
+  ["fungiculturist", "Fungiculturist"],
   // Lowest power — last.
   ["merchant", "Merchant"],
 ]
