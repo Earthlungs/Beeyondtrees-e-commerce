@@ -394,17 +394,54 @@ model Receiving {
   batch           Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
 }
 
-// ── Mycology (mushroom cultivation) subsystem ──────────────────────────────
-// A separate, smaller pipeline for in-house mushroom growing — spawn is
-// independent inventory consumed across many batches; MycoBatch is the
-// substrate-to-harvest cycle, strictly-sequential like Batch above but with
-// its own (shorter) stage list, all owned by the `fungiculturist` role.
+// ── Fungiculture (mushroom cultivation) subsystem ──────────────────────────
+// A full mushroom-production tracking pipeline for in-house growing — spawn
+// is independent inventory consumed across many batches; FungiBatch is the
+// substrate-to-harvest cycle, strictly-sequential with its own (shorter)
+// stage list, all owned by the `fungiculturist` role. GrowingHouse and
+// GrainType are admin-managed reference data feeding into it.
 
-// Grain spawn, produced independently and consumed across many MycoBatches.
-model MycoSpawn {
+// Physical growing houses/rooms batches are hung in during incubation.
+// Simple admin-managed reference data — unlike the no-FK soft references used
+// elsewhere in this schema (e.g. Batch.lpoId, FungiBatch.spawnId, which stay
+// decoupled because they cross into independent subsystems/inventory), this
+// uses a real FK: it's a small, low-churn lookup table, and the capacity
+// warning needs an efficient indexed count.
+model GrowingHouse {
+  id             String   @id @default(cuid())
+  code           String   @unique // GH-0001
+  name           String
+  country        String   @default("Kenya") // Kenya | Tanzania, same representation as User.country
+  region         String?
+  location       String?  @db.Text
+  lengthM        Float?
+  widthM         Float?
+  maxBagCapacity Int      @default(0)
+  status         String   @default("active") // active | inactive
+  notes          String?  @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  incubations    FungiIncubation[]
+}
+
+// Manageable list of spawn grain types (replaces the old hardcoded array).
+// Rarely deleted — deactivate via `active` instead.
+model GrainType {
+  id        String       @id @default(cuid())
+  name      String       @unique
+  active    Boolean      @default(true)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  spawn     FungiSpawn[]
+}
+
+// Grain spawn, produced independently and consumed across many FungiBatches.
+model FungiSpawn {
   id                  String    @id @default(cuid())
   code                String    @unique // SPN-0001
-  grainType           String    // wheat | rye | oats | millet
+  grainTypeId         String
   quantityKg          Float     @default(0)
   sterilizedAt        DateTime?
   inoculatedAt        DateTime?
@@ -415,76 +452,84 @@ model MycoSpawn {
   createdBy           String?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
+
+  grainType           GrainType @relation(fields: [grainTypeId], references: [id], onDelete: Restrict)
 }
 
-model MycoBatch {
+model FungiBatch {
   id        String   @id @default(cuid())
-  code      String   @unique // MYC-0001
+  code      String   @unique // FUN-0001
   stage     String   @default("substrate_prep") // substrate_prep | incubation | harvest | dehydration_packaging
   status    String   @default("in_progress")    // in_progress | completed
-  spawnId   String?  // read-only link to MycoSpawn.id, no FK — same convention as Batch.lpoId
+  spawnId   String?  // read-only link to FungiSpawn.id, no FK — same convention as Batch.lpoId
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  substrate   MycoSubstrate?
-  incubation  MycoIncubation?
-  harvest     MycoHarvest?
-  dehydration MycoDehydration?
+  substrate   FungiSubstrate?
+  incubation  FungiIncubation?
+  harvest     FungiHarvest?
+  dehydration FungiDehydration?
 }
 
 // Stage 1 — substrate preparation (chop, mix, soak, pack, pasteurize, cool)
-model MycoSubstrate {
-  id               String    @id @default(cuid())
-  batchId          String    @unique
-  strawKg          Float     @default(0)
-  limeKg           Float     @default(0)
-  branKg           Float     @default(0)
-  cottonSeedCakeKg Float     @default(0)
-  soakHours        Float     @default(12)
-  bagCount         Int       @default(0)
-  bagWeightKg      Float     @default(2)
-  pasteurizeHours  Float     @default(4)
-  coolHours        Float     @default(4)
-  remarks          String?   @db.Text
-  createdAt        DateTime  @default(now())
-  batch            MycoBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+model FungiSubstrate {
+  id               String     @id @default(cuid())
+  batchId          String     @unique
+  strawKg          Float      @default(0)
+  limeKg           Float      @default(0)
+  branKg           Float      @default(0)
+  cottonSeedCakeKg Float      @default(0)
+  soakHours        Float      @default(12)
+  bagCount         Int        @default(0)
+  bagWeightKg      Float      @default(2)
+  pasteurizeHours  Float      @default(4)
+  coolHours        Float      @default(4)
+  remarks          String?    @db.Text
+  createdAt        DateTime   @default(now())
+  batch            FungiBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
 }
 
-// Stage 2 — inoculation through pinning (hung in Growing House 2)
-model MycoIncubation {
-  id           String    @id @default(cuid())
-  batchId      String    @unique
-  inoculatedAt DateTime?
-  hangAt       DateTime? // moved to Growing House 2
-  pinningAt    DateTime?
-  images       Json      @default("[]")
-  remarks      String?   @db.Text
-  createdAt    DateTime  @default(now())
-  batch        MycoBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+// Stage 2 — inoculation through pinning, hung in a GrowingHouse
+model FungiIncubation {
+  id             String        @id @default(cuid())
+  batchId        String        @unique
+  inoculatedAt   DateTime?
+  hangAt         DateTime? // moved into the growing house
+  growingHouseId String?
+  pinningAt      DateTime?
+  images         Json          @default("[]")
+  remarks        String?       @db.Text
+  createdAt      DateTime      @default(now())
+  batch          FungiBatch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  growingHouse   GrowingHouse? @relation(fields: [growingHouseId], references: [id], onDelete: SetNull)
+
+  @@index([growingHouseId])
 }
 
 // Stage 3 — harvest, split between fresh punnets and drying stock
-model MycoHarvest {
-  id                String    @id @default(cuid())
-  batchId           String    @unique
-  harvestedAt       DateTime  @default(now())
-  totalWeightKg     Float     @default(0)
-  freshPunnets250g  Int       @default(0) // fresh, packed for orders
-  weightForDryingKg Float     @default(0) // remainder, sliced for dehydrator
+model FungiHarvest {
+  id                String     @id @default(cuid())
+  batchId           String     @unique
+  harvestedAt       DateTime   @default(now())
+  totalWeightKg     Float      @default(0)
+  freshPunnets250g  Int        @default(0) // fresh, packed for orders
+  weightForDryingKg Float      @default(0) // remainder, sliced for dehydrator
   harvestedBy       String?
-  images            Json      @default("[]")
-  remarks           String?   @db.Text
-  batch             MycoBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  images            Json       @default("[]")
+  remarks           String?    @db.Text
+  batch             FungiBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
 }
 
-// Stage 4 (final) — dehydration + packaging
-model MycoDehydration {
-  id            String    @id @default(cuid())
-  batchId       String    @unique
+// Stage 4 (final) — dehydration + packaging. Mushrooms lose significant
+// weight drying — driedWeightKg vs harvest.weightForDryingKg is how the UI
+// computes and shows that shrinkage/yield %.
+model FungiDehydration {
+  id            String     @id @default(cuid())
+  batchId       String     @unique
   driedAt       DateTime?
-  driedWeightKg Float     @default(0)
-  packagingType String?   // paper tube | moisture-proof pouch
-  packagedUnits Int       @default(0)
-  remarks       String?   @db.Text
-  batch         MycoBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  driedWeightKg Float      @default(0)
+  packagingType String?    // paper tube | moisture-proof pouch
+  packagedUnits Int        @default(0)
+  remarks       String?    @db.Text
+  batch         FungiBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
 }

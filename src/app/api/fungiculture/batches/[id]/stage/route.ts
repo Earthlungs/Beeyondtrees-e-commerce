@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import { parseDate } from "@/lib/docs"
-import { requireStage, nextStage, isStage, type Stage } from "@/lib/mycology"
+import { requireStage, nextStage, isStage, type Stage } from "@/lib/fungiculture"
 
 const num = (v: unknown) => Number(v) || 0
 const str = (v: unknown) => (typeof v === "string" ? v.trim() : "")
 const imgs = (v: unknown) => (Array.isArray(v) ? v : []) as Prisma.InputJsonValue
 
-// Submit one stage of a MycoBatch. Body: { stage, data }. requireStage
+// Submit one stage of a FungiBatch. Body: { stage, data }. requireStage
 // enforces role ownership + the sequential lock, then we write the stage row
 // and advance the batch pointer (or complete it). Mirrors
 // /api/tracing/batches/[id]/stage — no handoff email since every stage here
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const stage = body.stage as Stage
   const d = body.data ?? {}
 
-  const batch = await prisma.mycoBatch.findUnique({ where: { id } })
+  const batch = await prisma.fungiBatch.findUnique({ where: { id } })
   if (!batch) return NextResponse.json({ error: "Batch not found." }, { status: 404 })
 
   const auth = await requireStage(request, stage, batch)
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const advance = async () => {
     const next = nextStage(stage)
-    return prisma.mycoBatch.update({
+    return prisma.fungiBatch.update({
       where: { id },
       data: next ? { stage: next } : { status: "completed" },
     })
@@ -40,11 +40,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     switch (stage) {
       // ── Stage 2: Incubation & fruiting ──────────────────────────────────
       case "incubation": {
-        await prisma.mycoIncubation.create({
+        await prisma.fungiIncubation.create({
           data: {
             batchId: id,
             inoculatedAt: parseDate(d.inoculatedAt),
             hangAt: parseDate(d.hangAt),
+            growingHouseId: str(d.growingHouseId) || null,
             pinningAt: parseDate(d.pinningAt),
             images: imgs(d.images),
             remarks: str(d.remarks) || null,
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
       // ── Stage 3: Harvest ──────────────────────────────────────────────
       case "harvest": {
-        await prisma.mycoHarvest.create({
+        await prisma.fungiHarvest.create({
           data: {
             batchId: id,
             totalWeightKg: num(d.totalWeightKg),
@@ -73,7 +74,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
       // ── Stage 4 (final): Dehydration & packaging ───────────────────────
       case "dehydration_packaging": {
-        await prisma.mycoDehydration.create({
+        await prisma.fungiDehydration.create({
           data: {
             batchId: id,
             driedAt: parseDate(d.driedAt),
@@ -87,12 +88,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         break
       }
 
-      // substrate_prep is created via POST /api/mycology/batches, not here.
+      // substrate_prep is created via POST /api/fungiculture/batches, not here.
       default:
         return NextResponse.json({ error: "This stage cannot be submitted here." }, { status: 400 })
     }
 
-    const updated = await prisma.mycoBatch.findUnique({
+    const updated = await prisma.fungiBatch.findUnique({
       where: { id },
       include: { substrate: true, incubation: true, harvest: true, dehydration: true },
     })
@@ -101,7 +102,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
       return NextResponse.json({ error: "This stage was already submitted for the batch." }, { status: 409 })
     }
-    console.error(`Myco stage "${stage}" submit failed:`, e)
+    console.error(`Fungiculture stage "${stage}" submit failed:`, e)
     return NextResponse.json({ error: "Could not save this stage. Please try again." }, { status: 500 })
   }
 }

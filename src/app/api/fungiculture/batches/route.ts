@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireRole } from "@/lib/authz"
 import { createNumbered } from "@/lib/docs"
-import { nextStage } from "@/lib/mycology-stages"
+import { nextStage } from "@/lib/fungiculture-stages"
 
 const VIEW_ROLES = ["fungiculturist", "admin", "it_specialist", "assistant_ceo"]
 
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   const auth = await requireRole(request, VIEW_ROLES)
   if (auth instanceof NextResponse) return auth
 
-  const batches = await prisma.mycoBatch.findMany({
+  const batches = await prisma.fungiBatch.findMany({
     orderBy: { createdAt: "desc" },
     include: { substrate: true, incubation: true, harvest: true, dehydration: true },
   })
@@ -27,10 +27,10 @@ export async function POST(request: NextRequest) {
 
   try {
     const batch = await createNumbered(
-      "MYC",
-      () => prisma.mycoBatch.count(),
+      "FUN",
+      () => prisma.fungiBatch.count(),
       (code) =>
-        prisma.mycoBatch.create({
+        prisma.fungiBatch.create({
           data: {
             code,
             stage: nextStage("substrate_prep") ?? "substrate_prep",
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     )
     return NextResponse.json(batch, { status: 201 })
   } catch (e) {
-    console.error("Myco batch create failed:", e)
+    console.error("Fungiculture batch create failed:", e)
     return NextResponse.json({ error: "Could not create the batch. Please try again." }, { status: 500 })
   }
 }

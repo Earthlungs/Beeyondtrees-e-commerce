@@ -1,7 +1,7 @@
-// Pure, dependency-free constants for the mycology (mushroom) pipeline. Kept
-// separate from lib/mycology.ts (which imports prisma/next-auth) so client
-// components can import the stage metadata without pulling server code into
-// the bundle. Mirrors lib/tracing-stages.ts.
+// Pure, dependency-free constants for the fungiculture (mushroom) pipeline.
+// Kept separate from lib/fungiculture.ts (which imports prisma/next-auth) so
+// client components can import the stage metadata without pulling server
+// code into the bundle. Mirrors lib/tracing-stages.ts.
 
 export const STAGES = [
   "substrate_prep",

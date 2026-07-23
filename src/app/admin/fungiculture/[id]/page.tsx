@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ArrowLeft, Loader2, Check, Lock, CircleDot, CircleCheck } from "lucide-react"
 import ImageUploader from "@/components/admin/ImageUploader"
-import { STAGES, STAGE_LABELS, stageIndex, type Stage } from "@/lib/mycology-stages"
+import { STAGES, STAGE_LABELS, stageIndex, type Stage } from "@/lib/fungiculture-stages"
 import { isAdminishRole } from "@/lib/tracing-stages"
 
 const TEXT = "var(--admin-text)"
@@ -20,33 +20,10 @@ const AMBER = "#D9A441"
 type FormState = Record<string, string | string[]>
 const sval = (f: FormState, k: string) => (typeof f[k] === "string" ? (f[k] as string) : "")
 
-type FieldType = "text" | "number" | "date" | "textarea" | "images"
-interface FieldDef { name: string; label: string; type?: FieldType; readOnly?: boolean }
+type FieldType = "text" | "number" | "date" | "textarea" | "images" | "select"
+interface FieldDef { name: string; label: string; type?: FieldType; readOnly?: boolean; options?: { value: string; label: string }[] }
 
-const STAGE_FIELDS: Partial<Record<Stage, FieldDef[]>> = {
-  incubation: [
-    { name: "inoculatedAt", label: "Inoculated", type: "date" },
-    { name: "hangAt", label: "Hung in Growing House 2", type: "date" },
-    { name: "pinningAt", label: "Pinning Observed", type: "date" },
-    { name: "images", label: "Images", type: "images" },
-    { name: "remarks", label: "Remarks", type: "textarea" },
-  ],
-  harvest: [
-    { name: "totalWeightKg", label: "Total Weight (kg)", type: "number" },
-    { name: "freshPunnets250g", label: "Fresh Punnets (250g)", type: "number" },
-    { name: "weightForDryingKg", label: "Weight For Drying (kg)", type: "number" },
-    { name: "harvestedBy", label: "Harvested By", readOnly: true },
-    { name: "images", label: "Images", type: "images" },
-    { name: "remarks", label: "Remarks", type: "textarea" },
-  ],
-  dehydration_packaging: [
-    { name: "driedAt", label: "Dried On", type: "date" },
-    { name: "driedWeightKg", label: "Dried Weight (kg)", type: "number" },
-    { name: "packagingType", label: "Packaging Type" },
-    { name: "packagedUnits", label: "Packaged Units", type: "number" },
-    { name: "remarks", label: "Remarks", type: "textarea" },
-  ],
-}
+interface GrowingHouseOption { id: string; name: string; code: string; status: string; maxBagCapacity: number; activeIncubationCount: number }
 
 const RECORD_KEY: Record<Stage, string> = {
   substrate_prep: "substrate", incubation: "incubation", harvest: "harvest", dehydration_packaging: "dehydration",
@@ -55,7 +32,7 @@ const RECORD_KEY: Record<Stage, string> = {
 const field: React.CSSProperties = { width: "100%", height: 40, borderRadius: 8, border: "1px solid var(--admin-border)", padding: "0 10px", color: TEXT }
 const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: MUTED, marginBottom: 4, display: "block" }
 
-const HIDDEN_KEYS = new Set(["id", "batchId", "createdAt", "images"])
+const HIDDEN_KEYS = new Set(["id", "batchId", "createdAt", "images", "growingHouseId"])
 function prettyKey(k: string) { return k.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase()) }
 
 function fmtDateTime(v: unknown): string | null {
@@ -66,7 +43,7 @@ function fmtDateTime(v: unknown): string | null {
 }
 function isDateKey(k: string) { return /At$/.test(k) }
 
-export default function MycoBatchDetail() {
+export default function FungiBatchDetail() {
   const { id } = useParams<{ id: string }>()
   const { data: session } = useSession()
   const role = (session?.user as { role?: string })?.role || "merchant"
@@ -75,18 +52,26 @@ export default function MycoBatchDetail() {
   const userName = (session?.user?.name as string) || ""
 
   const [batch, setBatch] = useState<Record<string, unknown> | null>(null)
+  const [growingHouses, setGrowingHouses] = useState<GrowingHouseOption[]>([])
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState<FormState>({})
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
 
   const load = useCallback(async () => {
-    const res = await fetch(`/api/mycology/batches/${id}`)
+    const res = await fetch(`/api/fungiculture/batches/${id}`)
     if (res.ok) setBatch(await res.json())
     setLoading(false)
   }, [id])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    fetch("/api/fungiculture/growing-houses")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((houses: GrowingHouseOption[]) => setGrowingHouses(houses.filter((h) => h.status === "active")))
+      .catch(() => {})
+  }, [])
 
   // Auto-fill "harvested by" once the harvest stage is reached.
   useEffect(() => {
@@ -97,18 +82,65 @@ export default function MycoBatchDetail() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [batch?.stage, userName])
 
+  const STAGE_FIELDS: Partial<Record<Stage, FieldDef[]>> = {
+    incubation: [
+      { name: "inoculatedAt", label: "Inoculated", type: "date" },
+      { name: "hangAt", label: "Hung", type: "date" },
+      {
+        name: "growingHouseId", label: "Growing House", type: "select",
+        options: growingHouses.map((h) => ({
+          value: h.id,
+          label: `${h.name}${h.maxBagCapacity > 0 ? ` (${h.activeIncubationCount}/${h.maxBagCapacity} bags)` : ""}`,
+        })),
+      },
+      { name: "pinningAt", label: "Pinning Observed", type: "date" },
+      { name: "images", label: "Images", type: "images" },
+      { name: "remarks", label: "Remarks", type: "textarea" },
+    ],
+    harvest: [
+      { name: "totalWeightKg", label: "Total Weight (kg)", type: "number" },
+      { name: "freshPunnets250g", label: "Fresh Punnets (250g)", type: "number" },
+      { name: "weightForDryingKg", label: "Weight For Drying (kg)", type: "number" },
+      { name: "harvestedBy", label: "Harvested By", readOnly: true },
+      { name: "images", label: "Images", type: "images" },
+      { name: "remarks", label: "Remarks", type: "textarea" },
+    ],
+    dehydration_packaging: [
+      { name: "driedAt", label: "Dried On", type: "date" },
+      { name: "driedWeightKg", label: "Dried Weight (kg)", type: "number" },
+      { name: "packagingType", label: "Packaging Type" },
+      { name: "packagedUnits", label: "Packaged Units", type: "number" },
+      { name: "remarks", label: "Remarks", type: "textarea" },
+    ],
+  }
+
   if (loading) return <div style={{ display: "flex", justifyContent: "center", padding: 60, color: MUTED }}><Loader2 className="animate-spin" /></div>
-  if (!batch) return <div style={{ padding: 40, color: MUTED }}>Batch not found. <Link href="/admin/mycology" style={{ color: GREEN }}>Back</Link></div>
+  if (!batch) return <div style={{ padding: 40, color: MUTED }}>Batch not found. <Link href="/admin/fungiculture" style={{ color: GREEN }}>Back</Link></div>
 
   const currentStage = batch.stage as Stage
   const status = batch.status as string
   const currentIdx = stageIndex(currentStage)
   const canAct = isCeo || role === "fungiculturist"
 
+  const harvest = batch.harvest as { weightForDryingKg?: number } | null
+  const dehydration = batch.dehydration as { driedWeightKg?: number } | null
+  const shrinkagePercent =
+    harvest && dehydration && dehydration.driedWeightKg !== undefined && harvest.weightForDryingKg
+      ? ((harvest.weightForDryingKg - (dehydration.driedWeightKg ?? 0)) / harvest.weightForDryingKg) * 100
+      : null
+
+  const overCapacityHouse = (() => {
+    const houseId = sval(form, "growingHouseId")
+    if (!houseId) return null
+    const h = growingHouses.find((gh) => gh.id === houseId)
+    if (!h || h.maxBagCapacity <= 0) return null
+    return h.activeIncubationCount >= h.maxBagCapacity ? h : null
+  })()
+
   const submit = async (stage: Stage, data: Record<string, unknown>) => {
     setError(""); setSaving(true)
     try {
-      const res = await fetch(`/api/mycology/batches/${id}/stage`, {
+      const res = await fetch(`/api/fungiculture/batches/${id}/stage`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ stage, data }),
       })
@@ -131,7 +163,7 @@ export default function MycoBatchDetail() {
 
   return (
     <div style={{ maxWidth: 900 }}>
-      <Link href="/admin/mycology" style={{ display: "inline-flex", alignItems: "center", gap: 6, color: MUTED, fontSize: 13, textDecoration: "none", marginBottom: 14 }}>
+      <Link href="/admin/fungiculture" style={{ display: "inline-flex", alignItems: "center", gap: 6, color: MUTED, fontSize: 13, textDecoration: "none", marginBottom: 14 }}>
         <ArrowLeft size={15} /> All batches
       </Link>
 
@@ -143,6 +175,9 @@ export default function MycoBatchDetail() {
               {status.replace("_", " ")}
             </span>
             {isAdmin && batch.spawnId ? <span style={{ fontSize: 12, color: MUTED }}>Spawn: {batch.spawnId as string}</span> : null}
+            {shrinkagePercent !== null && (
+              <span style={{ fontSize: 12, color: MUTED }}>Drying yield: <b style={{ color: TEXT }}>{shrinkagePercent.toFixed(1)}%</b> retained</span>
+            )}
           </div>
         </div>
       </div>
@@ -183,6 +218,14 @@ export default function MycoBatchDetail() {
                           <span style={{ color: TEXT, fontWeight: 500 }}>{isDateKey(k) ? (fmtDateTime(v) ?? String(v)) : String(v)}</span>
                         </div>
                       ))}
+                    {stage === "incubation" && (record as { growingHouseId?: string }).growingHouseId && (
+                      <div style={{ fontSize: 13 }}>
+                        <span style={{ color: MUTED }}>Growing House: </span>
+                        <span style={{ color: TEXT, fontWeight: 500 }}>
+                          {growingHouses.find((h) => h.id === (record as { growingHouseId?: string }).growingHouseId)?.name ?? "—"}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   {fmtDateTime((record as Record<string, unknown>).createdAt) && (
                     <div style={{ marginTop: 8, fontSize: 12, color: MUTED }}>Recorded: <span style={{ color: TEXT, fontWeight: 600 }}>{fmtDateTime((record as Record<string, unknown>).createdAt)}</span></div>
@@ -207,6 +250,11 @@ export default function MycoBatchDetail() {
                         <label style={labelStyle}>{fd.label}{fd.readOnly ? <span style={{ color: MUTED, fontWeight: 400 }}> · auto</span> : null}</label>
                         {fd.type === "images" ? (
                           <ImageUploader value={(form[fd.name] as string[]) ?? []} onChange={(v) => setForm({ ...form, [fd.name]: v })} />
+                        ) : fd.type === "select" ? (
+                          <select style={field} value={sval(form, fd.name)} onChange={(e) => setForm({ ...form, [fd.name]: e.target.value })}>
+                            <option value="">— none / not tracked —</option>
+                            {(fd.options ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                          </select>
                         ) : fd.readOnly ? (
                           <Input style={{ ...field, background: "var(--admin-card-2)", fontWeight: 600 }} value={sval(form, fd.name)} readOnly />
                         ) : fd.type === "textarea" ? (
@@ -214,6 +262,11 @@ export default function MycoBatchDetail() {
                         ) : (
                           <Input style={field} type={fd.type === "number" ? "number" : fd.type === "date" ? "date" : "text"}
                             value={sval(form, fd.name)} onChange={(e) => setForm({ ...form, [fd.name]: e.target.value })} />
+                        )}
+                        {fd.name === "growingHouseId" && overCapacityHouse && (
+                          <div style={{ fontSize: 11, color: "#B8860B", marginTop: 4 }}>
+                            {overCapacityHouse.name} is at or over capacity ({overCapacityHouse.activeIncubationCount}/{overCapacityHouse.maxBagCapacity}) — you can still assign it.
+                          </div>
                         )}
                       </div>
                     ))}

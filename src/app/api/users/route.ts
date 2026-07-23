@@ -17,7 +17,7 @@ const ROLES = new Set([
   "pottery", "technical_superintendent", "building_construction",
   "bamboo_weaver", "assistant_bamboo_tech", "ttgf", "farm_foreman",
   "nursery", "shop_attendant", "fiber_weaver", "glass_technician", "driver",
-  // Mycology (mushroom cultivation) pipeline
+  // Fungiculture (mushroom cultivation) pipeline
   "fungiculturist",
 ])
 const EMAIL_DOMAIN = "earthlungs.org"

@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getToken, type JWT } from "next-auth/jwt"
-import { STAGE_ROLES, type Stage } from "@/lib/mycology-stages"
+import { STAGE_ROLES, type Stage } from "@/lib/fungiculture-stages"
 
-// Pure stage metadata lives in mycology-stages.ts (client-safe). Re-export it
-// so API routes can import everything from this one module.
-export * from "@/lib/mycology-stages"
+// Pure stage metadata lives in fungiculture-stages.ts (client-safe). Re-export
+// it so API routes can import everything from this one module.
+export * from "@/lib/fungiculture-stages"
 
-// ── Mycology pipeline ───────────────────────────────────────────────────────
-// A MycoBatch moves through 4 stages IN ORDER. fungiculturist can only act
+// ── Fungiculture pipeline ───────────────────────────────────────────────────
+// A FungiBatch moves through 4 stages IN ORDER. fungiculturist can only act
 // when batch.stage === that stage AND status === "in_progress" — the same
 // sequential lock as the main Batch traceability pipeline (lib/tracing.ts),
 // just without a handoff-email step since every stage shares one role.

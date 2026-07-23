@@ -10,7 +10,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (auth instanceof NextResponse) return auth
   const { id } = await params
 
-  const batch = await prisma.mycoBatch.findUnique({
+  const batch = await prisma.fungiBatch.findUnique({
     where: { id },
     include: { substrate: true, incubation: true, harvest: true, dehydration: true },
   })

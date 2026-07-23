@@ -11,7 +11,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (auth instanceof NextResponse) return auth
 
   const { id } = await params
-  const spawn = await prisma.mycoSpawn.findUnique({ where: { id } })
+  const spawn = await prisma.fungiSpawn.findUnique({ where: { id }, include: { grainType: true } })
   if (!spawn) return NextResponse.json({ error: "Spawn batch not found." }, { status: 404 })
   return NextResponse.json(spawn)
 }
@@ -32,7 +32,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (body.remarks !== undefined) data.remarks = body.remarks?.trim() || null
 
   try {
-    const spawn = await prisma.mycoSpawn.update({ where: { id }, data })
+    const spawn = await prisma.fungiSpawn.update({ where: { id }, data, include: { grainType: true } })
     return NextResponse.json(spawn)
   } catch (e) {
     console.error("Spawn update failed:", e)

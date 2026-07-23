@@ -22,6 +22,11 @@ async function main() {
 
   console.log(`Seeded admin user "${user.username}" (role: ${user.role})`)
   console.log(`Login at /admin/login with username "${username}" / password "${password}"`)
+
+  for (const name of ["Wheat", "Rye", "Oats", "Millet"]) {
+    await prisma.grainType.upsert({ where: { name }, update: {}, create: { name } })
+  }
+  console.log("Seeded default grain types")
 }
 
 main()

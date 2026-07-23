@@ -6,8 +6,8 @@ import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Sprout, Plus, X, Loader2, ChevronRight } from "lucide-react"
-import { STAGE_LABELS, type Stage } from "@/lib/mycology-stages"
+import { Sprout, Plus, X, Loader2, ChevronRight, Warehouse, Wheat, BarChart3 } from "lucide-react"
+import { STAGE_LABELS, type Stage } from "@/lib/fungiculture-stages"
 import { isAdminishRole } from "@/lib/tracing-stages"
 
 const TEXT = "var(--admin-text)"
@@ -20,10 +20,12 @@ const field: React.CSSProperties = {
 }
 const label: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: MUTED, marginBottom: 4, display: "block" }
 
+interface GrainTypeRow { id: string; name: string; active: boolean }
+
 interface SpawnRow {
   id: string
   code: string
-  grainType: string
+  grainType: GrainTypeRow
   quantityKg: number
   status: string
   colonizationPercent: number | null
@@ -51,9 +53,7 @@ function statusBadge(status: string) {
   )
 }
 
-const GRAIN_TYPES = ["wheat", "rye", "oats", "millet"]
-
-export default function MycologyBoard() {
+export default function FungicultureBoard() {
   const router = useRouter()
   const { data: session } = useSession()
   const role = (session?.user as { role?: string })?.role || "merchant"
@@ -61,13 +61,14 @@ export default function MycologyBoard() {
 
   const [spawn, setSpawn] = useState<SpawnRow[]>([])
   const [batches, setBatches] = useState<BatchRow[]>([])
+  const [grainTypes, setGrainTypes] = useState<GrainTypeRow[]>([])
   const [loading, setLoading] = useState(true)
   const [showSpawnForm, setShowSpawnForm] = useState(false)
   const [showBatchForm, setShowBatchForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
 
-  const [sf, setSf] = useState({ grainType: "wheat", quantityKg: "", remarks: "" })
+  const [sf, setSf] = useState({ grainTypeId: "", quantityKg: "", remarks: "" })
   const [bf, setBf] = useState({
     spawnId: "", strawKg: "", limeKg: "", branKg: "", cottonSeedCakeKg: "",
     soakHours: "12", bagCount: "", bagWeightKg: "2", pasteurizeHours: "4", coolHours: "4", remarks: "",
@@ -75,9 +76,17 @@ export default function MycologyBoard() {
 
   const load = async () => {
     try {
-      const [sRes, bRes] = await Promise.all([fetch("/api/mycology/spawn"), fetch("/api/mycology/batches")])
+      const [sRes, bRes, gRes] = await Promise.all([
+        fetch("/api/fungiculture/spawn"), fetch("/api/fungiculture/batches"), fetch("/api/fungiculture/grain-types"),
+      ])
       if (sRes.ok) setSpawn(await sRes.json())
       if (bRes.ok) setBatches(await bRes.json())
+      if (gRes.ok) {
+        const g: GrainTypeRow[] = await gRes.json()
+        const active = g.filter((t) => t.active)
+        setGrainTypes(active)
+        setSf((prev) => ({ ...prev, grainTypeId: prev.grainTypeId || active[0]?.id || "" }))
+      }
     } finally { setLoading(false) }
   }
 
@@ -90,7 +99,7 @@ export default function MycologyBoard() {
     if (!next) return
     setSaving(true)
     try {
-      const res = await fetch(`/api/mycology/spawn/${s.id}`, {
+      const res = await fetch(`/api/fungiculture/spawn/${s.id}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: next }),
       })
       if (res.ok) await load()
@@ -99,15 +108,16 @@ export default function MycologyBoard() {
 
   const createSpawn = async () => {
     setError("")
+    if (!sf.grainTypeId) { setError("Select a grain type."); return }
     if (!sf.quantityKg || Number(sf.quantityKg) <= 0) { setError("Enter a quantity for the spawn batch."); return }
     setSaving(true)
     try {
-      const res = await fetch("/api/mycology/spawn", {
+      const res = await fetch("/api/fungiculture/spawn", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(sf),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error || "Could not create spawn batch."); return }
-      setSf({ grainType: "wheat", quantityKg: "", remarks: "" })
+      setSf({ grainTypeId: grainTypes[0]?.id || "", quantityKg: "", remarks: "" })
       setShowSpawnForm(false)
       await load()
     } catch { setError("Network error. Try again.") }
@@ -119,12 +129,12 @@ export default function MycologyBoard() {
     if (!bf.bagCount || Number(bf.bagCount) <= 0) { setError("Enter how many substrate bags were filled."); return }
     setSaving(true)
     try {
-      const res = await fetch("/api/mycology/batches", {
+      const res = await fetch("/api/fungiculture/batches", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(bf),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error || "Could not create batch."); return }
-      router.push(`/admin/mycology/${data.id}`)
+      router.push(`/admin/fungiculture/${data.id}`)
     } catch { setError("Network error. Try again.") }
     finally { setSaving(false) }
   }
@@ -135,9 +145,26 @@ export default function MycologyBoard() {
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <Sprout size={22} color={GREEN} />
           <div>
-            <h1 style={{ fontSize: 22, fontWeight: "bold", color: TEXT }}>Mycology</h1>
+            <h1 style={{ fontSize: 22, fontWeight: "bold", color: TEXT }}>Fungiculture</h1>
             <p style={{ fontSize: 12, color: MUTED }}>Spawn inventory and substrate → harvest cultivation batches</p>
           </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Link href="/admin/fungiculture/growing-houses" style={{ textDecoration: "none" }}>
+            <Button style={{ background: "var(--admin-card-2)", color: TEXT, border: "1px solid var(--admin-border)", height: 34, fontSize: 13, gap: 6 }}>
+              <Warehouse size={14} /> Growing Houses
+            </Button>
+          </Link>
+          <Link href="/admin/fungiculture/grain-types" style={{ textDecoration: "none" }}>
+            <Button style={{ background: "var(--admin-card-2)", color: TEXT, border: "1px solid var(--admin-border)", height: 34, fontSize: 13, gap: 6 }}>
+              <Wheat size={14} /> Grain Types
+            </Button>
+          </Link>
+          <Link href="/admin/fungiculture/reports" style={{ textDecoration: "none" }}>
+            <Button style={{ background: "var(--admin-card-2)", color: TEXT, border: "1px solid var(--admin-border)", height: 34, fontSize: 13, gap: 6 }}>
+              <BarChart3 size={14} /> Reports
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -157,8 +184,9 @@ export default function MycologyBoard() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
             <div>
               <label style={label}>Grain Type</label>
-              <select style={field} value={sf.grainType} onChange={(e) => setSf({ ...sf, grainType: e.target.value })}>
-                {GRAIN_TYPES.map((g) => <option key={g} value={g}>{g[0].toUpperCase() + g.slice(1)}</option>)}
+              <select style={field} value={sf.grainTypeId} onChange={(e) => setSf({ ...sf, grainTypeId: e.target.value })}>
+                {grainTypes.length === 0 && <option value="">— none configured —</option>}
+                {grainTypes.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
               </select>
             </div>
             <div><label style={label}>Quantity (kg)</label><Input style={field} type="number" value={sf.quantityKg} onChange={(e) => setSf({ ...sf, quantityKg: e.target.value })} /></div>
@@ -185,8 +213,8 @@ export default function MycologyBoard() {
                 <div style={{ fontWeight: 700, color: TEXT, fontSize: 14 }}>{s.code}</div>
                 <div style={{ fontSize: 11, color: MUTED }}>{new Date(s.createdAt).toLocaleDateString()}</div>
               </div>
-              <div style={{ flex: 1, fontSize: 13, color: TEXT, textTransform: "capitalize" }}>
-                {s.grainType} · {s.quantityKg}kg{s.colonizationPercent != null ? ` · ${s.colonizationPercent}% colonized` : ""}
+              <div style={{ flex: 1, fontSize: 13, color: TEXT }}>
+                {s.grainType?.name ?? "—"} · {s.quantityKg}kg{s.colonizationPercent != null ? ` · ${s.colonizationPercent}% colonized` : ""}
               </div>
               {canCreate && SPAWN_NEXT[s.status] && (
                 <Button onClick={() => advanceSpawn(s)} disabled={saving} style={{ background: "var(--admin-card-2)", color: TEXT, border: "1px solid var(--admin-border)", height: 30, fontSize: 12, gap: 5 }}>
@@ -217,7 +245,7 @@ export default function MycologyBoard() {
             <label style={label}>Spawn Used {readySpawn.length === 0 && <span style={{ fontWeight: 400 }}>(no ready spawn batches yet — optional)</span>}</label>
             <select style={field} value={bf.spawnId} onChange={(e) => setBf({ ...bf, spawnId: e.target.value })}>
               <option value="">— none / not tracked —</option>
-              {readySpawn.map((s) => <option key={s.id} value={s.id}>{s.code} · {s.grainType} · {s.quantityKg}kg</option>)}
+              {readySpawn.map((s) => <option key={s.id} value={s.id}>{s.code} · {s.grainType?.name} · {s.quantityKg}kg</option>)}
             </select>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
@@ -248,7 +276,7 @@ export default function MycologyBoard() {
       ) : (
         <div style={{ display: "grid", gap: 10 }}>
           {batches.map((b) => (
-            <Link key={b.id} href={`/admin/mycology/${b.id}`} style={{ textDecoration: "none" }}>
+            <Link key={b.id} href={`/admin/fungiculture/${b.id}`} style={{ textDecoration: "none" }}>
               <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, padding: 16, display: "flex", alignItems: "center", gap: 16 }}>
                 <div style={{ minWidth: 90 }}>
                   <div style={{ fontWeight: 700, color: TEXT, fontSize: 14 }}>{b.code}</div>
