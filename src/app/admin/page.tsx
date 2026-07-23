@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import {
   Package, ShoppingCart, Truck, DollarSign,
   Users, AlertTriangle, CheckCircle, Clock, ArrowRight,
-  ChevronDown, ChevronUp, UserCheck, UserX
+  ChevronDown, ChevronUp, UserCheck, UserX, Sprout, Warehouse, Wheat
 } from "lucide-react"
 import Link from "next/link"
 import { useProductStore } from "@/store/product-store"
@@ -29,6 +29,7 @@ export default function AdminDashboard() {
   const [userStats, setUserStats] = useState<{ total: number; active: number; blocked: number } | null>(null)
   const [ordersExpanded, setOrdersExpanded] = useState(false)
   const [stockExpanded, setStockExpanded] = useState(false)
+  const [fungicultureExpanded, setFungicultureExpanded] = useState(false)
   const [production, setProduction] = useState<{ id: string; code: string; productName: string | null; productionPercent: number | null }[]>([])
   const lowStock = products.filter((p) => p.stock <= 5)
 
@@ -259,6 +260,45 @@ export default function AdminDashboard() {
             )}
           </CardContent>
         </Card>
+
+        {/* Fungiculture quick access */}
+        {isAdmin && (
+          <Card style={{ borderColor: '#A89F91' }}>
+            <CardHeader style={{ paddingBottom: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <CardTitle style={{ fontSize: '16px', color: "var(--admin-text)", display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Sprout size={18} /> Fungiculture
+                </CardTitle>
+                <button onClick={() => setFungicultureExpanded((v) => !v)} style={{ fontSize: '13px', color: '#6B7D5C', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: 0 }}>
+                  Manage {fungicultureExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                </button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {fungicultureExpanded ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {[
+                    { label: 'Fungiculture', href: '/admin/fungiculture', icon: Sprout },
+                    { label: 'Growing Houses', href: '/admin/fungiculture/growing-houses', icon: Warehouse },
+                    { label: 'Grain Types', href: '/admin/fungiculture/grain-types', icon: Wheat },
+                  ].map((item) => (
+                    <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', padding: '10px', backgroundColor: 'var(--admin-bg)', borderRadius: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <item.icon size={16} style={{ color: '#6B7D5C' }} />
+                          <span style={{ fontWeight: '500', color: "var(--admin-text)", fontSize: '14px' }}>{item.label}</span>
+                        </div>
+                        <ArrowRight size={14} style={{ color: "var(--admin-muted)" }} />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ color: "var(--admin-muted)", textAlign: 'center', padding: '20px', fontSize: '14px' }}>Growing houses, grain types &amp; batches</p>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   )
