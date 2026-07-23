@@ -7,8 +7,16 @@ const VIEW_ROLES = ["fungiculturist", "admin", "it_specialist", "assistant_ceo"]
 const COUNTRIES = new Set(["Kenya", "Tanzania"])
 
 // List growing houses with a computed activeIncubationCount — batches
-// currently hung there (incubation stage, in_progress) — so the UI can warn
-// when a house is over its maxBagCapacity. Soft warning only, never blocks.
+// currently hung there — so the UI can warn when a house is over its
+// maxBagCapacity. Soft warning only, never blocks.
+//
+// A FungiIncubation row (which carries growingHouseId) is only written when
+// the incubation stage is SUBMITTED — and submitting a stage simultaneously
+// advances batch.stage to the next one. So by the time growingHouseId exists,
+// batch.stage is already "harvest", never "incubation". A batch physically
+// occupies the growing house from that submission until harvest is itself
+// submitted (which advances it to "dehydration_packaging" and empties the
+// house) — so "currently occupying" means stage === "harvest".
 export async function GET(request: NextRequest) {
   const auth = await requireRole(request, VIEW_ROLES)
   if (auth instanceof NextResponse) return auth
@@ -16,7 +24,7 @@ export async function GET(request: NextRequest) {
   const houses = await prisma.growingHouse.findMany({ orderBy: { createdAt: "desc" } })
   const counts = await prisma.fungiIncubation.groupBy({
     by: ["growingHouseId"],
-    where: { growingHouseId: { not: null }, batch: { stage: "incubation", status: "in_progress" } },
+    where: { growingHouseId: { not: null }, batch: { stage: "harvest", status: "in_progress" } },
     _count: { _all: true },
   })
   const countByHouse = new Map(counts.map((c) => [c.growingHouseId, c._count._all]))
