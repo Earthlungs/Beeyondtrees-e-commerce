@@ -16,6 +16,8 @@ const TEXT = "var(--admin-text)"
 const MUTED = "var(--admin-muted)"
 const GREEN = "#6B7D5C"
 const RED = "#C0392B"
+const AMBER = "#D9A441"
+const BROWN = "#8C6A4A"
 
 const field: React.CSSProperties = { width: "100%", height: 40, borderRadius: 8, border: "1px solid var(--admin-border)", padding: "0 10px", color: TEXT }
 const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: MUTED, marginBottom: 4, display: "block" }
@@ -24,12 +26,52 @@ interface HousingOption { id: string; name: string; code: string; status: string
 interface FeedingLogRow { id: string; quantity: number; fedAt: string; feedType: { name: string; unit: string } }
 interface YieldRow { id: string; type: string; quantity: number; unit: string; recordedAt: string; recordedBy: string | null }
 
+interface Balance { total: number; byUnit: { unit: string; total: number }[] }
+
 interface Animal {
   id: string; code: string; tagId: string | null; name: string | null; species: string; breed: string | null
   sex: string; groupCount: number; dob: string | null; acquiredAt: string | null
   source: string | null; weightKg: number | null; healthStatus: string; status: string
   housing: { id: string; name: string; code: string } | null; notes: string | null
   feedingLogs: FeedingLogRow[]; yields: YieldRow[]
+  feedBalance: Balance; yieldBalance: Balance
+}
+
+function fmtBalance(b: Balance): string {
+  if (b.byUnit.length === 0) return "none yet"
+  return b.byUnit.map((p) => `${p.total} ${p.unit}`).join(" + ")
+}
+
+// A simple beam balance: tilts toward whichever side (feed vs yield) has the
+// larger total. Illustrative only — it compares raw logged quantities, not
+// money, and can't reconcile mixed units (e.g. kg of feed vs. liters of milk).
+function WeighingBalance({ feedTotal, yieldTotal }: { feedTotal: number; yieldTotal: number }) {
+  const denom = feedTotal + yieldTotal
+  const angle = denom > 0 ? Math.max(-18, Math.min(18, ((yieldTotal - feedTotal) / denom) * 20)) : 0
+  const pivotX = 110, pivotY = 58, half = 66
+
+  return (
+    <svg viewBox="0 0 220 184" width="180" height="150" role="img" aria-label="Weighing balance comparing total feed to total yield">
+      {/* stand */}
+      <path d="M 88 158 L 110 60 L 132 158 Z" fill={BROWN} opacity={0.85} />
+      <rect x="70" y="158" width="80" height="8" rx="2" fill={BROWN} opacity={0.85} />
+      <circle cx={pivotX} cy={pivotY} r="5" fill={BROWN} />
+
+      {/* rotating beam + pans */}
+      <g transform={`rotate(${angle} ${pivotX} ${pivotY})`}>
+        <line x1={pivotX - half} y1={pivotY} x2={pivotX + half} y2={pivotY} stroke={TEXT} strokeWidth="3" strokeLinecap="round" />
+        {/* left pan (feed) */}
+        <line x1={pivotX - half} y1={pivotY} x2={pivotX - half} y2={pivotY + 34} stroke={MUTED} strokeWidth="1.5" />
+        <path d={`M ${pivotX - half - 20} ${pivotY + 34} Q ${pivotX - half} ${pivotY + 52} ${pivotX - half + 20} ${pivotY + 34}`} fill="none" stroke={feedTotal >= yieldTotal ? RED : MUTED} strokeWidth="3" strokeLinecap="round" />
+        {/* right pan (yield) */}
+        <line x1={pivotX + half} y1={pivotY} x2={pivotX + half} y2={pivotY + 34} stroke={MUTED} strokeWidth="1.5" />
+        <path d={`M ${pivotX + half - 20} ${pivotY + 34} Q ${pivotX + half} ${pivotY + 52} ${pivotX + half + 20} ${pivotY + 34}`} fill="none" stroke={yieldTotal > feedTotal ? GREEN : MUTED} strokeWidth="3" strokeLinecap="round" />
+      </g>
+
+      <text x={pivotX - half} y={170} textAnchor="middle" fontSize="12" fontWeight={700} fill={MUTED}>Feed</text>
+      <text x={pivotX + half} y={170} textAnchor="middle" fontSize="12" fontWeight={700} fill={MUTED}>Yield</text>
+    </svg>
+  )
 }
 
 function fmtDate(v: string | null) {
@@ -123,6 +165,39 @@ export default function LivestockAnimalDetail() {
           {SPECIES_LABELS[animal.species] ?? animal.species}{animal.tagId ? ` · Tag ${animal.tagId}` : ` · ${animal.groupCount} head`}
         </p>
       </div>
+
+      {(() => {
+        const feedTotal = animal.feedBalance.total
+        const yieldTotal = animal.yieldBalance.total
+        const hasData = feedTotal > 0 || yieldTotal > 0
+        const verdict = !hasData
+          ? { text: "Not enough data yet — log feeding and yield to see a comparison.", color: MUTED }
+          : yieldTotal > feedTotal * 1.05
+          ? { text: "Producing more than it's being fed.", color: GREEN }
+          : feedTotal > yieldTotal * 1.05
+          ? { text: "Being fed more than it's producing.", color: RED }
+          : { text: "Roughly balanced.", color: AMBER }
+        return (
+          <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, padding: 20, marginBottom: 20, display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <h2 style={{ fontSize: 15, fontWeight: 700, color: TEXT, marginBottom: 8 }}>Feed vs. Yield</h2>
+              <div style={{ fontSize: 13, color: TEXT, marginBottom: 4 }}>
+                Total fed: <b>{fmtBalance(animal.feedBalance)}</b>
+              </div>
+              <div style={{ fontSize: 13, color: TEXT, marginBottom: 10 }}>
+                Total yield: <b>{fmtBalance(animal.yieldBalance)}</b>
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: verdict.color }}>{verdict.text}</div>
+              <p style={{ fontSize: 11, color: MUTED, marginTop: 8, maxWidth: 320 }}>
+                Compares logged quantities, not cost — treat as a rough indicator, especially if feed and yield are recorded in different units (e.g. kg of feed vs. liters of milk).
+              </p>
+            </div>
+            <div style={{ flexShrink: 0 }}>
+              <WeighingBalance feedTotal={feedTotal} yieldTotal={yieldTotal} />
+            </div>
+          </div>
+        )
+      })()}
 
       <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, padding: 20, marginBottom: 20 }}>
         {error && <div style={{ background: "#FDEDED", color: RED, padding: "8px 12px", borderRadius: 8, fontSize: 13, marginBottom: 12 }}>{error}</div>}

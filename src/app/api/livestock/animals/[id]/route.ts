@@ -7,21 +7,40 @@ import { HEALTH_STATUSES, ANIMAL_STATUSES } from "@/lib/livestock-stages"
 const VIEW_ROLES = ["livestock_manager", "admin", "it_specialist", "assistant_ceo"]
 const SEXES = new Set(["male", "female", "mixed"])
 
+// Sums quantities per unit (kg fed can't be added to liters fed) so the
+// weighing-balance comparison stays honest about mixed units instead of
+// producing a falsely precise single number.
+function sumByUnit(rows: { quantity: number; unit: string }[]) {
+  const byUnit = new Map<string, number>()
+  for (const r of rows) byUnit.set(r.unit, (byUnit.get(r.unit) ?? 0) + r.quantity)
+  const parts = [...byUnit.entries()].sort((a, b) => b[1] - a[1])
+  return { total: parts.reduce((s, [, v]) => s + v, 0), byUnit: parts.map(([unit, total]) => ({ unit, total })) }
+}
+
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireRole(request, VIEW_ROLES)
   if (auth instanceof NextResponse) return auth
 
   const { id } = await params
-  const animal = await prisma.livestockAnimal.findUnique({
-    where: { id },
-    include: {
-      housing: { select: { id: true, name: true, code: true } },
-      feedingLogs: { orderBy: { fedAt: "desc" }, take: 20, include: { feedType: { select: { name: true, unit: true } } } },
-      yields: { orderBy: { recordedAt: "desc" }, take: 20 },
-    },
-  })
+  const [animal, allFeeding, allYields] = await Promise.all([
+    prisma.livestockAnimal.findUnique({
+      where: { id },
+      include: {
+        housing: { select: { id: true, name: true, code: true } },
+        feedingLogs: { orderBy: { fedAt: "desc" }, take: 20, include: { feedType: { select: { name: true, unit: true } } } },
+        yields: { orderBy: { recordedAt: "desc" }, take: 20 },
+      },
+    }),
+    prisma.feedingLog.findMany({ where: { animalId: id }, select: { quantity: true, feedType: { select: { unit: true } } } }),
+    prisma.livestockYield.findMany({ where: { animalId: id }, select: { quantity: true, unit: true } }),
+  ])
   if (!animal) return NextResponse.json({ error: "Animal record not found." }, { status: 404 })
-  return NextResponse.json(animal)
+
+  return NextResponse.json({
+    ...animal,
+    feedBalance: sumByUnit(allFeeding.map((f) => ({ quantity: f.quantity, unit: f.feedType.unit }))),
+    yieldBalance: sumByUnit(allYields),
+  })
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
