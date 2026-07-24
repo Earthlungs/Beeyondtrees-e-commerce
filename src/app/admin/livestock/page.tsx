@@ -25,6 +25,7 @@ interface AnimalRow {
   id: string
   code: string
   tagId: string | null
+  name: string | null
   species: string
   breed: string | null
   sex: string
@@ -37,7 +38,7 @@ interface AnimalRow {
 }
 
 const emptyForm = {
-  species: "cattle", tagId: "", breed: "", sex: "mixed", groupCount: "1",
+  species: "cattle", tagId: "", name: "", breed: "", sex: "mixed", groupCount: "1",
   dob: "", acquiredAt: "", source: "", weightKg: "", housingId: "", notes: "",
 }
 
@@ -176,6 +177,10 @@ export default function LivestockBoard() {
               <Input style={field} value={form.tagId} onChange={(e) => setForm({ ...form, tagId: e.target.value })} placeholder="leave blank for a herd/flock record" />
             </div>
             <div>
+              <label style={label}>Name</label>
+              <Input style={field} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Bessie, or a herd label" />
+            </div>
+            <div>
               <label style={label}>Group Count</label>
               <Input style={field} type="number" min={1} value={form.groupCount} onChange={(e) => setForm({ ...form, groupCount: e.target.value })} disabled={!!form.tagId.trim()} />
             </div>
@@ -219,8 +224,10 @@ export default function LivestockBoard() {
             <Link key={a.id} href={`/admin/livestock/${a.id}`} style={{ textDecoration: "none" }}>
               <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, padding: 16, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
                 <div style={{ minWidth: 110 }}>
-                  <div style={{ fontWeight: 700, color: TEXT, fontSize: 14 }}>{a.code}</div>
-                  <div style={{ fontSize: 11, color: MUTED }}>{a.tagId ? `Tag ${a.tagId}` : `${a.groupCount} head`}</div>
+                  <div style={{ fontWeight: 700, color: TEXT, fontSize: 14 }}>{a.name || a.code}</div>
+                  <div style={{ fontSize: 11, color: MUTED }}>
+                    {a.name ? `${a.code} · ` : ""}{a.tagId ? `Tag ${a.tagId}` : `${a.groupCount} head`}
+                  </div>
                 </div>
                 <div style={{ flex: 1, minWidth: 160, fontSize: 13, color: TEXT }}>
                   {SPECIES_LABELS[a.species] ?? a.species}{a.breed ? ` · ${a.breed}` : ""}

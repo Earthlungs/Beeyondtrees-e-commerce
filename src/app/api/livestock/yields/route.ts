@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     take: 200,
     include: {
       housing: { select: { name: true, code: true } },
-      animal: { select: { code: true, tagId: true, species: true } },
+      animal: { select: { code: true, tagId: true, name: true, species: true } },
     },
   })
   return NextResponse.json(yields, { headers: { "Cache-Control": "no-store" } })
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       },
       include: {
         housing: { select: { name: true, code: true } },
-        animal: { select: { code: true, tagId: true, species: true } },
+        animal: { select: { code: true, tagId: true, name: true, species: true } },
       },
     })
     return NextResponse.json(yieldRecord, { status: 201 })

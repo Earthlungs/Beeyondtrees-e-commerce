@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
           data: {
             code,
             tagId,
+            name: body.name?.trim() || null,
             species,
             breed: body.breed?.trim() || null,
             sex: SEXES.has(body.sex) ? body.sex : "mixed",

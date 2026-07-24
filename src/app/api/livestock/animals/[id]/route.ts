@@ -39,6 +39,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   const data: Record<string, unknown> = {}
   if (body.tagId !== undefined) data.tagId = body.tagId?.trim() || null
+  if (body.name !== undefined) data.name = body.name?.trim() || null
   if (body.breed !== undefined) data.breed = body.breed?.trim() || null
   if (body.sex !== undefined && SEXES.has(body.sex)) data.sex = body.sex
   if (body.groupCount !== undefined) data.groupCount = Math.max(1, Math.trunc(Number(body.groupCount)) || 1)

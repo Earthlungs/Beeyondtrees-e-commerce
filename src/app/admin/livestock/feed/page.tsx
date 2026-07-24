@@ -17,12 +17,12 @@ const label: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: MUTED
 
 interface FeedTypeRow { id: string; name: string; unit: string; stockQty: number; active: boolean }
 interface HousingOption { id: string; name: string; code: string; status: string }
-interface AnimalOption { id: string; code: string; tagId: string | null; species: string }
+interface AnimalOption { id: string; code: string; tagId: string | null; name: string | null; species: string }
 interface FeedingLogRow {
   id: string; quantity: number; fedAt: string; loggedBy: string | null
   feedType: { name: string; unit: string }
   housing: { name: string; code: string } | null
-  animal: { code: string; tagId: string | null } | null
+  animal: { code: string; tagId: string | null; name: string | null } | null
 }
 
 const emptyFtForm = { name: "", unit: "kg", stockQty: "" }
@@ -177,7 +177,7 @@ export default function LivestockFeedPage() {
               <label style={label}>Animal</label>
               <select style={field} value={logForm.animalId} onChange={(e) => setLogForm({ ...logForm, animalId: e.target.value })}>
                 <option value="">— none —</option>
-                {animals.map((a) => <option key={a.id} value={a.id}>{a.code}{a.tagId ? ` · Tag ${a.tagId}` : ""}</option>)}
+                {animals.map((a) => <option key={a.id} value={a.id}>{a.name || a.code}{a.tagId ? ` · Tag ${a.tagId}` : ""}</option>)}
               </select>
             </div>
             <div><label style={label}>Date/Time Fed</label><Input style={field} type="datetime-local" value={logForm.fedAt} onChange={(e) => setLogForm({ ...logForm, fedAt: e.target.value })} /></div>
@@ -216,7 +216,7 @@ export default function LivestockFeedPage() {
                   <td style={{ padding: "10px 14px", color: TEXT }}>{new Date(l.fedAt).toLocaleString("en-KE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false })}</td>
                   <td style={{ padding: "10px 14px", color: TEXT }}>{l.feedType.name}</td>
                   <td style={{ padding: "10px 14px", color: TEXT }}>{l.quantity} {l.feedType.unit}</td>
-                  <td style={{ padding: "10px 14px", color: TEXT }}>{l.housing ? l.housing.name : l.animal ? `${l.animal.code}${l.animal.tagId ? ` (Tag ${l.animal.tagId})` : ""}` : "—"}</td>
+                  <td style={{ padding: "10px 14px", color: TEXT }}>{l.housing ? l.housing.name : l.animal ? `${l.animal.name || l.animal.code}${l.animal.tagId ? ` (Tag ${l.animal.tagId})` : ""}` : "—"}</td>
                   <td style={{ padding: "10px 14px", color: MUTED }}>{l.loggedBy ?? "—"}</td>
                 </tr>
               ))}

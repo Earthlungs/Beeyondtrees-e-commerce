@@ -567,6 +567,7 @@ model LivestockAnimal {
   id           String    @id @default(cuid())
   code         String    @unique // LA-0001
   tagId        String?   @unique // ear-tag/ring number for an individually tracked animal
+  name         String? // friendly name/label (e.g. "Bessie", or a herd label like "East Coop Batch A")
   species      String // cattle | goat | sheep | poultry | pig | rabbit | bee | other
   breed        String?
   sex          String    @default("mixed") // male | female | mixed

@@ -12,7 +12,7 @@ const GREEN = "#6B7D5C"
 interface YieldRow {
   id: string; type: string; quantity: number; unit: string; recordedAt: string
   housing: { name: string; code: string } | null
-  animal: { code: string; tagId: string | null; species: string } | null
+  animal: { code: string; tagId: string | null; name: string | null; species: string } | null
 }
 
 export default function LivestockReportsPage() {
@@ -81,7 +81,7 @@ export default function LivestockReportsPage() {
                     <td style={{ padding: "10px 14px", color: TEXT }}>{new Date(y.recordedAt).toLocaleDateString("en-KE", { day: "2-digit", month: "2-digit", year: "numeric" })}</td>
                     <td style={{ padding: "10px 14px", fontWeight: 600, color: TEXT }}>{YIELD_TYPE_LABELS[y.type] ?? y.type}</td>
                     <td style={{ padding: "10px 14px", color: TEXT }}>{y.quantity} {y.unit}</td>
-                    <td style={{ padding: "10px 14px", color: MUTED }}>{y.animal ? `${y.animal.code}${y.animal.tagId ? ` (Tag ${y.animal.tagId})` : ""}` : y.housing ? y.housing.name : "—"}</td>
+                    <td style={{ padding: "10px 14px", color: MUTED }}>{y.animal ? `${y.animal.name || y.animal.code}${y.animal.tagId ? ` (Tag ${y.animal.tagId})` : ""}` : y.housing ? y.housing.name : "—"}</td>
                   </tr>
                 ))}
               </tbody>

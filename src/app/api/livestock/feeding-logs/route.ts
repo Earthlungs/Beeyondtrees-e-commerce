@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     include: {
       feedType: { select: { name: true, unit: true } },
       housing: { select: { name: true, code: true } },
-      animal: { select: { code: true, tagId: true } },
+      animal: { select: { code: true, tagId: true, name: true } },
     },
   })
   return NextResponse.json(logs, { headers: { "Cache-Control": "no-store" } })

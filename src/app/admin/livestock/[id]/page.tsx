@@ -25,7 +25,7 @@ interface FeedingLogRow { id: string; quantity: number; fedAt: string; feedType:
 interface YieldRow { id: string; type: string; quantity: number; unit: string; recordedAt: string; recordedBy: string | null }
 
 interface Animal {
-  id: string; code: string; tagId: string | null; species: string; breed: string | null
+  id: string; code: string; tagId: string | null; name: string | null; species: string; breed: string | null
   sex: string; groupCount: number; dob: string | null; acquiredAt: string | null
   source: string | null; weightKg: number | null; healthStatus: string; status: string
   housing: { id: string; name: string; code: string } | null; notes: string | null
@@ -63,7 +63,7 @@ export default function LivestockAnimalDetail() {
       const data: Animal = await res.json()
       setAnimal(data)
       setForm({
-        tagId: data.tagId ?? "", breed: data.breed ?? "", sex: data.sex, groupCount: String(data.groupCount),
+        tagId: data.tagId ?? "", name: data.name ?? "", breed: data.breed ?? "", sex: data.sex, groupCount: String(data.groupCount),
         dob: data.dob ? data.dob.slice(0, 10) : "", acquiredAt: data.acquiredAt ? data.acquiredAt.slice(0, 10) : "",
         source: data.source ?? "", weightKg: data.weightKg?.toString() ?? "", healthStatus: data.healthStatus,
         status: data.status, housingId: data.housing?.id ?? "", notes: data.notes ?? "",
@@ -117,8 +117,9 @@ export default function LivestockAnimalDetail() {
       </Link>
 
       <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 22, fontWeight: "bold", color: TEXT }}>{animal.code}</h1>
+        <h1 style={{ fontSize: 22, fontWeight: "bold", color: TEXT }}>{animal.name || animal.code}</h1>
         <p style={{ fontSize: 12, color: MUTED }}>
+          {animal.name ? `${animal.code} · ` : ""}
           {SPECIES_LABELS[animal.species] ?? animal.species}{animal.tagId ? ` · Tag ${animal.tagId}` : ` · ${animal.groupCount} head`}
         </p>
       </div>
@@ -129,6 +130,10 @@ export default function LivestockAnimalDetail() {
           <div>
             <label style={labelStyle}>Tag / Ring ID</label>
             <Input style={field} value={form.tagId ?? ""} disabled={!canEdit} onChange={(e) => setForm({ ...form, tagId: e.target.value })} />
+          </div>
+          <div>
+            <label style={labelStyle}>Name</label>
+            <Input style={field} value={form.name ?? ""} disabled={!canEdit} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Bessie" />
           </div>
           <div>
             <label style={labelStyle}>Breed</label>
