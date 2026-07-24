@@ -19,6 +19,8 @@ const ROLES = new Set([
   "nursery", "shop_attendant", "fiber_weaver", "glass_technician", "driver",
   // Fungiculture (mushroom cultivation) pipeline
   "fungiculturist",
+  // Livestock (animal husbandry) subsystem
+  "livestock_manager",
 ])
 const EMAIL_DOMAIN = "earthlungs.org"
 const COUNTRIES = new Set(["Kenya", "Tanzania"])

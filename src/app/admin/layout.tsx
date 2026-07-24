@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import {
   LayoutDashboard, Package, Truck, LogOut, Menu, X, Users, TrendingUp,
   Settings, Store, ShoppingCart, FileText, ClipboardList, UserCog, Workflow,
-  BarChart3, MessageSquare, Code2, Banknote, ScrollText, Sprout, Warehouse, Wheat,
+  BarChart3, MessageSquare, Code2, Banknote, ScrollText, Sprout, Warehouse, Wheat, PawPrint,
 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { ROLE_LABELS } from "@/lib/tracing-stages"
@@ -21,6 +21,8 @@ const TRACING_ROLES = [
 const APPROVAL_ROLES = ["chief", "finance"]
 // Fungiculturist: confined to the fungiculture (mushroom) pipeline.
 const FUNGICULTURE_ROLES = ["fungiculturist"]
+// Livestock Manager: confined to the livestock (animal husbandry) subsystem.
+const LIVESTOCK_ROLES = ["livestock_manager"]
 
 interface NavItem { href: string; label: string; icon: React.ComponentType<{ size?: number }> }
 interface NavGroup { title?: string; items: NavItem[] }
@@ -96,6 +98,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const isTracing = TRACING_ROLES.includes(role)
   const isApproval = APPROVAL_ROLES.includes(role)
   const isFungiculture = FUNGICULTURE_ROLES.includes(role)
+  const isLivestock = LIVESTOCK_ROLES.includes(role)
   // LPO + invoicing: Procurement Officer (internal) / External Procurement originate,
   // Factory Admin (executive) approves internal LPOs.
   const canDoc = role === "procurement_officer" || role === "external_procurement" || role === "executive"
@@ -128,6 +131,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         { href: "/admin/fungiculture/growing-houses", label: "Growing Houses", icon: Warehouse },
         { href: "/admin/fungiculture/grain-types", label: "Grain Types", icon: Wheat },
         { href: "/admin/fungiculture/reports", label: "Reports", icon: BarChart3 },
+        pos, chat,
+      ],
+    }]
+  } else if (isLivestock) {
+    groups = [{
+      title: "Livestock",
+      items: [
+        { href: "/admin/livestock", label: "Livestock", icon: PawPrint },
+        { href: "/admin/livestock/housing", label: "Housing", icon: Warehouse },
+        { href: "/admin/livestock/feed", label: "Feed", icon: Wheat },
+        { href: "/admin/livestock/reports", label: "Reports", icon: BarChart3 },
         pos, chat,
       ],
     }]
@@ -176,6 +190,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         items: [
           { href: "/admin/tracing", label: "Tracing Board", icon: Workflow },
           { href: "/admin/value-chain/reports", label: "Reports", icon: BarChart3 },
+          { href: "/admin/fungiculture", label: "Fungiculture", icon: Sprout },
+          { href: "/admin/livestock", label: "Livestock", icon: PawPrint },
           chat,
         ],
       }] : []),
@@ -210,7 +226,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       }}>
         <div style={{ padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Link href={isFungiculture ? "/admin/fungiculture" : isTracing ? "/admin/tracing" : "/admin"} style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', color: 'white' }}>
+            <Link href={isFungiculture ? "/admin/fungiculture" : isLivestock ? "/admin/livestock" : isTracing ? "/admin/tracing" : "/admin"} style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', color: 'white' }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/icons/icon-192.png" alt="BEEyond Trees" width={38} height={38} style={{ width: 38, height: 38, objectFit: 'contain', borderRadius: 8 }} />
               <div>
@@ -268,7 +284,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             style={{ width: '100%', backgroundColor: 'rgba(255,255,255,0.08)', color: '#E8D5C4', border: 'none', justifyContent: 'center', gap: '8px', fontSize: '13px', height: '38px' }}>
             <LogOut size={15} /> Sign Out
           </Button>
-          {!isTracing && !isFungiculture && role !== "cashier" && (
+          {!isTracing && !isFungiculture && !isLivestock && role !== "cashier" && (
             <Link href="/" style={{ display: 'block', textAlign: 'center', marginTop: '10px', fontSize: '12px', color: '#A89F91', textDecoration: 'none' }}>
               <Store size={14} style={{ display: 'inline', marginRight: '4px' }} /> View Store
             </Link>

@@ -9,24 +9,24 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  username  String   @unique
-  password  String
-  name      String
-  role      String   @default("merchant")
-  active    Boolean  @default(true) // blocked/deactivated users can't log in
+  id                 String    @id @default(cuid())
+  username           String    @unique
+  password           String
+  name               String
+  role               String    @default("merchant")
+  active             Boolean   @default(true) // blocked/deactivated users can't log in
   // Staff provisioning (IT Specialist): value-chain users log in with their
   // first name as username and their phone as the initial password, then must
   // change it. email is auto-filled firstname@earthlungs.org.
-  email              String?  @unique
+  email              String?   @unique
   phone              String?
-  country            String   @default("Kenya") // Kenya | Tanzania
-  image              String?  // profile picture URL (Cloudinary)
-  mustChangePassword Boolean  @default(false)
-  theme              String   @default("system") // per-user UI theme: system | dark
+  country            String    @default("Kenya") // Kenya | Tanzania
+  image              String? // profile picture URL (Cloudinary)
+  mustChangePassword Boolean   @default(false)
+  theme              String    @default("system") // per-user UI theme: system | dark
   lastSeenAt         DateTime? // updated as the user polls chat — powers "last seen / online"
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 }
 
 // In-app 1:1 chat between staff. Polled (~4s) by the chat UI; no FK to User to
@@ -125,24 +125,24 @@ model DocAttachment {
 }
 
 model Product {
-  id               String      @id @default(cuid())
-  name             String
-  description      String      @db.Text
-  category         String
-  retailPrice      Float
-  wholesalePrice   Float
-  distributorPrice Float
-  costPrice        Float       @default(0) // buying/production cost, for profit calc (admin-only, never in public catalog)
-  stock            Int         @default(0)
-  images           Json        @default("[]")
-  isOnOffer        Boolean     @default(false)
-  offerPrice       Float? // retail offer price (when isOnOffer)
+  id                    String      @id @default(cuid())
+  name                  String
+  description           String      @db.Text
+  category              String
+  retailPrice           Float
+  wholesalePrice        Float
+  distributorPrice      Float
+  costPrice             Float       @default(0) // buying/production cost, for profit calc (admin-only, never in public catalog)
+  stock                 Int         @default(0)
+  images                Json        @default("[]")
+  isOnOffer             Boolean     @default(false)
+  offerPrice            Float? // retail offer price (when isOnOffer)
   offerWholesalePrice   Float? // wholesale offer price
   offerDistributorPrice Float? // distributor offer price
-  isFeatured       Boolean     @default(false)
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
-  orderItems       OrderItem[]
+  isFeatured            Boolean     @default(false)
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+  orderItems            OrderItem[]
 }
 
 model Order {
@@ -164,10 +164,10 @@ model Order {
   channel              String      @default("online")
   // POS-only fields. paymentMethod is "cash" | "mpesa" | "card".
   paymentMethod        String?
-  cashReceived         Float?      // amount tendered for cash sales (for change)
-  mpesaCode            String?     // M-Pesa confirmation code
-  cardRef              String?     // card/terminal reference
-  soldBy               String?     // name of the cashier who rang up the sale
+  cashReceived         Float? // amount tendered for cash sales (for change)
+  mpesaCode            String? // M-Pesa confirmation code
+  cardRef              String? // card/terminal reference
+  soldBy               String? // name of the cashier who rang up the sale
   createdAt            DateTime    @default(now())
   updatedAt            DateTime    @updatedAt
   items                OrderItem[]
@@ -179,8 +179,8 @@ model OrderItem {
   orderId     String
   productId   String
   productName String
-  price       Float   // actual sold unit price (after any POS discount)
-  markedPrice Float?  // POS: original tier price before the till discount; null = no discount
+  price       Float // actual sold unit price (after any POS discount)
+  markedPrice Float? // POS: original tier price before the till discount; null = no discount
   discount    Float   @default(0) // POS: KSh knocked off per unit at the till
   quantity    Int
   pricingTier String
@@ -190,16 +190,16 @@ model OrderItem {
 }
 
 model Dispatch {
-  id                String   @id @default(cuid())
-  orderId           String   @unique
+  id                String    @id @default(cuid())
+  orderId           String    @unique
   riderName         String
   riderPhone        String
   motorbikePlate    String
   riderIdNo         String
-  dispatchedAt      DateTime @default(now())
+  dispatchedAt      DateTime  @default(now())
   estimatedDelivery DateTime?
-  createdAt         DateTime @default(now())
-  order             Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  createdAt         DateTime  @default(now())
+  order             Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
 
 // ── Traceability subsystem ─────────────────────────────────────────────────
@@ -212,7 +212,7 @@ model Batch {
   id                   String   @id @default(cuid())
   code                 String   @unique // BTR-0001
   stage                String   @default("bulk_request") // current open stage (STAGES in lib/tracing)
-  status               String   @default("in_progress")  // in_progress | rejected | completed
+  status               String   @default("in_progress") // in_progress | rejected | completed
   productName          String? // finished good, used to fuzzy-match the catalog
   lpoId                String? // LPO that initiated this batch (marks LPO as consumed)
   matchedProductId     String? // resolved catalog Product.id (read-only link, no FK)
@@ -233,23 +233,23 @@ model Batch {
 
 // Stage 1 — Factory manager
 model BulkRequest {
-  id                 String   @id @default(cuid())
-  batchId            String   @unique
-  requestId          String   @unique // BTR-REQ-0001
+  id                 String    @id @default(cuid())
+  batchId            String    @unique
+  requestId          String    @unique // BTR-REQ-0001
   sector             String
   materialCategory   String
   materialName       String
   quantityRequested  Float
   unitOfMeasure      String
   expectedDate       DateTime?
-  estimatedUnitCost  Float    @default(0)
-  estimatedTotalCost Float    @default(0)
-  purpose            String?  @db.Text
+  estimatedUnitCost  Float     @default(0)
+  estimatedTotalCost Float     @default(0)
+  purpose            String?   @db.Text
   requestedBy        String
   approvedBy         String? // filled at the approval stage
-  status             String   @default("pending")
-  createdAt          DateTime @default(now())
-  batch              Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  status             String    @default("pending")
+  createdAt          DateTime  @default(now())
+  batch              Batch     @relation(fields: [batchId], references: [id], onDelete: Cascade)
 }
 
 // Stage 2 — Executive (accept / reject)
@@ -265,57 +265,57 @@ model Approval {
 
 // Stage 3 — Procurement officer (harvest / sourcing)
 model Sourcing {
-  id               String   @id @default(cuid())
-  batchId          String   @unique
-  harvestId        String   @unique // HRV-0001
-  materialName     String
-  sourceLocation   String
-  gps              String?
-  quantityHarvested Float   @default(0)
-  laborCost        Float    @default(0)
-  transportCost    Float    @default(0)
-  otherCosts       Float    @default(0)
-  totalHarvestCost Float    @default(0)
-  supervisor       String?
-  images           Json     @default("[]")
-  remarks          String?  @db.Text
-  createdAt        DateTime @default(now())
-  batch            Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  id                String   @id @default(cuid())
+  batchId           String   @unique
+  harvestId         String   @unique // HRV-0001
+  materialName      String
+  sourceLocation    String
+  gps               String?
+  quantityHarvested Float    @default(0)
+  laborCost         Float    @default(0)
+  transportCost     Float    @default(0)
+  otherCosts        Float    @default(0)
+  totalHarvestCost  Float    @default(0)
+  supervisor        String?
+  images            Json     @default("[]")
+  remarks           String?  @db.Text
+  createdAt         DateTime @default(now())
+  batch             Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
 }
 
 // Stage 4 — Quality inspector (receiving inspection)
 model Inspection {
-  id               String   @id @default(cuid())
-  batchId          String   @unique
-  receivingId      String   @unique // RCV-0001
-  harvestId        String?
-  materialName     String
-  quantityDelivered Float   @default(0)
-  quantityAccepted Float    @default(0)
-  quantityRejected Float    @default(0)
-  qualityGrade     String?
-  inspector        String
-  storeLocation    String?
-  images           Json     @default("[]")
-  remarks          String?  @db.Text
-  createdAt        DateTime @default(now())
-  batch            Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  id                String   @id @default(cuid())
+  batchId           String   @unique
+  receivingId       String   @unique // RCV-0001
+  harvestId         String?
+  materialName      String
+  quantityDelivered Float    @default(0)
+  quantityAccepted  Float    @default(0)
+  quantityRejected  Float    @default(0)
+  qualityGrade      String?
+  inspector         String
+  storeLocation     String?
+  images            Json     @default("[]")
+  remarks           String?  @db.Text
+  createdAt         DateTime @default(now())
+  batch             Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
 }
 
 // Stage 5 — Requisition officer (internal requisition, multi-user → 1:many)
 model Requisition {
-  id              String   @id @default(cuid())
-  batchId         String
-  requisitionId   String   @unique // REQ-0001
-  department      String
-  product         String
-  quantityRequired Float   @default(0)
-  issuedQty       Float    @default(0) // cumulative issued at the issuance stage (partial allowed)
-  purpose         String?  @db.Text
-  requestedBy     String // the logged-in requisition officer
-  status          String   @default("pending") // "issued" once issuedQty >= quantityRequired
-  createdAt       DateTime @default(now())
-  batch           Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  id               String   @id @default(cuid())
+  batchId          String
+  requisitionId    String   @unique // REQ-0001
+  department       String
+  product          String
+  quantityRequired Float    @default(0)
+  issuedQty        Float    @default(0) // cumulative issued at the issuance stage (partial allowed)
+  purpose          String?  @db.Text
+  requestedBy      String // the logged-in requisition officer
+  status           String   @default("pending") // "issued" once issuedQty >= quantityRequired
+  createdAt        DateTime @default(now())
+  batch            Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
 }
 
 // Stage 6 — Agribusiness manager (issuance)
@@ -341,57 +341,57 @@ model Issuance {
 
 // Stage 7 — Production officer
 model Production {
-  id            String   @id @default(cuid())
-  batchId       String   @unique
-  issueId       String   @unique // ISS-0001
-  requisitionId String?
-  material      String
-  quantityIssued Float   @default(0)
-  unitCost      Float    @default(0)
-  totalCost     Float    @default(0)
+  id             String    @id @default(cuid())
+  batchId        String    @unique
+  issueId        String    @unique // ISS-0001
+  requisitionId  String?
+  material       String
+  quantityIssued Float     @default(0)
+  unitCost       Float     @default(0)
+  totalCost      Float     @default(0)
   // Named overhead cost lines: [{ name: "Electricity bill", amount: 5000 }, …].
   // totalCost is their sum (the figure the reconciliation uses).
-  costs         Json     @default("[]")
-  issuedBy      String
-  receivedBy    String?
-  date          DateTime?
-  remarks       String?  @db.Text
-  createdAt     DateTime @default(now())
-  batch         Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  costs          Json      @default("[]")
+  issuedBy       String
+  receivedBy     String?
+  date           DateTime?
+  remarks        String?   @db.Text
+  createdAt      DateTime  @default(now())
+  batch          Batch     @relation(fields: [batchId], references: [id], onDelete: Cascade)
 }
 
 // Stage 8 — Dispatch officer (named BatchDispatch to avoid clashing with Dispatch)
 model BatchDispatch {
-  id             String   @id @default(cuid())
-  batchId        String   @unique
-  dispatchId     String   @unique // DSP-0001
+  id             String    @id @default(cuid())
+  batchId        String    @unique
+  dispatchId     String    @unique // DSP-0001
   product        String
-  quantity       Float    @default(0)
+  quantity       Float     @default(0)
   sourceLocation String?
   destination    String?
-  transportCost  Float    @default(0)
+  transportCost  Float     @default(0)
   dispatchedBy   String
   toBeReceivedBy String?
   date           DateTime?
-  remarks        String?  @db.Text
-  createdAt      DateTime @default(now())
-  batch          Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  remarks        String?   @db.Text
+  createdAt      DateTime  @default(now())
+  batch          Batch     @relation(fields: [batchId], references: [id], onDelete: Cascade)
 }
 
 // Stage 9 — Receiving officer
 model Receiving {
-  id              String   @id @default(cuid())
-  batchId         String   @unique
-  dispatchId      String?
-  product         String
-  quantityReceived Float   @default(0)
-  condition       String?
-  variance        Float    @default(0)
-  receiver        String
-  images          Json     @default("[]")
-  remarks         String?  @db.Text
-  createdAt       DateTime @default(now())
-  batch           Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  id               String   @id @default(cuid())
+  batchId          String   @unique
+  dispatchId       String?
+  product          String
+  quantityReceived Float    @default(0)
+  condition        String?
+  variance         Float    @default(0)
+  receiver         String
+  images           Json     @default("[]")
+  remarks          String?  @db.Text
+  createdAt        DateTime @default(now())
+  batch            Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
 }
 
 // ── Fungiculture (mushroom cultivation) subsystem ──────────────────────────
@@ -422,19 +422,19 @@ model GrowingHouse {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  incubations    FungiIncubation[]
+  incubations FungiIncubation[]
 }
 
 // Manageable list of spawn grain types (replaces the old hardcoded array).
 // Rarely deleted — deactivate via `active` instead.
 model GrainType {
-  id        String       @id @default(cuid())
-  name      String       @unique
-  active    Boolean      @default(true)
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  id        String   @id @default(cuid())
+  name      String   @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  spawn     FungiSpawn[]
+  spawn FungiSpawn[]
 }
 
 // Grain spawn, produced independently and consumed across many FungiBatches.
@@ -453,15 +453,15 @@ model FungiSpawn {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
-  grainType           GrainType @relation(fields: [grainTypeId], references: [id], onDelete: Restrict)
+  grainType GrainType @relation(fields: [grainTypeId], references: [id], onDelete: Restrict)
 }
 
 model FungiBatch {
   id        String   @id @default(cuid())
   code      String   @unique // FUN-0001
   stage     String   @default("substrate_prep") // substrate_prep | incubation | harvest | dehydration_packaging
-  status    String   @default("in_progress")    // in_progress | completed
-  spawnId   String?  // read-only link to FungiSpawn.id, no FK — same convention as Batch.lpoId
+  status    String   @default("in_progress") // in_progress | completed
+  spawnId   String? // read-only link to FungiSpawn.id, no FK — same convention as Batch.lpoId
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -528,8 +528,119 @@ model FungiDehydration {
   batchId       String     @unique
   driedAt       DateTime?
   driedWeightKg Float      @default(0)
-  packagingType String?    // paper tube | moisture-proof pouch
+  packagingType String? // paper tube | moisture-proof pouch
   packagedUnits Int        @default(0)
   remarks       String?    @db.Text
   batch         FungiBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+}
+
+// ── Livestock subsystem ─────────────────────────────────────────────────────
+// Ongoing animal-husbandry records — not a stage pipeline like Fungiculture/
+// Batch, just housing + animal/herd records + feed consumption + production
+// output, all owned by the `livestock_manager` role. Mirrors the Fungiculture
+// subsystem's conventions (numbered codes, admin-managed reference data,
+// SetNull FKs on logs so history survives a housing/animal being retired).
+
+// Physical housing — barn, pen, coop, paddock, etc.
+model LivestockHousing {
+  id        String   @id @default(cuid())
+  code      String   @unique // LH-0001
+  name      String
+  type      String   @default("pen") // barn | pen | coop | paddock | pasture | other
+  country   String   @default("Kenya") // Kenya | Tanzania, same representation as User.country
+  region    String?
+  location  String?  @db.Text
+  capacity  Int      @default(0)
+  status    String   @default("active") // active | inactive
+  notes     String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  animals        LivestockAnimal[]
+  feedingLogs    FeedingLog[]
+  LivestockYield LivestockYield[]
+}
+
+// An individual animal (tagId set) or a herd/flock group entry (tagId null,
+// groupCount > 1 — e.g. "50 broilers"). Both share the same record shape.
+model LivestockAnimal {
+  id           String    @id @default(cuid())
+  code         String    @unique // LA-0001
+  tagId        String?   @unique // ear-tag/ring number for an individually tracked animal
+  species      String // cattle | goat | sheep | poultry | pig | rabbit | bee | other
+  breed        String?
+  sex          String    @default("mixed") // male | female | mixed
+  groupCount   Int       @default(1) // 1 for a single animal, >1 for a herd/flock record
+  dob          DateTime?
+  acquiredAt   DateTime?
+  source       String? // purchased | born_on_site | donated
+  weightKg     Float?
+  healthStatus String    @default("healthy") // healthy | sick | quarantine | deceased
+  status       String    @default("active") // active | sold | deceased | transferred
+  housingId    String?
+  notes        String?   @db.Text
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  housing     LivestockHousing? @relation(fields: [housingId], references: [id], onDelete: SetNull)
+  feedingLogs FeedingLog[]
+  yields      LivestockYield[]
+
+  @@index([housingId])
+}
+
+// Manageable list of feed types (mirrors GrainType). Rarely deleted —
+// deactivate via `active` instead.
+model FeedType {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  unit      String   @default("kg") // kg | bags | liters
+  stockQty  Float    @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  feedingLogs FeedingLog[]
+}
+
+// A feeding event — consumes stock from a FeedType, against a housing unit
+// and/or a specific animal record.
+model FeedingLog {
+  id         String   @id @default(cuid())
+  feedTypeId String
+  housingId  String?
+  animalId   String?
+  quantity   Float    @default(0)
+  fedAt      DateTime @default(now())
+  loggedBy   String?
+  notes      String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  feedType FeedType          @relation(fields: [feedTypeId], references: [id], onDelete: Restrict)
+  housing  LivestockHousing? @relation(fields: [housingId], references: [id], onDelete: SetNull)
+  animal   LivestockAnimal?  @relation(fields: [animalId], references: [id], onDelete: SetNull)
+
+  @@index([housingId])
+  @@index([animalId])
+  @@index([feedTypeId])
+}
+
+// Production output — eggs, milk, meat, offspring, wool, honey, etc.
+model LivestockYield {
+  id         String   @id @default(cuid())
+  animalId   String?
+  housingId  String?
+  type       String // eggs | milk | meat | offspring | wool | honey | other
+  quantity   Float    @default(0)
+  unit       String   @default("kg") // kg | liters | units | dozen
+  recordedAt DateTime @default(now())
+  recordedBy String?
+  notes      String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  animal  LivestockAnimal?  @relation(fields: [animalId], references: [id], onDelete: SetNull)
+  housing LivestockHousing? @relation(fields: [housingId], references: [id], onDelete: SetNull)
+
+  @@index([animalId])
+  @@index([housingId])
 }

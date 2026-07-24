@@ -121,6 +121,7 @@ export const ROLE_LABELS: Record<string, string> = {
   glass_technician: "Glass Technician",
   driver: "Driver",
   fungiculturist: "Fungiculturist",
+  livestock_manager: "Livestock Manager",
 }
 
 // Cost-bearing fields across the pipeline. Only `admin`/`it_specialist` may see

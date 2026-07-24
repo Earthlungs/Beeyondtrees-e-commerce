@@ -51,6 +51,11 @@ export default async function proxy(request: NextRequest) {
     if (role && FUNGICULTURE_ROLES.includes(role) && !path.startsWith("/admin/fungiculture") && !COMMON) {
       return NextResponse.redirect(new URL("/admin/fungiculture", request.url))
     }
+    // Livestock Manager only gets the livestock subsystem (+ POS/chat/account).
+    const LIVESTOCK_ROLES = ["livestock_manager"]
+    if (role && LIVESTOCK_ROLES.includes(role) && !path.startsWith("/admin/livestock") && !COMMON) {
+      return NextResponse.redirect(new URL("/admin/livestock", request.url))
+    }
     // Chief + Finance are approval/oversight roles: confine them to the LPO
     // documents (chief approves external LPOs; finance is notified on CEO
     // approval) plus POS/chat/account. Finance additionally gets its own LPO

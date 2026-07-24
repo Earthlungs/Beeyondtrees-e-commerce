@@ -62,6 +62,8 @@ const ROLE_OPTIONS: [string, string][] = [
   ["driver", "Driver"],
   // Fungiculture (mushroom cultivation) pipeline
   ["fungiculturist", "Fungiculturist"],
+  // Livestock (animal husbandry) subsystem
+  ["livestock_manager", "Livestock Manager"],
   // Lowest power — last.
   ["merchant", "Merchant"],
 ]
