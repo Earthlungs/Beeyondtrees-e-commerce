@@ -44,7 +44,7 @@ export default function BrandedDoc({
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
             <div style={{ display: "flex", alignItems: "center" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo-full.png" alt="BEEyond Trees by EarthLungs" width={150} height={114} style={{ width: 150, height: 114, objectFit: "contain" }} />
+              <img src="/logo-full.png" alt="BEEyond Trees by EarthLungs" width={190} height={144} style={{ width: 190, height: 144, objectFit: "contain" }} />
             </div>
             <div style={{ fontSize: 34, fontWeight: 800, letterSpacing: 1, color: DOC_GREEN, fontFamily: "Georgia, serif" }}>
               {title}

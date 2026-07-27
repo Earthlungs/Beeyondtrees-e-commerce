@@ -217,7 +217,7 @@ function docLayout({ title, docNumber, body, viewUrl, viewLabel }: {
     <table role="presentation" width="100%" style="border-collapse:collapse;">
       <tr>
         <td style="padding:22px 32px;vertical-align:middle;">
-          <img src="${LOGO_FULL_URL}" alt="BEEyond Trees by EarthLungs" width="170" height="129" style="vertical-align:middle;width:170px;height:129px;object-fit:contain;" />
+          <img src="${LOGO_FULL_URL}" alt="BEEyond Trees by EarthLungs" width="190" height="144" style="vertical-align:middle;width:190px;height:144px;object-fit:contain;" />
         </td>
         <td style="padding:22px 32px;text-align:right;vertical-align:middle;">
           <div style="font-size:26px;font-weight:800;letter-spacing:1px;color:${GREEN};">${esc(title)}</div>

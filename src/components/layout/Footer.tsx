@@ -7,9 +7,8 @@ export function Footer() {
       <div style={{ maxWidth: 1180, margin: "0 auto" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 36, marginBottom: 44 }}>
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 12 }}>
-              <img src="/icons/icon-192.png" alt="" width={34} height={34} style={{ objectFit: "contain" }} />
-              <span style={{ fontFamily: "var(--font-sans)", fontSize: 21, fontWeight: 800, letterSpacing: "-0.02em", color: "#8FA37D" }}>BEEyond Trees</span>
+            <div style={{ marginBottom: 12 }}>
+              <img src="/logo-full.png" alt="BEEyond Trees by EarthLungs" width={145} height={110} style={{ width: 145, height: 110, objectFit: "contain" }} />
             </div>
             <p style={{ fontSize: 14, color: "#B8A99A", lineHeight: 1.7, maxWidth: 260 }}>Sustainable natural products from Kenya, sustaining forest-adjacent communities beyond tree planting.</p>
           </div>

@@ -37,13 +37,10 @@ export function Header() {
   return (
     <>
       <header style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(255,255,255,0.85)", backdropFilter: "blur(12px)", borderBottom: "1px solid #E7E1D4" }}>
-        <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 20px", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto", padding: "20px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
           {/* Logo */}
-          <Link href="/" style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none", flexShrink: 0 }}>
-            <img src="/icons/icon-192.png" alt="BEEyond Trees" width={40} height={40} style={{ width: 40, height: 40, objectFit: "contain" }} />
-            <span style={{ fontFamily: "var(--font-sans)", fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em", color: SAGE }}>
-              BEEyond Trees
-            </span>
+          <Link href="/" style={{ display: "flex", alignItems: "center", textDecoration: "none", flexShrink: 0 }}>
+            <img src="/logo-full.png" alt="BEEyond Trees by EarthLungs" width={190} height={144} style={{ width: 190, height: 144, objectFit: "contain" }} />
           </Link>
 
           {/* Desktop nav */}
@@ -154,11 +151,8 @@ export function Header() {
               className="lg:hidden" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 80 }} />
             <motion.div initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ type: "spring", stiffness: 320, damping: 34 }}
               className="lg:hidden" style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: "80%", maxWidth: 320, background: "#F5F1E8", zIndex: 90, padding: "22px", boxShadow: "-20px 0 50px rgba(0,0,0,0.2)", display: "flex", flexDirection: "column" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 26 }}>
-                <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <img src="/icons/icon-192.png" alt="BEEyond Trees" width={28} height={28} style={{ width: 28, height: 28, objectFit: "contain" }} />
-                  <span style={{ fontFamily: "var(--font-sans)", fontSize: 19, fontWeight: 800, letterSpacing: "-0.02em", color: SAGE }}>BEEyond Trees</span>
-                </span>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 26 }}>
+                <img src="/logo-full.png" alt="BEEyond Trees by EarthLungs" width={119} height={90} style={{ width: 119, height: 90, objectFit: "contain" }} />
                 <button onClick={() => setMenuOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: DARK }}><X size={22} /></button>
               </div>
               <form action="/products" onSubmit={() => setMenuOpen(false)} style={{ position: "relative", marginBottom: 18 }}>
