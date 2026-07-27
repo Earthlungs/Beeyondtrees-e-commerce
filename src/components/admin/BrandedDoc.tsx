@@ -42,13 +42,9 @@ export default function BrandedDoc({
         {/* Header */}
         <div style={{ padding: "28px 36px 0" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/icon.png" alt="BEEyond Trees" width={48} height={48} style={{ objectFit: "contain" }} />
-              <div style={{ lineHeight: 1.1 }}>
-                <div style={{ fontWeight: 800, fontSize: 18, color: DOC_GREEN }}>BEEyond</div>
-                <div style={{ fontSize: 14, color: "#8A8A8A" }}>Trees</div>
-              </div>
+              <img src="/logo-full.png" alt="BEEyond Trees by EarthLungs" width={150} height={114} style={{ width: 150, height: 114, objectFit: "contain" }} />
             </div>
             <div style={{ fontSize: 34, fontWeight: 800, letterSpacing: 1, color: DOC_GREEN, fontFamily: "Georgia, serif" }}>
               {title}

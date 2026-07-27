@@ -228,11 +228,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Link href={isFungiculture ? "/admin/fungiculture" : isLivestock ? "/admin/livestock" : isTracing ? "/admin/tracing" : "/admin"} style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', color: 'white' }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/icons/icon-192.png" alt="BEEyond Trees" width={38} height={38} style={{ width: 38, height: 38, objectFit: 'contain', borderRadius: 8 }} />
-              <div>
-                <div style={{ fontSize: '15px', fontWeight: 'bold' }}>BEEyond Trees</div>
-                <div style={{ fontSize: '10px', color: '#A89F91', textTransform: 'uppercase', letterSpacing: '1px' }}>{roleLabel} Panel</div>
-              </div>
+              <img src="/logo-full.png" alt="BEEyond Trees by EarthLungs" width={120} height={91} style={{ width: 120, height: 91, objectFit: 'contain' }} />
+              <div style={{ fontSize: '10px', color: '#A89F91', textTransform: 'uppercase', letterSpacing: '1px' }}>{roleLabel}<br />Panel</div>
             </Link>
             <button onClick={() => setSidebarOpen(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>
               <X size={20} />

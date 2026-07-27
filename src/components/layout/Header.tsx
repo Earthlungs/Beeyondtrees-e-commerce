@@ -41,8 +41,8 @@ export function Header() {
           {/* Logo */}
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none", flexShrink: 0 }}>
             <img src="/icons/icon-192.png" alt="BEEyond Trees" width={40} height={40} style={{ width: 40, height: 40, objectFit: "contain" }} />
-            <span className="font-display" style={{ fontSize: 21, fontWeight: 600, color: SAGE }}>
-              BEEyond<span style={{ color: DARK }}> Trees</span>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em", color: SAGE }}>
+              BEEyond Trees
             </span>
           </Link>
 
@@ -157,7 +157,7 @@ export function Header() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 26 }}>
                 <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <img src="/icons/icon-192.png" alt="BEEyond Trees" width={28} height={28} style={{ width: 28, height: 28, objectFit: "contain" }} />
-                  <span className="font-display" style={{ fontSize: 20, fontWeight: 600, color: SAGE }}>BEEyond Trees</span>
+                  <span style={{ fontFamily: "var(--font-sans)", fontSize: 19, fontWeight: 800, letterSpacing: "-0.02em", color: SAGE }}>BEEyond Trees</span>
                 </span>
                 <button onClick={() => setMenuOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: DARK }}><X size={22} /></button>
               </div>

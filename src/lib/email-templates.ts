@@ -1,5 +1,6 @@
 const BASE_URL = process.env.NEXTAUTH_URL || "https://www.beeyondtrees.org"
 const LOGO_URL = `${BASE_URL}/icons/icon-192.png`
+const LOGO_FULL_URL = `${BASE_URL}/logo-full.png`
 const GREEN = "#6B7D5C"
 const RED = "#C0392B"
 const BROWN = "#8C6A4A"
@@ -216,8 +217,7 @@ function docLayout({ title, docNumber, body, viewUrl, viewLabel }: {
     <table role="presentation" width="100%" style="border-collapse:collapse;">
       <tr>
         <td style="padding:22px 32px;vertical-align:middle;">
-          <img src="${LOGO_URL}" alt="Beeyond Trees" width="44" height="44" style="vertical-align:middle;width:44px;height:44px;object-fit:contain;border-radius:10px;background:#fff;padding:3px;border:1px solid #eee;" />
-          <span style="font-size:20px;font-weight:700;color:${GREEN};vertical-align:middle;margin-left:10px;font-family:Georgia,serif;">BEEyond Trees</span>
+          <img src="${LOGO_FULL_URL}" alt="BEEyond Trees by EarthLungs" width="170" height="129" style="vertical-align:middle;width:170px;height:129px;object-fit:contain;" />
         </td>
         <td style="padding:22px 32px;text-align:right;vertical-align:middle;">
           <div style="font-size:26px;font-weight:800;letter-spacing:1px;color:${GREEN};">${esc(title)}</div>
