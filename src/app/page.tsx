@@ -346,7 +346,10 @@ export default function Home() {
         <div style={{ maxWidth: 1180, margin: "0 auto" }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 36, marginBottom: 44 }}>
             <div>
-              <div className="font-display" style={{ fontSize: 22, fontWeight: 600, color: "white", marginBottom: 12 }}>BEEyond Trees</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 12 }}>
+                <img src="/icons/icon-192.png" alt="" width={34} height={34} style={{ objectFit: "contain" }} />
+                <span className="font-display" style={{ fontSize: 22, fontWeight: 600, color: "white" }}>BEEyond Trees</span>
+              </div>
               <p style={{ fontSize: 14, color: "#B8A99A", lineHeight: 1.7, maxWidth: 260 }}>Sustainable natural products from Kenya, sustaining forest-adjacent communities beyond tree planting.</p>
             </div>
             <div>

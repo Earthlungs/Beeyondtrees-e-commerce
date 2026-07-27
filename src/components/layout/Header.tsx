@@ -155,7 +155,10 @@ export function Header() {
             <motion.div initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ type: "spring", stiffness: 320, damping: 34 }}
               className="lg:hidden" style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: "80%", maxWidth: 320, background: "#F5F1E8", zIndex: 90, padding: "22px", boxShadow: "-20px 0 50px rgba(0,0,0,0.2)", display: "flex", flexDirection: "column" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 26 }}>
-                <span className="font-display" style={{ fontSize: 20, fontWeight: 600, color: SAGE }}>BEEyond Trees</span>
+                <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <img src="/icons/icon-192.png" alt="BEEyond Trees" width={28} height={28} style={{ width: 28, height: 28, objectFit: "contain" }} />
+                  <span className="font-display" style={{ fontSize: 20, fontWeight: 600, color: SAGE }}>BEEyond Trees</span>
+                </span>
                 <button onClick={() => setMenuOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: DARK }}><X size={22} /></button>
               </div>
               <form action="/products" onSubmit={() => setMenuOpen(false)} style={{ position: "relative", marginBottom: 18 }}>
