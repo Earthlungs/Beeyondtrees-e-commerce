@@ -5,6 +5,9 @@ import { sendMail } from "@/lib/mailer"
 import { newOrderEmail } from "@/lib/email-templates"
 
 const BASE_URL = process.env.NEXTAUTH_URL || "http://localhost:3000"
+// Only alert the CEO for orders at/above this value — small retail orders no
+// longer generate an email each. Override with ORDER_ALERT_THRESHOLD (KES).
+const ORDER_ALERT_THRESHOLD = Number(process.env.ORDER_ALERT_THRESHOLD) || 20000
 
 // Admin order list, newest first, with line items and any dispatch record.
 // Orders contain customer PII (name, phone, address) so this is admin-only.
@@ -85,16 +88,19 @@ export async function POST(request: NextRequest) {
     include: { items: true },
   })
 
-  // Notify admins of the new order
+  // Notify admins of the new order — only above the alert threshold, so every
+  // small retail order doesn't land in the CEO's inbox.
   try {
-    const admins = await prisma.user.findMany({ where: { role: "admin" }, select: { email: true } })
-    const to = admins.flatMap((u) => u.email ? [u.email] : [])
-    if (to.length > 0) {
-      await sendMail({
-        to,
-        subject: `[Beeyond Trees] New order from ${customerName}`,
-        html: newOrderEmail({ orderRef: order.id, customerName, customerPhone, town, county, total, ordersUrl: `${BASE_URL}/admin` }),
-      })
+    if (Number(total) >= ORDER_ALERT_THRESHOLD) {
+      const admins = await prisma.user.findMany({ where: { role: "admin" }, select: { email: true } })
+      const to = admins.flatMap((u) => u.email ? [u.email] : [])
+      if (to.length > 0) {
+        await sendMail({
+          to,
+          subject: `[Beeyond Trees] New order from ${customerName}`,
+          html: newOrderEmail({ orderRef: order.id, customerName, customerPhone, town, county, total, ordersUrl: `${BASE_URL}/admin` }),
+        })
+      }
     }
   } catch (e) { console.error("[mailer] new order:", e) }
 

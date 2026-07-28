@@ -36,12 +36,13 @@ async function notifyNextStage(batchId: string, batchCode: string, productName: 
   const batchUrl = `${BASE_URL}/admin/tracing/${batchId}`
   // Receiving is done by the LPO creator (dynamic), not the legacy receiving_officer.
   const roleName = nextSt === "receiving" ? "LPO Creator (Receiver)" : (ROLE_LABELS[STAGE_ROLES[nextSt]] ?? nextSt)
+  // Routine stage handoffs go only to the role that owns the next stage — the
+  // CEO used to be CC'd on every one of these and it drowned their inbox.
+  // They're still notified separately on batch completion (see advance() below).
   const to = nextSt === "receiving" ? await lpoCreatorEmail(batchId) : await emailsForRole(STAGE_ROLES[nextSt])
-  const adminEmails = await emailsForRole("admin")
-  const all = [...new Set([...to, ...adminEmails])]
-  if (all.length === 0) return
+  if (to.length === 0) return
   await sendMail({
-    to: all,
+    to,
     subject: `[Beeyond Trees] Action required: ${stageName} — ${batchCode}`,
     html: stageAdvanceEmail({ batchCode, productName, stageName, roleName, batchUrl }),
   }).catch((e) => console.error("[mailer] stage advance:", e))
