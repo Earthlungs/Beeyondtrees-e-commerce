@@ -16,6 +16,7 @@ export interface LpoRecord {
   vat: number
   total: number
   notes: string | null
+  paymentDetails?: string | null
 }
 
 // Inner content of the branded PURCHASE ORDER document. Status badges (Approved /
@@ -78,9 +79,15 @@ export default function LpoBody({ lpo, destinationOfGoods }: { lpo: LpoRecord; d
       </table>
 
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 36, gap: 24 }}>
-        <div style={{ maxWidth: 280 }}>
-          <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 6 }}>Payment Details</div>
-          <div style={{ fontSize: 12.5, color: "#555", whiteSpace: "pre-wrap" }}>{lpo.notes || "—"}</div>
+        <div style={{ maxWidth: 280, display: "flex", flexDirection: "column", gap: 18 }}>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 6 }}>Notes</div>
+            <div style={{ fontSize: 12.5, color: "#555", whiteSpace: "pre-wrap" }}>{lpo.notes || "—"}</div>
+          </div>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 6 }}>Payment Details</div>
+            <div style={{ fontSize: 12.5, color: "#555", whiteSpace: "pre-wrap" }}>{lpo.paymentDetails || "—"}</div>
+          </div>
         </div>
         <div style={{ width: 240, fontSize: 14 }}>
           <Row label="Amount" value={ksh(lpo.subtotal)} />

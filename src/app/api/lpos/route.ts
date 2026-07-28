@@ -53,19 +53,20 @@ type ExtraFields = {
   paid: boolean
   paidBy: string | null
   paidAt: Date | null
+  paymentDetails: string | null
 }
 
 const EXTRA_DEFAULTS: ExtraFields = {
   status: "approved", approvedBy: null, approvedAt: null, rejectionReason: null,
   destinationOfGoods: null, amended: false, origin: "internal", createdByName: null, onBehalf: false,
-  attachmentUrl: null, paid: false, paidBy: null, paidAt: null,
+  attachmentUrl: null, paid: false, paidBy: null, paidAt: null, paymentDetails: null,
 }
 
 async function fetchExtras(ids: string[]): Promise<Map<string, ExtraFields>> {
   if (ids.length === 0) return new Map()
   try {
     const rows = await prisma.$queryRaw<(ExtraFields & { id: string })[]>`
-      SELECT id, status, "approvedBy", "approvedAt", "rejectionReason", "destinationOfGoods", "amended", "origin", "createdByName", "onBehalf", "attachmentUrl", paid, "paidBy", "paidAt"
+      SELECT id, status, "approvedBy", "approvedAt", "rejectionReason", "destinationOfGoods", "amended", "origin", "createdByName", "onBehalf", "attachmentUrl", paid, "paidBy", "paidAt", "paymentDetails"
       FROM "Lpo"
       WHERE id = ANY(${ids}::text[])
     `
@@ -133,6 +134,7 @@ export async function POST(request: NextRequest) {
   // approval and into the tracing pipeline.
   const attachmentUrl = typeof body.attachmentUrl === "string" && /^https?:\/\//.test(body.attachmentUrl.trim())
     ? body.attachmentUrl.trim() : null
+  const paymentDetails = typeof body.paymentDetails === "string" ? body.paymentDetails.trim() || null : null
 
   try {
     const lpo = await createNumbered(
@@ -169,7 +171,8 @@ export async function POST(request: NextRequest) {
             "attachmentUrl" = ${attachmentUrl}::text,
             "origin" = ${origin}::text,
             "createdByUserId" = ${creatorId}::text,
-            "createdByName" = ${creatorName}::text
+            "createdByName" = ${creatorName}::text,
+            "paymentDetails" = ${paymentDetails}::text
         WHERE id = ${lpo.id}
       `
     } catch { /* migration not yet applied — fields applied on deploy */ }
@@ -226,12 +229,12 @@ export async function POST(request: NextRequest) {
     let emailed = false
     if (status === "approved" && recipientEmail) {
       try {
-        await sendLpoEmail({ ...lpo, destinationOfGoods }, recipientEmail)
+        await sendLpoEmail({ ...lpo, destinationOfGoods, paymentDetails }, recipientEmail)
         emailed = true
       } catch (e) { console.error("[mailer] LPO copy:", e) }
     }
 
-    return NextResponse.json({ ...lpo, status, approvedBy: isAdmin ? approver : null, approvedAt, destinationOfGoods, recipientEmail, attachmentUrl, emailed, amended: false }, { status: 201 })
+    return NextResponse.json({ ...lpo, status, approvedBy: isAdmin ? approver : null, approvedAt, destinationOfGoods, recipientEmail, attachmentUrl, paymentDetails, emailed, amended: false }, { status: 201 })
   } catch (e) {
     console.error("LPO create failed:", e)
     return NextResponse.json({ error: "Could not save the LPO. Please try again." }, { status: 500 })

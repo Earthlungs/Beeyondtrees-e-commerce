@@ -33,9 +33,10 @@ export default async function LpoDocPage({ params }: { params: Promise<{ id: str
   let attachmentUrl: string | null = null
   let paid = false
   let paidBy: string | null = null
+  let paymentDetails: string | null = null
   try {
-    const rows = await prisma.$queryRaw<{ status: string; rejectionReason: string | null; destinationOfGoods: string | null; recipientEmail: string | null; amended: boolean; origin: string | null; attachmentUrl: string | null; paid: boolean; paidBy: string | null }[]>`
-      SELECT status, "rejectionReason", "destinationOfGoods", "recipientEmail", "amended", "origin", "attachmentUrl", paid, "paidBy" FROM "Lpo" WHERE id = ${id}
+    const rows = await prisma.$queryRaw<{ status: string; rejectionReason: string | null; destinationOfGoods: string | null; recipientEmail: string | null; amended: boolean; origin: string | null; attachmentUrl: string | null; paid: boolean; paidBy: string | null; paymentDetails: string | null }[]>`
+      SELECT status, "rejectionReason", "destinationOfGoods", "recipientEmail", "amended", "origin", "attachmentUrl", paid, "paidBy", "paymentDetails" FROM "Lpo" WHERE id = ${id}
     `
     if (rows[0]) {
       status = rows[0].status
@@ -47,6 +48,7 @@ export default async function LpoDocPage({ params }: { params: Promise<{ id: str
       attachmentUrl = rows[0].attachmentUrl
       paid = rows[0].paid ?? false
       paidBy = rows[0].paidBy
+      paymentDetails = rows[0].paymentDetails
     }
   } catch { /* pre-migration — treat as approved */ }
 
@@ -111,7 +113,9 @@ export default async function LpoDocPage({ params }: { params: Promise<{ id: str
         {/* Status badges in header area */}
         {(status === "approved" || amended) && (
           <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-            <span style={{ background: DOC_GREEN, color: "white", fontSize: 11, fontWeight: 700, padding: "3px 11px", borderRadius: 999 }}>Approved</span>
+            {status === "approved" && (
+              <span style={{ background: DOC_GREEN, color: "white", fontSize: 11, fontWeight: 700, padding: "3px 11px", borderRadius: 999 }}>Approved</span>
+            )}
             {status === "approved" && (
               paid
                 ? <span style={{ background: "#DCFCE7", color: "#166534", fontSize: 11, fontWeight: 700, padding: "3px 11px", borderRadius: 999 }}>✓ Paid{paidBy ? ` — ${paidBy}` : ""}</span>
@@ -121,7 +125,7 @@ export default async function LpoDocPage({ params }: { params: Promise<{ id: str
           </div>
         )}
 
-        <LpoBody lpo={lpo} destinationOfGoods={destinationOfGoods} />
+        <LpoBody lpo={{ ...lpo, paymentDetails }} destinationOfGoods={destinationOfGoods} />
         <AttachmentBlock url={attachmentUrl} />
       </BrandedDoc>
 

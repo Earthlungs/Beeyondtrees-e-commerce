@@ -13,8 +13,8 @@ const FINANCE_INBOX = process.env.FINANCE_INBOX || "finance@earthlungs.org"
 
 async function fetchExtras(id: string) {
   try {
-    const rows = await prisma.$queryRaw<{ status: string; approvedBy: string | null; approvedAt: Date | null; rejectionReason: string | null; destinationOfGoods: string | null; amended: boolean; origin: string | null; createdByName: string | null; createdByUserId: string | null; onBehalf: boolean; chiefApprovedBy: string | null; attachmentUrl: string | null; paid: boolean; paidBy: string | null; paidAt: Date | null }[]>`
-      SELECT status, "approvedBy", "approvedAt", "rejectionReason", "destinationOfGoods", "amended", "origin", "createdByName", "createdByUserId", "onBehalf", "chiefApprovedBy", "attachmentUrl", paid, "paidBy", "paidAt"
+    const rows = await prisma.$queryRaw<{ status: string; approvedBy: string | null; approvedAt: Date | null; rejectionReason: string | null; destinationOfGoods: string | null; amended: boolean; origin: string | null; createdByName: string | null; createdByUserId: string | null; onBehalf: boolean; chiefApprovedBy: string | null; attachmentUrl: string | null; paid: boolean; paidBy: string | null; paidAt: Date | null; paymentDetails: string | null }[]>`
+      SELECT status, "approvedBy", "approvedAt", "rejectionReason", "destinationOfGoods", "amended", "origin", "createdByName", "createdByUserId", "onBehalf", "chiefApprovedBy", "attachmentUrl", paid, "paidBy", "paidAt", "paymentDetails"
       FROM "Lpo" WHERE id = ${id}
     `
     return rows[0] ?? null
@@ -61,7 +61,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const body = await request.json().catch(() => null)
   const action = body?.action
 
-  const VALID = ["exec_approve", "exec_amend", "chief_approve", "chief_reject", "approve", "reject", "amend"]
+  const VALID = ["exec_approve", "exec_amend", "chief_approve", "chief_amend", "chief_reject", "approve", "reject", "amend"]
   if (!VALID.includes(action)) {
     return NextResponse.json({ error: "Invalid action." }, { status: 400 })
   }
@@ -70,7 +70,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if ((action === "exec_approve" || action === "exec_amend") && !isExec && !isAdmin) {
     return NextResponse.json({ error: "Only the Factory Admin can approve at this stage." }, { status: 403 })
   }
-  if ((action === "chief_approve" || action === "chief_reject") && !isChief && !isAdmin) {
+  if ((action === "chief_approve" || action === "chief_amend" || action === "chief_reject") && !isChief && !isAdmin) {
     return NextResponse.json({ error: "Only the Chief can approve external LPOs at this stage." }, { status: 403 })
   }
   if ((action === "approve" || action === "reject" || action === "amend") && !isAdmin) {
@@ -88,14 +88,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   // Determine new status and amended flag
   const newStatus =
     action === "exec_approve" || action === "exec_amend" ? "exec_approved"
-    : action === "chief_approve" ? "chief_approved"
+    : action === "chief_approve" || action === "chief_amend" ? "chief_approved"
     : action === "approve" || action === "amend" ? "approved"
     : "rejected" // reject | chief_reject
-  const amended = action === "exec_amend" || action === "amend"
-  const isChiefApprove = action === "chief_approve"
+  const amended = action === "exec_amend" || action === "amend" || action === "chief_amend"
+  const isChiefApprove = action === "chief_approve" || action === "chief_amend"
 
   // For amend actions: update editable content first
-  if ((action === "exec_amend" || action === "amend") && body?.items) {
+  if ((action === "exec_amend" || action === "amend" || action === "chief_amend") && body?.items) {
     const { items, subtotal, vat, total } = normalizeLines(body.items)
     if (items.length === 0) {
       return NextResponse.json({ error: "Add at least one line item." }, { status: 400 })
@@ -121,12 +121,18 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: "Could not save the amended content." }, { status: 500 })
     }
 
-    // Attachment is a raw column (not in the Prisma schema) — updated separately.
+    // Attachment and payment details are raw columns (not in the Prisma schema) — updated separately.
     if (body.attachmentUrl !== undefined) {
       const nextAttachment = typeof body.attachmentUrl === "string" && /^https?:\/\//.test(body.attachmentUrl.trim())
         ? body.attachmentUrl.trim() : null
       try {
         await prisma.$executeRaw`UPDATE "Lpo" SET "attachmentUrl" = ${nextAttachment}::text WHERE id = ${id}`
+      } catch { /* pre-migration — column not there yet */ }
+    }
+    if (body.paymentDetails !== undefined) {
+      const nextPaymentDetails = typeof body.paymentDetails === "string" ? body.paymentDetails.trim() || null : null
+      try {
+        await prisma.$executeRaw`UPDATE "Lpo" SET "paymentDetails" = ${nextPaymentDetails}::text WHERE id = ${id}`
       } catch { /* pre-migration — column not there yet */ }
     }
   }
@@ -142,6 +148,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         SET status = ${newStatus},
             "chiefApprovedBy" = ${actor}::text,
             "chiefApprovedAt" = ${now}::timestamp,
+            "amended" = ${amended},
             "destinationOfGoods" = COALESCE(${destinationOfGoods}::text, "destinationOfGoods")
         WHERE id = ${id}
       `
@@ -214,12 +221,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       // The LPO is now generated — email the branded copy to the recipient entered
       // when it was created (if any). Fetched via raw SQL (not a Prisma column).
       try {
-        const rows = await prisma.$queryRaw<{ recipientEmail: string | null; destinationOfGoods: string | null }[]>`
-          SELECT "recipientEmail", "destinationOfGoods" FROM "Lpo" WHERE id = ${id}
+        const rows = await prisma.$queryRaw<{ recipientEmail: string | null; destinationOfGoods: string | null; paymentDetails: string | null }[]>`
+          SELECT "recipientEmail", "destinationOfGoods", "paymentDetails" FROM "Lpo" WHERE id = ${id}
         `
         const recipientEmail = rows[0]?.recipientEmail
         if (recipientEmail && updated) {
-          await sendLpoEmail({ ...updated, destinationOfGoods: rows[0]?.destinationOfGoods ?? null }, recipientEmail)
+          await sendLpoEmail({ ...updated, destinationOfGoods: rows[0]?.destinationOfGoods ?? null, paymentDetails: rows[0]?.paymentDetails ?? null }, recipientEmail)
         }
       } catch (e) { console.error("[mailer] LPO copy on approval:", e) }
     } else if (newStatus === "exec_approved" || newStatus === "chief_approved") {

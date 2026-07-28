@@ -20,7 +20,7 @@ const ksh = (n: number) => `KSh ${n.toLocaleString()}`
 interface LpoDetail {
   id: string; number: string; supplierName: string; shippingAddress: string | null
   purchaseRep: string | null; orderDate: string; expectedArrival: string | null
-  destinationOfGoods: string | null; notes: string | null; items: DocLine[]
+  destinationOfGoods: string | null; notes: string | null; paymentDetails?: string | null; items: DocLine[]
   subtotal: number; vat: number; total: number; status: string | null
   attachmentUrl?: string | null
 }
@@ -42,7 +42,8 @@ export default function AmendLpoPage() {
   const { data: session } = useSession()
   const role = (session?.user as { role?: string })?.role || ""
   const isExec = role === "executive"
-  const action = isExec ? "exec_amend" : "amend"
+  const isChief = role === "chief"
+  const action = isExec ? "exec_amend" : isChief ? "chief_amend" : "amend"
 
   const [lpo, setLpo] = useState<LpoDetail | null>(null)
   const [fetching, setFetching] = useState(true)
@@ -57,6 +58,7 @@ export default function AmendLpoPage() {
   const [expectedArrival, setExpectedArrival] = useState("")
   const [destinationOfGoods, setDestinationOfGoods] = useState("")
   const [notes, setNotes] = useState("")
+  const [paymentDetails, setPaymentDetails] = useState("")
   const [lines, setLines] = useState<EditLine[]>([emptyLine()])
   const [attachment, setAttachment] = useState<string[]>([])
 
@@ -75,6 +77,7 @@ export default function AmendLpoPage() {
         setExpectedArrival(data.expectedArrival ? data.expectedArrival.slice(0, 10) : "")
         setDestinationOfGoods(data.destinationOfGoods ?? "")
         setNotes(data.notes ?? "")
+        setPaymentDetails(data.paymentDetails ?? "")
         setLines(toEditLines(data.items))
         setAttachment(data.attachmentUrl ? [data.attachmentUrl] : [])
       })
@@ -95,7 +98,7 @@ export default function AmendLpoPage() {
           supplierName, shippingAddress, purchaseRep,
           orderDate, expectedArrival: expectedArrival || null,
           destinationOfGoods: destinationOfGoods || null,
-          notes, items: lines,
+          notes, paymentDetails, items: lines,
           attachmentUrl: attachment[0] || null,
         }),
       })
@@ -159,9 +162,12 @@ export default function AmendLpoPage() {
           </Field>
         </div>
 
-        <div style={{ marginTop: 16 }}>
-          <Field label="Payment details / notes">
-            <Input value={notes} onChange={(e) => setNotes(e.target.value)} />
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 200px), 1fr))", gap: 14, marginTop: 16 }}>
+          <Field label="Notes">
+            <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Remarks or instructions about the order" />
+          </Field>
+          <Field label="Payment details">
+            <Input value={paymentDetails} onChange={(e) => setPaymentDetails(e.target.value)} placeholder="Bank details, terms, etc." />
           </Field>
         </div>
 
@@ -172,7 +178,7 @@ export default function AmendLpoPage() {
               <Button variant="outline" style={{ height: 42 }}>Cancel</Button>
             </Link>
             <Button onClick={save} disabled={saving} style={{ background: TEAL, color: "white", gap: 8, height: 42 }}>
-              {saving ? <><Loader2 size={16} className="animate-spin" /> Saving…</> : <><Check size={16} /> {isExec ? "Save & Forward to Admin (Amended)" : "Save & Approve (Amended)"}</>}
+              {saving ? <><Loader2 size={16} className="animate-spin" /> Saving…</> : <><Check size={16} /> {isExec || isChief ? "Save & Forward to CEO (Amended)" : "Save & Approve (Amended)"}</>}
             </Button>
           </div>
         </div>

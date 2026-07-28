@@ -62,6 +62,7 @@ export async function sendLpoEmail(lpo: {
   supplierName: string; shippingAddress: string | null; purchaseRep: string | null
   destinationOfGoods?: string | null
   items: unknown; subtotal: number; vat: number; total: number; notes: string | null
+  paymentDetails?: string | null
 }, to: string) {
   const html = lpoDocEmail({
     number: lpo.number,
@@ -74,6 +75,7 @@ export async function sendLpoEmail(lpo: {
     items: toEmailLines((lpo.items as DocLine[]) ?? []),
     subtotal: lpo.subtotal, vat: lpo.vat, total: lpo.total,
     notes: lpo.notes,
+    paymentDetails: lpo.paymentDetails ?? null,
     viewUrl: publicUrl("lpo", lpo.id),
   })
   await sendMail({ to, subject: `Purchase Order ${lpo.number} from Beeyond Trees`, html })

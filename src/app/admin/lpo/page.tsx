@@ -71,6 +71,7 @@ export default function LpoPage() {
   const [destinationOfGoods, setDestinationOfGoods] = useState("")
   const [email, setEmail] = useState("")
   const [notes, setNotes] = useState("")
+  const [paymentDetails, setPaymentDetails] = useState("")
   const [lines, setLines] = useState<EditLine[]>([emptyLine()])
   // Single image attachment (quote / delivery note / photo) — follows the LPO
   // through approval and into the tracing pipeline.
@@ -86,7 +87,7 @@ export default function LpoPage() {
 
   const resetForm = () => {
     setSupplierName(""); setShippingAddress(""); setPurchaseRep(""); setOrderDate(today)
-    setExpectedArrival(""); setDestinationOfGoods(""); setEmail(""); setNotes(""); setLines([emptyLine()])
+    setExpectedArrival(""); setDestinationOfGoods(""); setEmail(""); setNotes(""); setPaymentDetails(""); setLines([emptyLine()])
     setAttachment([])
   }
 
@@ -98,7 +99,7 @@ export default function LpoPage() {
       const res = await fetch("/api/lpos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ supplierName, shippingAddress, purchaseRep, orderDate, expectedArrival: expectedArrival || null, destinationOfGoods: destinationOfGoods || null, email: email || null, notes, items: lines, attachmentUrl: attachment[0] || null }),
+        body: JSON.stringify({ supplierName, shippingAddress, purchaseRep, orderDate, expectedArrival: expectedArrival || null, destinationOfGoods: destinationOfGoods || null, email: email || null, notes, paymentDetails, items: lines, attachmentUrl: attachment[0] || null }),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error || "Could not save LPO."); return }
@@ -148,7 +149,7 @@ export default function LpoPage() {
             : <span style={{ background: "#FEF3C7", color: "#92400E", fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 999 }}>Awaiting payment</span>
         )}
         {s === "approved" && l.onBehalf && pill("#ede9fe", "Approved on behalf", "#6d28d9")}
-        {s === "approved" && l.amended && <span style={{ background: "#ccfbf1", color: TEAL, fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 999 }}>Amended</span>}
+        {l.amended && <span style={{ background: "#ccfbf1", color: TEAL, fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 999 }}>Amended</span>}
         {s === "exec_approved" && pill(TEAL, "Factory Admin Approved")}
         {s === "chief_approved" && pill(TEAL, "Chief Approved")}
         {s === "pending_chief" && pill(AMBER, "Awaiting Chief")}
@@ -259,8 +260,9 @@ export default function LpoPage() {
               <ImageUploader value={attachment} onChange={setAttachment} single allowPdf />
             </Field>
           </div>
-          <div style={{ marginTop: 16 }}>
-            <Field label="Payment details / notes"><Input value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 200px), 1fr))", gap: 14, marginTop: 16 }}>
+            <Field label="Notes"><Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Remarks or instructions about the order" /></Field>
+            <Field label="Payment details"><Input value={paymentDetails} onChange={(e) => setPaymentDetails(e.target.value)} placeholder="Bank details, terms, etc." /></Field>
           </div>
           <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end" }}>
             <Button onClick={save} disabled={saving} style={{ background: GREEN, color: "white", gap: 8, height: 42 }}>
@@ -330,6 +332,9 @@ export default function LpoPage() {
                             style={{ background: TEAL, color: "white", gap: 6, fontSize: 13, height: 36, padding: "0 16px" }}>
                             <Check size={14} /> Approve
                           </Button>
+                          <Link href={`/admin/lpo/${l.id}/amend`} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#8C6A4A", color: "white", fontSize: 13, height: 36, padding: "0 16px", borderRadius: 8, textDecoration: "none", fontWeight: 600 }}>
+                            <Pencil size={14} /> Amend
+                          </Link>
                           <Button
                             onClick={() => { setRejectTarget(l); setRejectReason("") }}
                             disabled={busyId === l.id}
@@ -349,6 +354,9 @@ export default function LpoPage() {
                             style={{ background: GREEN, color: "white", gap: 6, fontSize: 13, height: 36, padding: "0 16px" }}>
                             <Check size={14} /> Approve
                           </Button>
+                          <Link href={`/admin/lpo/${l.id}/amend`} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#8C6A4A", color: "white", fontSize: 13, height: 36, padding: "0 16px", borderRadius: 8, textDecoration: "none", fontWeight: 600 }}>
+                            <Pencil size={14} /> Amend
+                          </Link>
                           <Button
                             onClick={() => { setRejectTarget(l); setRejectReason("") }}
                             disabled={busyId === l.id}

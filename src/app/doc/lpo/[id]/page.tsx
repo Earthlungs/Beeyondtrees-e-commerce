@@ -25,11 +25,12 @@ export default async function PublicLpoPage({
   let status: string | null = "approved"
   let destinationOfGoods: string | null = null
   let attachmentUrl: string | null = null
+  let paymentDetails: string | null = null
   try {
-    const rows = await prisma.$queryRaw<{ status: string; destinationOfGoods: string | null; attachmentUrl: string | null }[]>`
-      SELECT status, "destinationOfGoods", "attachmentUrl" FROM "Lpo" WHERE id = ${id}
+    const rows = await prisma.$queryRaw<{ status: string; destinationOfGoods: string | null; attachmentUrl: string | null; paymentDetails: string | null }[]>`
+      SELECT status, "destinationOfGoods", "attachmentUrl", "paymentDetails" FROM "Lpo" WHERE id = ${id}
     `
-    if (rows[0]) { status = rows[0].status; destinationOfGoods = rows[0].destinationOfGoods; attachmentUrl = rows[0].attachmentUrl }
+    if (rows[0]) { status = rows[0].status; destinationOfGoods = rows[0].destinationOfGoods; attachmentUrl = rows[0].attachmentUrl; paymentDetails = rows[0].paymentDetails }
   } catch { /* pre-migration — treat as approved */ }
 
   if (status && status !== "approved") {
@@ -41,7 +42,7 @@ export default async function PublicLpoPage({
       <PublicDocControls title={`Purchase Order ${lpo.number}`} />
       <div style={{ padding: "24px 12px 48px" }}>
         <BrandedDoc title="PURCHASE ORDER">
-          <LpoBody lpo={lpo} destinationOfGoods={destinationOfGoods} />
+          <LpoBody lpo={{ ...lpo, paymentDetails }} destinationOfGoods={destinationOfGoods} />
           <AttachmentBlock url={attachmentUrl} />
         </BrandedDoc>
       </div>

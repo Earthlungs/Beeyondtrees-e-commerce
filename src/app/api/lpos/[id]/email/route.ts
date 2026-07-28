@@ -24,11 +24,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   // don't exist yet (pre-migration) treat the LPO as approved.
   let status: string | null = "approved"
   let destinationOfGoods: string | null = null
+  let paymentDetails: string | null = null
   try {
-    const rows = await prisma.$queryRaw<{ status: string; destinationOfGoods: string | null }[]>`
-      SELECT status, "destinationOfGoods" FROM "Lpo" WHERE id = ${id}
+    const rows = await prisma.$queryRaw<{ status: string; destinationOfGoods: string | null; paymentDetails: string | null }[]>`
+      SELECT status, "destinationOfGoods", "paymentDetails" FROM "Lpo" WHERE id = ${id}
     `
-    if (rows[0]) { status = rows[0].status; destinationOfGoods = rows[0].destinationOfGoods }
+    if (rows[0]) { status = rows[0].status; destinationOfGoods = rows[0].destinationOfGoods; paymentDetails = rows[0].paymentDetails }
   } catch { /* pre-migration — treat as approved */ }
 
   if (status && status !== "approved") {
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   try {
-    await sendLpoEmail({ ...lpo, destinationOfGoods }, email)
+    await sendLpoEmail({ ...lpo, destinationOfGoods, paymentDetails }, email)
     return NextResponse.json({ ok: true, email })
   } catch (e) {
     console.error("[mailer] LPO resend:", e)

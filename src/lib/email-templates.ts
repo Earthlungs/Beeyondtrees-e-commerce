@@ -328,11 +328,12 @@ export function invoiceDocEmail({
 
 export function lpoDocEmail({
   number, orderDate, expectedArrival, supplierName, shippingAddress, purchaseRep,
-  destinationOfGoods, items, subtotal, vat, total, notes, viewUrl,
+  destinationOfGoods, items, subtotal, vat, total, notes, paymentDetails, viewUrl,
 }: {
   number: string; orderDate: string; expectedArrival: string | null; supplierName: string
   shippingAddress: string | null; purchaseRep: string | null; destinationOfGoods: string | null
-  items: DocEmailLine[]; subtotal: number; vat: number; total: number; notes: string | null; viewUrl?: string
+  items: DocEmailLine[]; subtotal: number; vat: number; total: number
+  notes: string | null; paymentDetails?: string | null; viewUrl?: string
 }) {
   const body = `
     ${metaGrid([
@@ -349,7 +350,8 @@ export function lpoDocEmail({
       { label: "VAT", value: ksh(vat) },
       { label: "Total", value: ksh(total), bold: true },
     ])}
-    ${notesBlock("Payment Details", notes)}
+    ${notesBlock("Notes", notes)}
+    ${notesBlock("Payment Details", paymentDetails)}
   `
   return docLayout({ title: "PURCHASE ORDER", docNumber: number, body, viewUrl, viewLabel: "View / Print LPO →" })
 }
