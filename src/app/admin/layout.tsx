@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import {
   LayoutDashboard, Package, Truck, LogOut, Menu, X, Users, TrendingUp,
   Settings, Store, ShoppingCart, FileText, ClipboardList, UserCog, Workflow,
-  BarChart3, MessageSquare, Code2, Banknote, ScrollText, Sprout, Warehouse, Wheat, PawPrint,
+  BarChart3, MessageSquare, Banknote, ScrollText, Sprout, Warehouse, Wheat, PawPrint, Trees,
 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { ROLE_LABELS } from "@/lib/tracing-stages"
@@ -190,6 +190,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         items: [
           { href: "/admin/tracing", label: "Tracing Board", icon: Workflow },
           { href: "/admin/value-chain/reports", label: "Reports", icon: BarChart3 },
+          { href: "/admin/agro-forestry", label: "Agro Forestry", icon: Trees },
           { href: "/admin/fungiculture", label: "Fungiculture", icon: Sprout },
           { href: "/admin/livestock", label: "Livestock", icon: PawPrint },
           chat,
@@ -199,7 +200,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         title: "System",
         items: [
           { href: "/admin/users", label: "Users", icon: UserCog },
-          { href: "/admin/developers", label: "Developers", icon: Code2 },
           { href: "/admin/settings", label: "Settings", icon: Settings },
         ],
       }] : []),

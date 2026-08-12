@@ -7,3 +7,7 @@ node_modules/
 !.env.example
 .vercel
 *.tsbuildinfo
+
+# Local DB migration artefacts — contain farmer PII, never commit
+db-migration/
+.env*

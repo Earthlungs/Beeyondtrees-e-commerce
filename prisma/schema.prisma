@@ -645,3 +645,116 @@ model LivestockYield {
   @@index([animalId])
   @@index([housingId])
 }
+
+// ─── Agro Forestry ──────────────────────────────────────────────────────────
+// Mirrored from the EarthLungs reforestation Supabase project. Unlike the rest
+// of this schema (cuid strings, Prisma-default table names), these models keep
+// the SOURCE table/column names and serial Int primary keys via @map/@@map —
+// so rows copy across by their original id and the foreign keys between them
+// stay intact without an id-rewrite pass. See scripts/import-agroforestry.mjs.
+
+// A smallholder enrolled in a reforestation / agroforestry project.
+model Farmer {
+  id                     Int      @id @default(autoincrement())
+  fullname               String
+  gender                 String
+  group                  String?
+  email                  String?
+  phoneNumber            String?  @map("phone_number")
+  county                 String
+  subCounty              String?  @map("sub_county")
+  projectType            String   @map("project_type")
+  landOwnershipType      String   @map("land_ownership_type")
+  idNumber               String   @map("id_number")
+  numberOfAcresCommitted Float?   @map("number_of_acres_committed")
+  createdAt              DateTime @default(now()) @db.Timestamp(6)
+  updatedAt              DateTime @updatedAt @db.Timestamp(6)
+
+  disbursements ItemDisbursement[]
+
+  @@index([county])
+  @@index([projectType])
+  @@map("farmers")
+}
+
+// A physical hive. `beehiveId` is the field tag written on the hive itself —
+// a text code, NOT this row's numeric id (that clash is the source schema's,
+// kept as-is so the columns line up on import).
+model Beehive {
+  id                    Int      @id @default(autoincrement())
+  beehiveId             String
+  beehiveType           String // LANGSSTROTH | KTBH | CATCHER_BOX (source enum public."BeehiveType")
+  isColonized           Boolean  @default(false)
+  latitude              Float?
+  longitude             Float?
+  uploadedEvidenceCount Int      @default(0)
+  // Soft reference to the source BaitingReport — that subsystem is not
+  // mirrored here, so no FK, same convention as Batch.lpoId.
+  baitingReportId       Int?
+  createdAt             DateTime @default(now()) @db.Timestamp(6)
+  updatedAt             DateTime @updatedAt @db.Timestamp(6)
+
+  disbursed DisbursedBeehive[]
+
+  @@index([beehiveType])
+}
+
+// Seedling species reference list. Plural model name matches the source table
+// the FK points at. `seedlingSpicies` keeps the source's spelling.
+model Seedlings {
+  id              Int      @id @default(autoincrement())
+  seedlingSpicies String
+  createdAt       DateTime @default(now()) @db.Timestamp(6)
+
+  disbursed DisbursedSeedling[]
+}
+
+// One handover event: what a farmer received, from whom, where, and when.
+// The actual items live in the two child tables below — a single disbursement
+// can carry both beehives and seedlings.
+model ItemDisbursement {
+  id                 Int      @id @default(autoincrement())
+  disbursedBy        String
+  itemDisbursed      String
+  createdAt          DateTime @default(now()) @db.Timestamp(6)
+  updatedAt          DateTime @updatedAt @db.Timestamp(6)
+  disbursementCentre String
+  disbursementDate   DateTime @db.Timestamp(6)
+  farmerId           Int
+
+  farmer    Farmer              @relation(fields: [farmerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  beehives  DisbursedBeehive[]
+  seedlings DisbursedSeedling[]
+
+  @@index([farmerId])
+  @@index([disbursementDate])
+}
+
+// Beehives handed over — one row per physical hive, hence no quantity column.
+model DisbursedBeehive {
+  id             Int @id @default(autoincrement())
+  disbursementId Int
+  beehiveId      Int
+
+  disbursement ItemDisbursement @relation(fields: [disbursementId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  beehive      Beehive          @relation(fields: [beehiveId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([disbursementId])
+  @@index([beehiveId])
+}
+
+// Seedlings handed over — counted, so this one carries a quantity. Its parent
+// link is nullable (onDelete: SetNull) in the source schema, so rows can
+// outlive the disbursement they came from.
+model DisbursedSeedling {
+  id                 Int  @id @default(autoincrement())
+  quantity           Int
+  seedlingId         Int
+  itemDisbursementId Int?
+
+  itemDisbursement ItemDisbursement? @relation(fields: [itemDisbursementId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  seedling         Seedlings         @relation(fields: [seedlingId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([itemDisbursementId])
+  @@index([seedlingId])
+}
