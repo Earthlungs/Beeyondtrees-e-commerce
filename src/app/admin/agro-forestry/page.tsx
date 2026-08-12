@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
   Trees, Loader2, Search, X, Users, Map as MapIcon, PackageOpen, Sprout, Boxes,
-  ChevronLeft, ChevronRight, Phone, Mail, IdCard,
+  ChevronLeft, ChevronRight, Phone, Mail, IdCard, UserPlus,
 } from "lucide-react"
+import FarmerForm from "./farmer-form"
 
 const TEXT = "var(--admin-text)"
 const MUTED = "var(--admin-muted)"
@@ -125,13 +126,16 @@ export default function AgroForestryBoard() {
 
   const [detail, setDetail] = useState<FarmerDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
+  const [showForm, setShowForm] = useState(false)
+  // Bumped after a registration so the table and the stat tiles both refetch.
+  const [refresh, setRefresh] = useState(0)
 
   useEffect(() => {
     fetch("/api/agro-forestry/summary")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => d && setSummary(d))
       .catch(() => {})
-  }, [])
+  }, [refresh])
 
   // Debounce the search box so typing does not fire a request per keystroke.
   const [debouncedQ, setDebouncedQ] = useState("")
@@ -146,8 +150,8 @@ export default function AgroForestryBoard() {
   // one, which covers the first load, tab switches, paging and filtering
   // without a setState in the effect body (react-hooks/set-state-in-effect).
   const queryKey = tab === "farmers"
-    ? `farmers|${page}|${debouncedQ}|${county}|${projectType}`
-    : `disbursements|${dPage}`
+    ? `farmers|${page}|${debouncedQ}|${county}|${projectType}|${refresh}`
+    : `disbursements|${dPage}|${refresh}`
   const [loadedKey, setLoadedKey] = useState<string | null>(null)
   const loading = loadedKey !== queryKey
 
@@ -190,12 +194,17 @@ export default function AgroForestryBoard() {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
-        <Trees size={22} color={GREEN} />
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: "bold", color: TEXT }}>Agro Forestry</h1>
-          <p style={{ fontSize: 12, color: MUTED }}>Farmer register and item handovers — beehives and seedlings disbursed in the field</p>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 18, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Trees size={22} color={GREEN} />
+          <div>
+            <h1 style={{ fontSize: 22, fontWeight: "bold", color: TEXT }}>Agro Forestry</h1>
+            <p style={{ fontSize: 12, color: MUTED }}>Farmer register and item handovers — beehives and seedlings disbursed in the field</p>
+          </div>
         </div>
+        <Button onClick={() => setShowForm(true)} style={{ background: GREEN, color: "white", gap: 6, height: 36, fontSize: 13 }}>
+          <UserPlus size={15} /> Register Farmer
+        </Button>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 10, marginBottom: 18 }}>
@@ -362,6 +371,19 @@ export default function AgroForestryBoard() {
             Next <ChevronRight size={14} />
           </Button>
         </div>
+      )}
+
+      {showForm && (
+        <FarmerForm
+          onClose={() => setShowForm(false)}
+          onSaved={() => {
+            setShowForm(false)
+            // Land on page 1 with filters cleared so the new farmer is actually
+            // visible — registering someone and not seeing them is confusing.
+            setTab("farmers"); setPage(1); setQ(""); setCounty(""); setProjectType("")
+            setRefresh((n) => n + 1)
+          }}
+        />
       )}
 
       {(detail || detailLoading) && (
