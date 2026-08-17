@@ -1,18 +1,19 @@
 import { sendMail } from "@/lib/mailer"
 import {
+  deliveryNoteDocEmail,
   invoiceDocEmail,
   lpoDocEmail,
   quotationDocEmail,
   receiptDocEmail,
   type DocEmailLine,
 } from "@/lib/email-templates"
-import type { DocLine } from "@/lib/docs"
+import type { DeliveryLine, DocLine } from "@/lib/docs"
 import { signDoc } from "@/lib/doc-token"
 
 const BASE_URL = process.env.NEXTAUTH_URL || "https://www.beeyondtrees.org"
 
 // Public, login-free link for a document emailed to a client (carries a signed token).
-function publicUrl(type: "invoice" | "lpo" | "receipt" | "quotation", id: string): string {
+function publicUrl(type: "invoice" | "lpo" | "receipt" | "quotation" | "delivery-note", id: string): string {
   return `${BASE_URL}/doc/${type}/${id}?t=${signDoc(type, id)}`
 }
 
@@ -100,6 +101,36 @@ export async function sendQuotationEmail(q: {
     viewUrl: publicUrl("quotation", q.id),
   })
   await sendMail({ to, subject: `Quotation ${q.number} from Beeyond Trees`, html })
+}
+
+export async function sendDeliveryNoteEmail(dn: {
+  id: string; number: string; lpoNumber: string | null; deliveryDate: Date
+  supplierName: string; deliveredTo: string | null; vehicleReg: string | null
+  driverName: string | null; driverPhone: string | null; receivedBy: string | null
+  items: unknown; notes: string | null
+}, to: string) {
+  const items = (dn.items as DeliveryLine[]) ?? []
+  const html = deliveryNoteDocEmail({
+    number: dn.number,
+    lpoNumber: dn.lpoNumber,
+    deliveryDate: fmtDate(dn.deliveryDate),
+    supplierName: dn.supplierName,
+    deliveredTo: dn.deliveredTo,
+    vehicleReg: dn.vehicleReg,
+    driverName: dn.driverName,
+    driverPhone: dn.driverPhone,
+    receivedBy: dn.receivedBy,
+    items: items.map((l) => ({
+      description: l.description,
+      unit: l.unit,
+      qtyOrdered: l.qtyOrdered,
+      qtyDelivered: l.qtyDelivered,
+      remarks: l.remarks,
+    })),
+    notes: dn.notes,
+    viewUrl: publicUrl("delivery-note", dn.id),
+  })
+  await sendMail({ to, subject: `Delivery Note ${dn.number} from Beeyond Trees`, html })
 }
 
 export async function sendReceiptEmail(order: {

@@ -61,6 +61,36 @@ export function normalizeLines(raw: unknown): { items: DocLine[]; subtotal: numb
   return { items, subtotal, vat, total }
 }
 
+// A delivery-note line. No money — the LPO holds the pricing; this records what
+// physically arrived, so the ordered quantity sits next to the delivered one and
+// any shortfall/damage goes in `remarks`.
+export interface DeliveryLine {
+  description: string
+  unit: string // pcs / kg / bags…
+  qtyOrdered: number
+  qtyDelivered: number
+  remarks: string
+}
+
+// Same server-side normalisation contract as normalizeLines: quantities are
+// coerced here so the client can't post junk. A line survives if it names
+// something or carries a quantity.
+export function normalizeDeliveryLines(raw: unknown): DeliveryLine[] {
+  const arr = Array.isArray(raw) ? raw : []
+  return arr
+    .map((l) => {
+      const r = l as Partial<DeliveryLine>
+      return {
+        description: String(r.description ?? "").trim(),
+        unit: String(r.unit ?? "").trim(),
+        qtyOrdered: Number(r.qtyOrdered) || 0,
+        qtyDelivered: Number(r.qtyDelivered) || 0,
+        remarks: String(r.remarks ?? "").trim(),
+      }
+    })
+    .filter((l) => l.description || l.qtyDelivered || l.qtyOrdered)
+}
+
 // Parse a date input safely. Browsers without a native date picker render
 // `<input type="date">` as a plain text field, so users can type unparseable
 // values (e.g. "13/06/2026") — `new Date()` then yields an Invalid Date that

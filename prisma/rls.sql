@@ -13,7 +13,7 @@ DECLARE t text;
 BEGIN
   FOREACH t IN ARRAY ARRAY[
     -- storefront / admin
-    'User','Product','Order','OrderItem','Dispatch','Invoice','Lpo',
+    'User','Product','Order','OrderItem','Dispatch','Invoice','Lpo','DeliveryNote',
     -- value-chain pipeline
     'Batch','BulkRequest','Approval','Sourcing','Inspection','Requisition',
     'Issuance','Production','BatchDispatch','Receiving',

@@ -42,7 +42,10 @@ export default async function proxy(request: NextRequest) {
     const canDoc = role && DOC_ROLES.includes(role)
     // factory_manager may view approved LPOs (read-only) so they can pick one when starting a batch
     const canLpoView = role === "factory_manager" && path.startsWith("/admin/lpo")
-    const docPath = path.startsWith("/admin/lpo") || path.startsWith("/admin/invoicing") || path.startsWith("/admin/quotations")
+    // NOTE: "/admin/lpo" also prefixes nothing else; delivery notes live at
+    // /admin/delivery-notes (distinct from the storefront /admin/deliveries).
+    const docPath = path.startsWith("/admin/lpo") || path.startsWith("/admin/invoicing")
+      || path.startsWith("/admin/quotations") || path.startsWith("/admin/delivery-notes")
     if (role && TRACING_ROLES.includes(role) && !path.startsWith("/admin/tracing") && !(canDoc && docPath) && !canLpoView && !COMMON) {
       return NextResponse.redirect(new URL("/admin/tracing", request.url))
     }

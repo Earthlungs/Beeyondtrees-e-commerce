@@ -114,6 +114,39 @@ model Quotation {
   updatedAt          DateTime  @updatedAt
 }
 
+// Delivery Note — the document that travels WITH the goods, raised against an
+// already-approved LPO. Deliberately different from the LPO/Quotation pair:
+//   * no approval chain — it is printable and emailable the moment it is saved,
+//     because goods cannot wait on a sign-off queue; and
+//   * no money. Its `items` carry { description, unit, qtyOrdered, qtyDelivered,
+//     remarks } — the LPO and invoice hold the pricing, this proves what
+//     physically arrived (hence qtyDelivered vs qtyOrdered, and receivedBy).
+// `lpoId` is a soft reference with no FK, same convention as Batch.lpoId —
+// `lpoNumber` is snapshotted so the printed note stays readable regardless.
+model DeliveryNote {
+  id              String   @id @default(cuid())
+  number          String   @unique // e.g. DN-0001
+  lpoId           String? // approved Lpo this note delivers against (no FK)
+  lpoNumber       String? // snapshot, so the doc reads correctly on its own
+  supplierName    String
+  deliveredTo     String? // destination of goods (from the LPO, editable)
+  deliveryDate    DateTime @default(now())
+  vehicleReg      String? // motorbike/lorry plate
+  driverName      String?
+  driverPhone     String?
+  receivedBy      String? // who signs for the goods at the destination
+  items           Json     @default("[]")
+  notes           String?  @db.Text
+  recipientEmail  String?
+  attachmentUrl   String?
+  createdByUserId String?
+  createdByName   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([lpoId])
+}
+
 // PDF document attachments stored in Postgres (Cloudinary blocks PDF delivery
 // on this plan). Served by /api/attachments/[id].
 model DocAttachment {

@@ -384,6 +384,61 @@ export function quotationDocEmail({
   return docLayout({ title: "QUOTATION", docNumber: number, body, viewUrl, viewLabel: "View / Print Quotation →" })
 }
 
+// Delivery Note — quantities only, no totals block. Ordered vs delivered sits
+// side by side so the recipient can check the consignment against the LPO.
+export interface DeliveryEmailLine {
+  description: string
+  unit: string
+  qtyOrdered: number
+  qtyDelivered: number
+  remarks: string
+}
+
+export function deliveryNoteDocEmail({
+  number, lpoNumber, deliveryDate, supplierName, deliveredTo, vehicleReg,
+  driverName, driverPhone, receivedBy, items, notes, viewUrl,
+}: {
+  number: string; lpoNumber: string | null; deliveryDate: string; supplierName: string
+  deliveredTo: string | null; vehicleReg: string | null; driverName: string | null
+  driverPhone: string | null; receivedBy: string | null
+  items: DeliveryEmailLine[]; notes: string | null; viewUrl?: string
+}) {
+  const itemsTable = `<table role="presentation" width="100%" style="border-collapse:collapse;font-size:13px;font-family:system-ui,sans-serif;">
+    <tr style="text-align:left;">
+      <th style="padding:8px 6px;border-bottom:2px solid ${GREEN};">Description</th>
+      <th style="padding:8px 6px;border-bottom:2px solid ${GREEN};width:60px;">Unit</th>
+      <th style="padding:8px 6px;border-bottom:2px solid ${GREEN};width:70px;text-align:right;">Ordered</th>
+      <th style="padding:8px 6px;border-bottom:2px solid ${GREEN};width:80px;text-align:right;">Delivered</th>
+      <th style="padding:8px 6px;border-bottom:2px solid ${GREEN};width:120px;">Remarks</th>
+    </tr>
+    ${items.map((l) => `<tr>
+      <td style="padding:8px 6px;border-bottom:1px solid #EEE;">${esc(l.description)}</td>
+      <td style="padding:8px 6px;border-bottom:1px solid #EEE;color:#777;">${esc(l.unit) || "—"}</td>
+      <td style="padding:8px 6px;border-bottom:1px solid #EEE;text-align:right;color:#777;">${esc(l.qtyOrdered)}</td>
+      <td style="padding:8px 6px;border-bottom:1px solid #EEE;text-align:right;font-weight:700;">${esc(l.qtyDelivered)}</td>
+      <td style="padding:8px 6px;border-bottom:1px solid #EEE;color:#777;">${esc(l.remarks) || "—"}</td>
+    </tr>`).join("")}
+  </table>`
+
+  const body = `
+    ${metaGrid([
+      { label: "Supplier", value: supplierName },
+      ...(lpoNumber ? [{ label: "Against LPO", value: lpoNumber }] : []),
+      { label: "Delivery Date", value: deliveryDate },
+      { label: "Delivered To", value: deliveredTo || "" },
+      ...(vehicleReg ? [{ label: "Vehicle / Reg", value: vehicleReg }] : []),
+      ...(driverName || driverPhone ? [{ label: "Driver", value: [driverName, driverPhone].filter(Boolean).join(" · ") }] : []),
+      ...(receivedBy ? [{ label: "Received By", value: receivedBy }] : []),
+    ])}
+    ${itemsTable}
+    ${notesBlock("Notes", notes)}
+    <div style="margin-top:28px;font-size:12px;color:#888;font-family:system-ui,sans-serif;">
+      Please check the consignment against the quantities above and sign the printed copy on receipt.
+    </div>
+  `
+  return docLayout({ title: "DELIVERY NOTE", docNumber: number, body, viewUrl, viewLabel: "View / Print Delivery Note →" })
+}
+
 export function receiptDocEmail({
   receiptNo, date, customerName, soldBy, paymentMethod, mpesaCode, cardRef,
   items, total, cashReceived, change, viewUrl,

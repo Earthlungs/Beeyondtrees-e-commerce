@@ -8,6 +8,7 @@ import {
   LayoutDashboard, Package, Truck, LogOut, Menu, X, Users, TrendingUp,
   Settings, Store, ShoppingCart, FileText, ClipboardList, UserCog, Workflow,
   BarChart3, MessageSquare, Banknote, ScrollText, Sprout, Warehouse, Wheat, PawPrint, Trees,
+  PackageCheck,
 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { ROLE_LABELS } from "@/lib/tracing-stages"
@@ -157,6 +158,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         title: "Documents",
         items: [
           { href: "/admin/lpo", label: "LPO", icon: ClipboardList },
+          { href: "/admin/delivery-notes", label: "Delivery Note", icon: PackageCheck },
           { href: "/admin/quotations", label: "Quotation", icon: ScrollText },
           { href: "/admin/invoicing", label: "Invoicing", icon: FileText },
         ],
@@ -177,6 +179,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           { href: "/admin/deliveries", label: "Deliveries", icon: Truck },
           ...(isAdmin ? [
             { href: "/admin/lpo", label: "LPO", icon: ClipboardList },
+            { href: "/admin/delivery-notes", label: "Delivery Note", icon: PackageCheck },
             { href: "/admin/quotations", label: "Quotation", icon: ScrollText },
             { href: "/admin/invoicing", label: "Invoicing", icon: FileText },
             { href: "/admin/finance", label: "Finance", icon: Banknote },
