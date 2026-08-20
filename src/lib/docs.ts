@@ -34,6 +34,10 @@ export interface DocLine {
   unitPrice: number
   taxRate: number // percent, e.g. 16
   amount: number
+  // Set when the line was picked from the product catalog (DocLineItems' picker)
+  // rather than typed free-hand. Invoicing uses it to decrement Product.stock;
+  // lines without it are services/one-offs and hold no stock.
+  productId?: string
 }
 
 // Recompute line amounts + document totals server-side so the client can't
@@ -46,12 +50,14 @@ export function normalizeLines(raw: unknown): { items: DocLine[]; subtotal: numb
       const qty = Number(r.qty) || 0
       const unitPrice = Number(r.unitPrice) || 0
       const taxRate = Number(r.taxRate) || 0
+      const productId = typeof r.productId === "string" ? r.productId.trim() : ""
       return {
         description: String(r.description ?? "").trim(),
         qty,
         unitPrice,
         taxRate,
         amount: +(qty * unitPrice).toFixed(2),
+        ...(productId ? { productId } : {}),
       }
     })
     .filter((l) => l.description || l.amount)
@@ -89,6 +95,15 @@ export function normalizeDeliveryLines(raw: unknown): DeliveryLine[] {
       }
     })
     .filter((l) => l.description || l.qtyDelivered || l.qtyOrdered)
+}
+
+// True when a query failed only because a column this code expects is not in
+// the database yet — i.e. the migration SQL for a feature hasn't been run.
+// Deploying does not migrate the schema on this project, so handlers use this
+// to degrade (or say what to run) instead of throwing a bare 500. Mirrors the
+// P2021 "table missing" tolerance in /api/delivery-notes.
+export function isMissingColumn(e: unknown): boolean {
+  return e instanceof Prisma.PrismaClientKnownRequestError && (e.code === "P2022" || e.code === "P2021")
 }
 
 // Parse a date input safely. Browsers without a native date picker render

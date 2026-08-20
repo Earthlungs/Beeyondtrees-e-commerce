@@ -55,6 +55,56 @@ export async function markOrderPaid(orderId: string, transactionRef: string): Pr
   return true
 }
 
+// Take stock for catalog lines on a business document (invoicing). Same rules
+// as the till in recordPosSale — duplicate lines are merged so a product can't
+// dodge the check by appearing twice, an oversell is refused outright rather
+// than floored at 0, and each decrement carries a `stock >= qty` guard so a
+// unit claimed by a concurrent web/POS sale can't be sold twice.
+//
+// Lines with no productId (services, free-typed items) hold no stock and are
+// ignored. Throws InsufficientStockError, which callers surface per item.
+export async function decrementCatalogStock(
+  lines: { productId?: string; quantity: number }[]
+): Promise<void> {
+  const demand = new Map<string, number>()
+  for (const l of lines) {
+    if (!l.productId || l.quantity <= 0) continue
+    demand.set(l.productId, (demand.get(l.productId) ?? 0) + l.quantity)
+  }
+  if (demand.size === 0) return
+
+  await prisma.$transaction(async (tx) => {
+    const products = await tx.product.findMany({
+      where: { id: { in: [...demand.keys()] } },
+      select: { id: true, name: true, stock: true },
+    })
+    const byId = new Map(products.map((p) => [p.id, p]))
+
+    const short = [...demand.entries()]
+      .filter(([id, qty]) => qty > (byId.get(id)?.stock ?? 0))
+      .map(([id, qty]) => ({
+        productId: id,
+        productName: byId.get(id)?.name ?? "Unknown product",
+        requested: qty,
+        available: byId.get(id)?.stock ?? 0,
+      }))
+    if (short.length) throw new InsufficientStockError(short)
+
+    for (const [id, qty] of demand.entries()) {
+      const res = await tx.product.updateMany({
+        where: { id, stock: { gte: qty } },
+        data: { stock: { decrement: qty } },
+      })
+      if (res.count === 0) {
+        const p = byId.get(id)!
+        throw new InsufficientStockError([
+          { productId: id, productName: p.name, requested: qty, available: p.stock },
+        ])
+      }
+    }
+  })
+}
+
 // ---------------------------------------------------------------------------
 // Point-of-sale (physical shop) sale
 // ---------------------------------------------------------------------------

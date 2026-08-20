@@ -5,6 +5,7 @@ const ksh = (n: number) => `KSh ${n.toLocaleString(undefined, { maximumFractionD
 const fmtDate = (d: Date | null) => (d ? new Date(d).toLocaleDateString("en-KE") : "—")
 
 export interface InvoiceRecord {
+  id: string
   number: string
   date: Date
   dueDate: Date | null
@@ -15,6 +16,12 @@ export interface InvoiceRecord {
   vat: number
   total: number
   notes: string | null
+  // Payment tracking — optional so a pre-migration row still renders.
+  paid?: boolean | null
+  paidAt?: Date | null
+  paidBy?: string | null
+  paymentMethod?: string | null
+  paymentRef?: string | null
 }
 
 // Inner content of the branded INVOICE document. Shared by the admin print page
@@ -30,6 +37,21 @@ export default function InvoiceBody({ invoice }: { invoice: InvoiceRecord }) {
           <div><strong>Due Date:</strong> {fmtDate(invoice.dueDate)}</div>
         </div>
       </div>
+      {/* Settled invoices carry a stamp, so a printed copy shows at a glance
+          that the money is in — including how it came and its reference. */}
+      {invoice.paid && (
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 18 }}>
+          <div style={{ border: `3px solid ${DOC_GREEN}`, color: DOC_GREEN, borderRadius: 10, padding: "8px 16px", transform: "rotate(-4deg)", textAlign: "center" }}>
+            <div style={{ fontSize: 22, fontWeight: 900, letterSpacing: 3, lineHeight: 1 }}>PAID</div>
+            <div style={{ fontSize: 10.5, marginTop: 4 }}>
+              {fmtDate(invoice.paidAt ?? null)}
+              {invoice.paymentMethod ? ` · ${invoice.paymentMethod}` : ""}
+              {invoice.paymentRef ? ` · ${invoice.paymentRef}` : ""}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ marginBottom: 22 }}>
         <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 4 }}>Billed to</div>
         <div style={{ fontSize: 13 }}>Name: {invoice.customerName}</div>

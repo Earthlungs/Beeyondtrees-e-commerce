@@ -8,13 +8,19 @@ import { Button } from "@/components/ui/button"
 import {
   Package, ShoppingCart, Truck, DollarSign,
   Users, AlertTriangle, CheckCircle, Clock, ArrowRight,
-  ChevronDown, ChevronUp, UserCheck, UserX, Sprout, Warehouse, Wheat, PawPrint, BarChart3
+  ChevronDown, ChevronUp, UserCheck, UserX, Sprout, Warehouse, Wheat, PawPrint, BarChart3,
+  Banknote, FileText, HandCoins, Hourglass
 } from "lucide-react"
 import Link from "next/link"
 import { useProductStore } from "@/store/product-store"
 import { isAdminishRole } from "@/lib/tracing-stages"
 
 const PREVIEW = 3
+
+interface MoneyBucket { paidCount: number; paidTotal: number; unpaidCount: number; unpaidTotal: number; pending?: boolean }
+interface FinanceSummary { lpos: MoneyBucket; invoices: MoneyBucket }
+
+const ksh = (n: number) => `KSh ${Math.round(n).toLocaleString()}`
 
 export default function AdminDashboard() {
   const { data: session } = useSession()
@@ -32,9 +38,21 @@ export default function AdminDashboard() {
   const [fungicultureExpanded, setFungicultureExpanded] = useState(false)
   const [livestockExpanded, setLivestockExpanded] = useState(false)
   const [production, setProduction] = useState<{ id: string; code: string; productName: string | null; productionPercent: number | null }[]>([])
+  const [money, setMoney] = useState<FinanceSummary | null>(null)
   const lowStock = products.filter((p) => p.stock <= 5)
 
   useEffect(() => { loadProducts() }, [loadProducts])
+
+  // Settled money: LPOs finance has paid out, invoices customers have settled.
+  useEffect(() => {
+    if (!isAdmin) return
+    let cancelled = false
+    fetch('/api/finance/summary')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (!cancelled && d) setMoney(d) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [isAdmin])
 
   // CEO / Assistant CEO / admin / IT: live production completion per product.
   useEffect(() => {
@@ -116,6 +134,54 @@ export default function AdminDashboard() {
           </Link>
         ))}
       </div>
+
+      {/* Money settled (admin / IT / Assistant CEO). LPOs are money going out,
+          invoices money coming in; each tile pairs the settled figure with what
+          is still outstanding so the two are never read in isolation. */}
+      {isAdmin && money && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '16px', marginBottom: '24px' }}>
+          {[
+            {
+              label: 'LPOs Paid', value: ksh(money.lpos.paidTotal), icon: Banknote, color: '#6B7D5C',
+              sub: `${money.lpos.paidCount} paid`, href: '/admin/finance',
+            },
+            {
+              label: 'LPOs Awaiting Payment', value: ksh(money.lpos.unpaidTotal), icon: Hourglass, color: '#E6A817',
+              sub: `${money.lpos.unpaidCount} approved, unpaid`, href: '/admin/finance',
+            },
+            {
+              label: 'Invoices Paid', value: ksh(money.invoices.paidTotal), icon: HandCoins, color: '#6B7D5C',
+              sub: `${money.invoices.paidCount} settled`, href: '/admin/invoicing',
+            },
+            {
+              label: 'Invoices Outstanding', value: ksh(money.invoices.unpaidTotal), icon: FileText, color: '#B0492E',
+              sub: `${money.invoices.unpaidCount} unpaid`, href: '/admin/invoicing',
+            },
+          ].map((stat, i) => (
+            <Link key={i} href={stat.href} style={{ textDecoration: 'none' }}>
+              <Card style={{ borderColor: '#A89F91', cursor: 'pointer', height: '100%' }}>
+                <CardContent style={{ padding: '18px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ fontSize: '12px', color: "var(--admin-muted)", marginBottom: '4px' }}>{stat.label}</p>
+                      <p style={{ fontSize: '20px', fontWeight: 'bold', color: "var(--admin-text)" }}>{stat.value}</p>
+                      <p style={{ fontSize: '11px', color: "var(--admin-muted)", marginTop: '2px' }}>{stat.sub}</p>
+                    </div>
+                    <div style={{ width: '36px', height: '36px', backgroundColor: 'var(--admin-bg)', borderRadius: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <stat.icon size={18} style={{ color: stat.color }} />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      )}
+      {isAdmin && money?.invoices.pending && (
+        <div style={{ background: 'var(--admin-warn-bg)', border: '1px solid var(--admin-warn-border)', color: 'var(--admin-warn-fg)', padding: '10px 14px', borderRadius: '10px', fontSize: '13px', marginBottom: '24px' }}>
+          Invoice payment tracking is not live yet — run <code>prisma/migrate-ops-2026-08.sql</code> on the database and these figures will fill in.
+        </div>
+      )}
 
       {/* User Stats (admin / IT only) */}
       {isAdmin && userStats && (
