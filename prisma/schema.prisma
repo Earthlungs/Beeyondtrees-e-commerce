@@ -43,7 +43,9 @@ model Message {
 }
 
 // Customer invoice (branded printable doc, matches templates/Invoice). Line
-// items are stored as JSON: [{ description, qty, unitPrice, taxRate, amount }].
+// items are stored as JSON: [{ description, qty, unitPrice, taxRate, amount,
+// productId? }] — `productId` is present when the line was picked from the
+// product catalog, which is what makes the stock deduction below possible.
 model Invoice {
   id              String    @id @default(cuid())
   number          String    @unique // e.g. INV-0001
@@ -56,6 +58,19 @@ model Invoice {
   vat             Float     @default(0)
   total           Float     @default(0)
   notes           String?   @db.Text // payment details
+  // Payment tracking. Whoever raised the invoice (or finance / CEO) flips this
+  // once the money lands — same shape as the Lpo paid/paidBy/paidAt columns,
+  // which the finance dashboard already reads.
+  paid            Boolean   @default(false)
+  paidAt          DateTime?
+  paidBy          String?
+  paymentMethod   String? // cash | mpesa | bank | cheque | card | other
+  paymentRef      String? // M-Pesa code, bank slip, cheque number…
+  // Catalog lines decrement Product.stock the moment the invoice is raised.
+  // The flag makes that a once-only effect, so a retry can never double-deduct.
+  stockDeducted   Boolean   @default(false)
+  createdByUserId String? // who raised it — they may mark it paid
+  createdByName   String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 }
@@ -490,17 +505,20 @@ model FungiSpawn {
 }
 
 model FungiBatch {
-  id        String   @id @default(cuid())
-  code      String   @unique // FUN-0001
-  stage     String   @default("substrate_prep") // substrate_prep | incubation | harvest | dehydration_packaging
-  status    String   @default("in_progress") // in_progress | completed
-  spawnId   String? // read-only link to FungiSpawn.id, no FK — same convention as Batch.lpoId
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id      String @id @default(cuid())
+  code    String @unique // FUN-0001
+  stage   String @default("substrate_prep") // substrate_prep | incubation | harvest | dehydration_packaging
+  status  String @default("in_progress") // in_progress | completed
+  spawnId String? // read-only link to FungiSpawn.id, no FK — same convention as Batch.lpoId
+  // Set when the fungiculturist closes the harvest window (see FungiHarvest).
+  // Until then the batch sits on the harvest stage collecting flushes.
+  harvestClosedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   substrate   FungiSubstrate?
   incubation  FungiIncubation?
-  harvest     FungiHarvest?
+  harvests    FungiHarvest[]
   dehydration FungiDehydration?
 }
 
@@ -539,10 +557,16 @@ model FungiIncubation {
   @@index([growingHouseId])
 }
 
-// Stage 3 — harvest, split between fresh punnets and drying stock
+// Stage 3 — harvest, split between fresh punnets and drying stock.
+// A mushroom bed fruits REPEATEDLY: each fruiting is a "flush", and one batch
+// yields several over weeks. So this is 1:many (unlike every other stage row),
+// numbered per batch by `flushNumber`. The batch stays on the harvest stage
+// collecting flushes until the fungiculturist explicitly closes the harvest
+// (FungiBatch.harvestClosedAt), which is what advances it to dehydration.
 model FungiHarvest {
   id                String     @id @default(cuid())
-  batchId           String     @unique
+  batchId           String
+  flushNumber       Int        @default(1) // 1st, 2nd, 3rd… fruiting of this batch
   harvestedAt       DateTime   @default(now())
   totalWeightKg     Float      @default(0)
   freshPunnets250g  Int        @default(0) // fresh, packed for orders
@@ -550,7 +574,11 @@ model FungiHarvest {
   harvestedBy       String?
   images            Json       @default("[]")
   remarks           String?    @db.Text
+  createdAt         DateTime   @default(now())
   batch             FungiBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, flushNumber])
+  @@index([batchId])
 }
 
 // Stage 4 (final) — dehydration + packaging. Mushrooms lose significant
@@ -700,6 +728,13 @@ model Farmer {
   landOwnershipType      String   @map("land_ownership_type")
   idNumber               String   @map("id_number")
   numberOfAcresCommitted Float?   @map("number_of_acres_committed")
+  // Signed agreements held against this farmer:
+  // [{ url, filename, uploadedAt, uploadedBy }]. PDFs live in DocAttachment and
+  // are served by /api/attachments/<id>.pdf; photos of a signed page are
+  // Cloudinary URLs. A column rather than a table because it is a short,
+  // always-loaded-with-the-farmer list — and it is one more column the source
+  // project does not have, which is fine: nothing syncs back to it.
+  contracts              Json     @default("[]")
   createdAt              DateTime @default(now()) @db.Timestamp(6)
   updatedAt              DateTime @updatedAt @db.Timestamp(6)
 
