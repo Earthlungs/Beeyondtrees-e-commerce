@@ -298,7 +298,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Menu size={22} />
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: 'auto' }}>
-            <span style={{ fontSize: '12px', color: '#A89F91' }}>{session.user?.name} ({roleLabel})</span>
+            <span className="admin-user-label" style={{ fontSize: '12px', color: '#A89F91' }}>{session.user?.name} ({roleLabel})</span>
             <Button variant="ghost" size="sm" onClick={() => signOut({ callbackUrl: "/admin/login" })} style={{ color: '#8C6A4A', fontSize: '12px' }}>
               <LogOut size={14} style={{ marginRight: '4px' }} /> Logout
             </Button>
@@ -311,7 +311,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <span style={{ fontWeight: 800 }}>Beeyond Trees</span>
           </div>
         )}
-        <div style={{ padding: '24px' }}>{children}</div>
+        {/* Padding + the small-screen rules live on .admin-content (globals.css). */}
+        <div className="admin-content">{children}</div>
       </div>
     </div>
   )

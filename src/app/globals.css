@@ -196,3 +196,70 @@ body {
   html { scroll-behavior: auto; }
   .byt-float, .byt-bob { animation: none; }
 }
+
+/* ── Admin: fit every screen ────────────────────────────────────────────────
+   The admin pages are inline-styled (they predate Tailwind here and theme
+   through CSS variables), so their sizes are fixed in the markup. Rather than
+   rewrite every page, this scopes a handful of screen-only rules to the admin
+   content wrapper. Inline styles beat stylesheet rules, so the overrides that
+   have to defeat one are marked !important — deliberately, and only here.
+
+   Every query is `screen and …`: printed A4 is ~794 CSS px wide, so a bare
+   max-width query would also reformat the branded invoices/LPOs on paper. */
+.admin-content { padding: 24px; min-width: 0; }
+
+@media screen and (max-width: 1024px) {
+  .admin-content { padding: 18px; }
+}
+
+@media screen and (max-width: 900px) {
+  /* A wide table scrolls inside its own box instead of pushing the whole page
+     sideways. `display: block` keeps the rows laid out as a table internally
+     while giving the element something to scroll. */
+  .admin-content table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .admin-content h1 { font-size: 19px !important; }
+  .admin-content h2 { font-size: 15.5px !important; }
+}
+
+@media screen and (max-width: 640px) {
+  .admin-content { padding: 12px; }
+  /* Two- and three-column form grids stack. Grids already written as
+     `repeat(auto-fit, minmax(…))` handle themselves and are untouched. */
+  /* Both spellings: React's server renderer emits `…columns:1fr 1fr` while the
+     browser's CSSOM re-serialises client-set styles with a space. */
+  .admin-content [style*="grid-template-columns: 1fr 1fr"],
+  .admin-content [style*="grid-template-columns:1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+  /* iOS zooms the page when a focused field's text is under 16px. */
+  .admin-content input,
+  .admin-content select,
+  .admin-content textarea { font-size: 16px !important; }
+  /* Long unbroken values (URLs, references) wrap rather than widen the page. */
+  .admin-content { overflow-wrap: anywhere; }
+}
+
+/* The signed-in name in the admin header is a nicety; the sidebar shows it
+   too, so it gives up its space first on a phone. */
+@media screen and (max-width: 560px) {
+  .admin-user-label { display: none; }
+}
+
+/* The branded A4 documents (invoice, LPO, quotation, delivery note) are also
+   read on phones — including by customers, through the public /doc links that
+   sit outside the admin shell. On screen only: let their line-item table
+   scroll and drop the A4 page height. Printing is untouched. */
+@media screen and (max-width: 700px) {
+  #doc { min-height: auto !important; }
+  #doc table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
