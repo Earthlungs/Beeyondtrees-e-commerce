@@ -13,6 +13,11 @@ const imgs = (v: unknown) => (Array.isArray(v) ? v : []) as Prisma.InputJsonValu
 // and advance the batch pointer (or complete it). Mirrors
 // /api/tracing/batches/[id]/stage — no handoff email since every stage here
 // is the same fungiculturist role.
+//
+// Harvest is the exception: a bed fruits repeatedly, so each submission records
+// another flush and the batch STAYS on the harvest stage. It only moves on when
+// the fungiculturist closes the harvest explicitly — body { stage: "harvest",
+// action: "close" }.
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const body = await request.json().catch(() => null)
@@ -55,20 +60,55 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         break
       }
 
-      // ── Stage 3: Harvest ──────────────────────────────────────────────
+      // ── Stage 3: Harvest — repeats until closed ───────────────────────
       case "harvest": {
-        await prisma.fungiHarvest.create({
-          data: {
-            batchId: id,
-            totalWeightKg: num(d.totalWeightKg),
-            freshPunnets250g: Math.trunc(num(d.freshPunnets250g)),
-            weightForDryingKg: num(d.weightForDryingKg),
-            harvestedBy: str(d.harvestedBy) || str(auth.token.name) || "Fungiculturist",
-            images: imgs(d.images),
-            remarks: str(d.remarks) || null,
-          },
+        // Closing the harvest window is what advances the batch. Requiring at
+        // least one flush first stops a batch skipping harvest by accident.
+        if (body.action === "close") {
+          const flushes = await prisma.fungiHarvest.count({ where: { batchId: id } })
+          if (flushes === 0) {
+            return NextResponse.json(
+              { error: "Record at least one harvest flush before closing the harvest." },
+              { status: 400 }
+            )
+          }
+          await prisma.fungiBatch.update({ where: { id }, data: { harvestClosedAt: new Date() } })
+          await advance()
+          break
+        }
+
+        // Another flush. flushNumber is derived from what's already there and
+        // the (batchId, flushNumber) unique index makes two people submitting
+        // at once collide rather than silently share a number — so retry a few
+        // times on that collision, the same tactic as createNumbered.
+        const harvestData = {
+          batchId: id,
+          harvestedAt: parseDate(d.harvestedAt) ?? new Date(),
+          totalWeightKg: num(d.totalWeightKg),
+          freshPunnets250g: Math.trunc(num(d.freshPunnets250g)),
+          weightForDryingKg: num(d.weightForDryingKg),
+          harvestedBy: str(d.harvestedBy) || str(auth.token.name) || "Fungiculturist",
+          images: imgs(d.images),
+          remarks: str(d.remarks) || null,
+        }
+        const highest = await prisma.fungiHarvest.findFirst({
+          where: { batchId: id },
+          orderBy: { flushNumber: "desc" },
+          select: { flushNumber: true },
         })
-        await advance()
+        let created = false
+        for (let n = (highest?.flushNumber ?? 0) + 1; n < (highest?.flushNumber ?? 0) + 13; n++) {
+          try {
+            await prisma.fungiHarvest.create({ data: { ...harvestData, flushNumber: n } })
+            created = true
+            break
+          } catch (e) {
+            if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") continue
+            throw e
+          }
+        }
+        if (!created) throw new Error("Could not allocate a flush number")
+        // Deliberately NO advance() — the batch keeps fruiting.
         break
       }
 
@@ -95,7 +135,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const updated = await prisma.fungiBatch.findUnique({
       where: { id },
-      include: { substrate: true, incubation: true, harvest: true, dehydration: true },
+      include: { substrate: true, incubation: true, harvests: { orderBy: { flushNumber: "asc" } }, dehydration: true },
     })
     return NextResponse.json(updated)
   } catch (e) {

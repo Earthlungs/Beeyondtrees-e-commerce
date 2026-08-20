@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
 
   const batches = await prisma.fungiBatch.findMany({
     orderBy: { createdAt: "desc" },
-    include: { substrate: true, incubation: true, harvest: true, dehydration: true },
+    include: { substrate: true, incubation: true, harvests: { orderBy: { flushNumber: "asc" } }, dehydration: true },
   })
   return NextResponse.json(batches, { headers: { "Cache-Control": "no-store" } })
 }

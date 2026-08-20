@@ -12,7 +12,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const batch = await prisma.fungiBatch.findUnique({
     where: { id },
-    include: { substrate: true, incubation: true, harvest: true, dehydration: true },
+    include: { substrate: true, incubation: true, harvests: { orderBy: { flushNumber: "asc" } }, dehydration: true },
   })
   if (!batch) return NextResponse.json({ error: "Not found" }, { status: 404 })
 

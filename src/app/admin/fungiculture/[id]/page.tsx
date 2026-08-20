@@ -6,7 +6,7 @@ import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ArrowLeft, Loader2, Check, Lock, CircleDot, CircleCheck } from "lucide-react"
+import { ArrowLeft, Loader2, Check, Lock, CircleDot, CircleCheck, Plus, SquareCheckBig } from "lucide-react"
 import ImageUploader from "@/components/admin/ImageUploader"
 import { STAGES, STAGE_LABELS, stageIndex, type Stage } from "@/lib/fungiculture-stages"
 import { isAdminishRole } from "@/lib/tracing-stages"
@@ -26,7 +26,21 @@ interface FieldDef { name: string; label: string; type?: FieldType; readOnly?: b
 interface GrowingHouseOption { id: string; name: string; code: string; status: string; maxBagCapacity: number; activeIncubationCount: number }
 
 const RECORD_KEY: Record<Stage, string> = {
-  substrate_prep: "substrate", incubation: "incubation", harvest: "harvest", dehydration_packaging: "dehydration",
+  substrate_prep: "substrate", incubation: "incubation", harvest: "harvests", dehydration_packaging: "dehydration",
+}
+
+// A batch fruits repeatedly, so harvest is a LIST of flushes rather than one
+// record (see the FungiHarvest model). Everything else is still 1:1.
+interface HarvestFlush {
+  id: string
+  flushNumber: number
+  harvestedAt: string
+  totalWeightKg: number
+  freshPunnets250g: number
+  weightForDryingKg: number
+  harvestedBy: string | null
+  images?: string[]
+  remarks: string | null
 }
 
 const field: React.CSSProperties = { width: "100%", height: 40, borderRadius: 8, border: "1px solid var(--admin-border)", padding: "0 10px", color: TEXT }
@@ -98,6 +112,7 @@ export default function FungiBatchDetail() {
       { name: "remarks", label: "Remarks", type: "textarea" },
     ],
     harvest: [
+      { name: "harvestedAt", label: "Harvested On", type: "date" },
       { name: "totalWeightKg", label: "Total Weight (kg)", type: "number" },
       { name: "freshPunnets250g", label: "Fresh Punnets (250g)", type: "number" },
       { name: "weightForDryingKg", label: "Weight For Drying (kg)", type: "number" },
@@ -122,11 +137,22 @@ export default function FungiBatchDetail() {
   const currentIdx = stageIndex(currentStage)
   const canAct = isCeo || role === "fungiculturist"
 
-  const harvest = batch.harvest as { weightForDryingKg?: number } | null
+  const harvests = (Array.isArray(batch.harvests) ? batch.harvests : []) as HarvestFlush[]
+  const harvestTotals = harvests.reduce(
+    (a, h) => ({
+      totalWeightKg: a.totalWeightKg + (h.totalWeightKg || 0),
+      freshPunnets250g: a.freshPunnets250g + (h.freshPunnets250g || 0),
+      weightForDryingKg: a.weightForDryingKg + (h.weightForDryingKg || 0),
+    }),
+    { totalWeightKg: 0, freshPunnets250g: 0, weightForDryingKg: 0 }
+  )
+  const harvestClosedAt = fmtDateTime(batch.harvestClosedAt)
   const dehydration = batch.dehydration as { driedWeightKg?: number } | null
+  // Drying yield is measured against EVERY flush sent to the dehydrator, not
+  // just the last one.
   const shrinkagePercent =
-    harvest && dehydration && dehydration.driedWeightKg !== undefined && harvest.weightForDryingKg
-      ? ((harvest.weightForDryingKg - (dehydration.driedWeightKg ?? 0)) / harvest.weightForDryingKg) * 100
+    dehydration && dehydration.driedWeightKg !== undefined && harvestTotals.weightForDryingKg
+      ? ((harvestTotals.weightForDryingKg - (dehydration.driedWeightKg ?? 0)) / harvestTotals.weightForDryingKg) * 100
       : null
 
   const overCapacityHouse = (() => {
@@ -137,12 +163,12 @@ export default function FungiBatchDetail() {
     return h.activeIncubationCount >= h.maxBagCapacity ? h : null
   })()
 
-  const submit = async (stage: Stage, data: Record<string, unknown>) => {
+  const submit = async (stage: Stage, data: Record<string, unknown>, action?: "close") => {
     setError(""); setSaving(true)
     try {
       const res = await fetch(`/api/fungiculture/batches/${id}/stage`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stage, data }),
+        body: JSON.stringify({ stage, data, ...(action ? { action } : {}) }),
       })
       const out = await res.json()
       if (!res.ok) { setError(out.error || "Could not save."); return }
@@ -188,26 +214,74 @@ export default function FungiBatchDetail() {
         {STAGES.map((stage, idx) => {
           const isDone = idx < currentIdx || (status === "completed" && idx <= currentIdx)
           const isCurrent = stage === currentStage && status === "in_progress"
-          const record = batch[RECORD_KEY[stage]]
-          const hasRecord = !!record
+          const isHarvest = stage === "harvest"
+          const record = isHarvest ? null : batch[RECORD_KEY[stage]]
+          const hasRecord = isHarvest ? harvests.length > 0 : !!record
 
           const dotColor = isDone || hasRecord ? GREEN : isCurrent ? AMBER : "#D6CEC2"
           const Icon = isDone || hasRecord ? CircleCheck : isCurrent ? CircleDot : Lock
 
           return (
             <div key={stage} style={{ background: "var(--admin-card)", border: `1px solid ${isCurrent ? AMBER : "var(--admin-border)"}`, borderRadius: 12, padding: 16 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: hasRecord || (isCurrent && canAct) ? 12 : 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: hasRecord || (isCurrent && canAct) ? 12 : 0, flexWrap: "wrap" }}>
                 <Icon size={20} color={dotColor} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, color: TEXT, fontSize: 15 }}>{idx + 1}. {STAGE_LABELS[stage]}</div>
+                <div style={{ flex: 1, minWidth: 140 }}>
+                  <div style={{ fontWeight: 700, color: TEXT, fontSize: 15 }}>
+                    {idx + 1}. {STAGE_LABELS[stage]}
+                    {isHarvest && harvests.length > 0 && (
+                      <span style={{ fontWeight: 500, color: MUTED, fontSize: 13 }}>
+                        {" "}· {harvests.length} flush{harvests.length === 1 ? "" : "es"}, {harvestTotals.totalWeightKg.toFixed(1)}kg total
+                      </span>
+                    )}
+                  </div>
+                  {isHarvest && isCurrent && (
+                    <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>
+                      Mushrooms fruit again and again — keep recording each flush, then close the harvest when the bed is spent.
+                    </div>
+                  )}
                 </div>
                 {isCurrent && !canAct && (
                   <span style={{ fontSize: 12, color: "#B8860B", fontWeight: 600 }}>Waiting on Fungiculturist</span>
                 )}
               </div>
 
-              {/* Read-only generic record */}
-              {hasRecord && (
+              {/* Harvest: every flush recorded so far, newest at the bottom */}
+              {isHarvest && harvests.length > 0 && (
+                <div style={{ display: "grid", gap: 8, marginBottom: isCurrent && canAct ? 14 : 0 }}>
+                  {harvests.map((h) => (
+                    <div key={h.id} style={{ border: "1px solid var(--admin-border)", borderRadius: 10, padding: "10px 12px", background: "var(--admin-card-2)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 4 }}>
+                        <span style={{ fontWeight: 700, color: TEXT, fontSize: 13.5 }}>Flush {h.flushNumber}</span>
+                        <span style={{ fontSize: 12, color: MUTED }}>{fmtDateTime(h.harvestedAt) ?? "—"}{h.harvestedBy ? ` · ${h.harvestedBy}` : ""}</span>
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "4px 16px", fontSize: 13 }}>
+                        <div><span style={{ color: MUTED }}>Total: </span><b style={{ color: TEXT }}>{h.totalWeightKg}kg</b></div>
+                        <div><span style={{ color: MUTED }}>Fresh punnets: </span><b style={{ color: TEXT }}>{h.freshPunnets250g}</b></div>
+                        <div><span style={{ color: MUTED }}>For drying: </span><b style={{ color: TEXT }}>{h.weightForDryingKg}kg</b></div>
+                      </div>
+                      {h.remarks && <div style={{ fontSize: 12.5, color: MUTED, marginTop: 4 }}>{h.remarks}</div>}
+                      {Array.isArray(h.images) && h.images.length > 0 && (
+                        <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+                          {h.images.map((u, i) => (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img key={i} src={u} alt="" style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 8, border: "1px solid var(--admin-border)" }} />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", fontSize: 13, fontWeight: 700, color: TEXT, padding: "2px 2px 0" }}>
+                    <span>Across {harvests.length} flush{harvests.length === 1 ? "" : "es"}</span>
+                    <span>{harvestTotals.totalWeightKg.toFixed(2)}kg · {harvestTotals.freshPunnets250g} punnets · {harvestTotals.weightForDryingKg.toFixed(2)}kg for drying</span>
+                  </div>
+                  {harvestClosedAt && (
+                    <div style={{ fontSize: 12, color: MUTED }}>Harvest closed {harvestClosedAt}.</div>
+                  )}
+                </div>
+              )}
+
+              {/* Read-only generic record (harvest renders its flushes above) */}
+              {!isHarvest && hasRecord && (
                 <>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "6px 16px" }}>
                     {Object.entries(record as Record<string, unknown>)
@@ -271,9 +345,26 @@ export default function FungiBatchDetail() {
                       </div>
                     ))}
                   </div>
-                  <Button onClick={() => submit(stage, buildData(STAGE_FIELDS[stage]!))} disabled={saving} style={{ background: GREEN, color: "white", marginTop: 12, gap: 6 }}>
-                    {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} Submit & Advance
-                  </Button>
+                  {isHarvest ? (
+                    // Recording a flush leaves the batch here; closing the
+                    // harvest is the separate, deliberate step that moves it on.
+                    <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+                      <Button onClick={() => submit(stage, buildData(STAGE_FIELDS[stage]!))} disabled={saving} style={{ background: GREEN, color: "white", gap: 6 }}>
+                        {saving ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} Record Flush {harvests.length + 1}
+                      </Button>
+                      <Button
+                        onClick={() => submit(stage, {}, "close")}
+                        disabled={saving || harvests.length === 0}
+                        title={harvests.length === 0 ? "Record at least one flush first" : "No more fruiting expected — move on to dehydration & packaging"}
+                        style={{ background: "var(--admin-card-2)", color: TEXT, border: "1px solid var(--admin-border)", gap: 6 }}>
+                        <SquareCheckBig size={16} /> Close &amp; Terminate Harvest
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button onClick={() => submit(stage, buildData(STAGE_FIELDS[stage]!))} disabled={saving} style={{ background: GREEN, color: "white", marginTop: 12, gap: 6 }}>
+                      {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} Submit & Advance
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
