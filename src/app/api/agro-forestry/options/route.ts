@@ -20,12 +20,16 @@ export async function GET(request: NextRequest) {
   const auth = await requireRole(request, VIEW_ROLES)
   if (auth instanceof NextResponse) return auth
 
-  const [counties, subCounties, projectTypes, landTypes, groups] = await Promise.all([
+  const [counties, subCounties, projectTypes, landTypes, groups, seedlings, centres] = await Promise.all([
     prisma.farmer.groupBy({ by: ["county"], _count: { _all: true } }),
     prisma.farmer.groupBy({ by: ["subCounty"], _count: { _all: true }, where: { subCounty: { not: null } } }),
     prisma.farmer.groupBy({ by: ["projectType"], _count: { _all: true } }),
     prisma.farmer.groupBy({ by: ["landOwnershipType"], _count: { _all: true } }),
     prisma.farmer.groupBy({ by: ["group"], _count: { _all: true }, where: { group: { not: null } } }),
+    // Species list + the centres handovers have happened at — both feed the
+    // seedling disbursement form, same "reuse what exists" principle.
+    prisma.seedlings.findMany({ orderBy: { seedlingSpicies: "asc" }, select: { id: true, seedlingSpicies: true } }),
+    prisma.itemDisbursement.groupBy({ by: ["disbursementCentre"], _count: { _all: true } }),
   ])
 
   // Most-used first: the common answer should be the easy one to pick.
@@ -42,6 +46,8 @@ export async function GET(request: NextRequest) {
       projectTypes: rank(projectTypes, "projectType"),
       landOwnershipTypes: rank(landTypes, "landOwnershipType"),
       groups: rank(groups, "group"),
+      seedlings: seedlings.filter((s) => s.seedlingSpicies?.trim()),
+      centres: rank(centres, "disbursementCentre"),
     },
     { headers: { "Cache-Control": "no-store" } }
   )

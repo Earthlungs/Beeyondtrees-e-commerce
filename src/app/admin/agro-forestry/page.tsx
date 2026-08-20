@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
   Trees, Loader2, Search, X, Users, Map as MapIcon, PackageOpen, Sprout, Boxes,
-  ChevronLeft, ChevronRight, Phone, Mail, IdCard, UserPlus,
+  ChevronLeft, ChevronRight, Phone, Mail, IdCard, UserPlus, FileSignature, ExternalLink,
 } from "lucide-react"
 import FarmerForm from "./farmer-form"
+import SeedlingDisbursementForm, { type FarmerPick } from "./seedling-disbursement-form"
+import ImageUploader from "@/components/admin/ImageUploader"
 
 const TEXT = "var(--admin-text)"
 const MUTED = "var(--admin-muted)"
@@ -65,7 +67,15 @@ interface DisbursementRow {
   seedlingCount: number
 }
 
+interface Contract {
+  url: string
+  filename: string
+  uploadedAt: string
+  uploadedBy: string
+}
+
 interface FarmerDetail extends Omit<FarmerRow, "disbursementCount" | "beehivesReceived" | "seedlingsReceived"> {
+  contracts?: Contract[]
   disbursements: {
     id: number
     disbursedBy: string
@@ -127,6 +137,11 @@ export default function AgroForestryBoard() {
   const [detail, setDetail] = useState<FarmerDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [showForm, setShowForm] = useState(false)
+  // null = closed; { farmer } = pre-targeted from a drawer; { farmer: null } = pick one.
+  const [disburseFor, setDisburseFor] = useState<{ farmer: FarmerPick | null } | null>(null)
+  const [drawerTab, setDrawerTab] = useState<"disbursements" | "contracts">("disbursements")
+  const [savingContracts, setSavingContracts] = useState(false)
+  const [contractError, setContractError] = useState("")
   // Bumped after a registration so the table and the stat tiles both refetch.
   const [refresh, setRefresh] = useState(0)
 
@@ -183,11 +198,34 @@ export default function AgroForestryBoard() {
   }, [queryKey, tab, page, debouncedQ, county, projectType, dPage])
 
   const openFarmer = async (id: number) => {
-    setDetailLoading(true)
+    setDetailLoading(true); setDrawerTab("disbursements"); setContractError("")
     try {
       const res = await fetch(`/api/agro-forestry/farmers/${id}`)
       if (res.ok) setDetail(await res.json())
     } finally { setDetailLoading(false) }
+  }
+
+  // The uploader hands back a flat URL list; contracts carry who filed each one
+  // and when, so keep the metadata of URLs that were already there and let the
+  // server stamp the new ones.
+  const saveContracts = async (urls: string[]) => {
+    if (!detail) return
+    const existing = detail.contracts ?? []
+    const next: Contract[] = urls.map(
+      (url) => existing.find((c) => c.url === url) ?? { url, filename: url.split("/").pop() ?? "contract", uploadedAt: "", uploadedBy: "" }
+    )
+    setSavingContracts(true); setContractError("")
+    try {
+      const res = await fetch(`/api/agro-forestry/farmers/${detail.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contracts: next }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { setContractError(data.error ?? "Could not save the contract."); return }
+      setDetail({ ...detail, contracts: (data.contracts as Contract[]) ?? next })
+    } catch { setContractError("Network error. Try again.") }
+    finally { setSavingContracts(false) }
   }
 
   const hasFilters = Boolean(q || county || projectType)
@@ -202,9 +240,14 @@ export default function AgroForestryBoard() {
             <p style={{ fontSize: 12, color: MUTED }}>Farmer register and item handovers — beehives and seedlings disbursed in the field</p>
           </div>
         </div>
-        <Button onClick={() => setShowForm(true)} style={{ background: GREEN, color: "white", gap: 6, height: 36, fontSize: 13 }}>
-          <UserPlus size={15} /> Register Farmer
-        </Button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Button onClick={() => setDisburseFor({ farmer: null })} style={{ background: CARD, color: TEXT, border: BORDER, gap: 6, height: 36, fontSize: 13 }}>
+            <Sprout size={15} color={GREEN} /> Disburse Seedlings
+          </Button>
+          <Button onClick={() => setShowForm(true)} style={{ background: GREEN, color: "white", gap: 6, height: 36, fontSize: 13 }}>
+            <UserPlus size={15} /> Register Farmer
+          </Button>
+        </div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 10, marginBottom: 18 }}>
@@ -418,9 +461,70 @@ export default function AgroForestryBoard() {
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}><MapIcon size={14} color={MUTED} /> {detail.numberOfAcresCommitted ?? 0} acres committed</div>
                 </div>
 
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", color: MUTED, marginBottom: 8 }}>
-                  Disbursements ({detail.disbursements.length})
+                <div style={{ display: "flex", gap: 6, marginBottom: 12, borderBottom: BORDER }}>
+                  {([
+                    ["disbursements", `Disbursements (${detail.disbursements.length})`],
+                    ["contracts", `Contracts (${detail.contracts?.length ?? 0})`],
+                  ] as const).map(([key, text]) => (
+                    <button
+                      key={key}
+                      onClick={() => setDrawerTab(key)}
+                      style={{
+                        background: "none", border: "none", cursor: "pointer", padding: "8px 12px", fontSize: 12.5,
+                        fontWeight: drawerTab === key ? 700 : 500, color: drawerTab === key ? TEXT : MUTED,
+                        borderBottom: drawerTab === key ? `2px solid ${GREEN}` : "2px solid transparent", marginBottom: -1,
+                      }}>
+                      {text}
+                    </button>
+                  ))}
                 </div>
+
+                {drawerTab === "contracts" ? (
+                  <div>
+                    <p style={{ fontSize: 12.5, color: MUTED, marginBottom: 10, lineHeight: 1.5 }}>
+                      The signed agreement with {detail.fullname.split(" ")[0]}. Upload a photo of the signed
+                      page or a PDF — it is filed against this farmer and stays with their record.
+                    </p>
+                    {contractError && (
+                      <div style={{ background: "#FDEDED", color: "#C0392B", padding: "8px 12px", borderRadius: 8, fontSize: 12.5, marginBottom: 10 }}>
+                        {contractError}
+                      </div>
+                    )}
+                    {(detail.contracts?.length ?? 0) > 0 && (
+                      <div style={{ display: "grid", gap: 8, marginBottom: 12 }}>
+                        {detail.contracts!.map((c) => (
+                          <a key={c.url} href={c.url} target="_blank" rel="noopener noreferrer"
+                            style={{ display: "flex", alignItems: "center", gap: 10, border: BORDER, borderRadius: 10, padding: "9px 11px", textDecoration: "none", color: TEXT }}>
+                            <FileSignature size={16} color={GREEN} style={{ flexShrink: 0 }} />
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.filename}</div>
+                              <div style={{ fontSize: 11, color: MUTED }}>
+                                {c.uploadedAt ? fmtDate(c.uploadedAt) : "—"}{c.uploadedBy ? ` · ${c.uploadedBy}` : ""}
+                              </div>
+                            </div>
+                            <ExternalLink size={14} color={MUTED} />
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                    <ImageUploader
+                      allowPdf
+                      value={(detail.contracts ?? []).map((c) => c.url)}
+                      onChange={saveContracts}
+                    />
+                    {savingContracts && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: MUTED, marginTop: 8 }}>
+                        <Loader2 size={13} className="animate-spin" /> Saving…
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                <>
+                <Button
+                  onClick={() => setDisburseFor({ farmer: { id: detail.id, fullname: detail.fullname, county: detail.county } })}
+                  style={{ background: CARD, color: TEXT, border: BORDER, gap: 6, height: 34, fontSize: 12.5, marginBottom: 12 }}>
+                  <Sprout size={14} color={GREEN} /> Disburse seedlings to this farmer
+                </Button>
                 {detail.disbursements.length === 0 ? (
                   <div style={{ fontSize: 13, color: MUTED, padding: "16px 0" }}>Nothing disbursed to this farmer yet.</div>
                 ) : (
@@ -454,10 +558,28 @@ export default function AgroForestryBoard() {
                     ))}
                   </div>
                 )}
+                </>
+                )}
               </>
             )}
           </aside>
         </>
+      )}
+
+      {disburseFor && (
+        <SeedlingDisbursementForm
+          farmer={disburseFor.farmer}
+          onClose={() => setDisburseFor(null)}
+          onSaved={() => {
+            const farmerId = disburseFor.farmer?.id
+            setDisburseFor(null)
+            setRefresh((n) => n + 1)
+            // Reopen the farmer so the new handover is visible where it was
+            // started from; otherwise land on the disbursements tab.
+            if (farmerId) openFarmer(farmerId)
+            else { setTab("disbursements"); setDPage(1) }
+          }}
+        />
       )}
     </div>
   )
