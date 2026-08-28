@@ -6,8 +6,7 @@ import { isMissingColumn } from "@/lib/docs"
 
 const VIEW_ROLES = ["admin", "it_specialist", "assistant_ceo"]
 
-// One uploaded agreement held against a farmer.
-interface Contract { url: string; filename: string; uploadedAt: string; uploadedBy: string }
+import { sealCode, type Contract } from "@/lib/contract-signature"
 
 // One farmer with their full handover history, for the detail drawer.
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -59,6 +58,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       const c = raw as Partial<Contract>
       const url = typeof c.url === "string" ? c.url.trim() : ""
       if (!/^(https?:\/\/|\/api\/attachments\/)/.test(url)) return null
+      // The farmer's thumbprint, if one has been captured for this agreement.
+      // Only accept a URL we serve ourselves — this is what gets stamped into
+      // the PDF footer, so it must never point at somewhere arbitrary.
+      const thumb = typeof c.thumbprintUrl === "string" ? c.thumbprintUrl.trim() : ""
+      const thumbprintUrl = /^(https?:\/\/[^/]+)?\/api\/attachments\//.test(thumb) ? thumb : undefined
+      const signedAt = thumbprintUrl
+        ? (typeof c.signedAt === "string" && c.signedAt ? c.signedAt : now)
+        : undefined
+
       return {
         url,
         filename: (typeof c.filename === "string" && c.filename.trim()) || url.split("/").pop() || "contract",
@@ -66,6 +74,17 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         // only newly added ones get stamped with this user and this moment.
         uploadedAt: typeof c.uploadedAt === "string" && c.uploadedAt ? c.uploadedAt : now,
         uploadedBy: typeof c.uploadedBy === "string" && c.uploadedBy ? c.uploadedBy : actor,
+        ...(thumbprintUrl
+          ? {
+              thumbprintUrl,
+              signedAt,
+              signerName: typeof c.signerName === "string" && c.signerName.trim() ? c.signerName.trim() : undefined,
+              // The officer present when the farmer put their thumb down. Taken
+              // from the session, never from the client.
+              witnessedBy: typeof c.witnessedBy === "string" && c.witnessedBy ? c.witnessedBy : actor,
+              seal: sealCode(thumbprintUrl, signedAt!),
+            }
+          : {}),
       }
     })
     .filter((c: Contract | null): c is Contract => c !== null)

@@ -15,12 +15,16 @@ export default async function proxy(request: NextRequest) {
       return NextResponse.redirect(new URL("/admin/login", request.url))
     }
     // Pages every signed-in role may reach (self-service + messaging + the POS
-    // till — point-of-sale is now available to EVERY staff member).
+    // till — point-of-sale is now available to EVERY staff member — plus
+    // attendance sign in/out and leave applications, which are HR self-service
+    // that every staff member needs regardless of how confined their role is).
     const role = (token as { role?: string }).role
     const COMMON =
       path.startsWith("/admin/account") ||
       path.startsWith("/admin/chat") ||
-      path.startsWith("/admin/pos")
+      path.startsWith("/admin/pos") ||
+      path.startsWith("/admin/attendance") ||
+      path.startsWith("/admin/leaves")
 
     // Cashiers are sell-only: confine them to the POS till. Any other /admin
     // page (dashboard, products, customers, settings) bounces back to /admin/pos.

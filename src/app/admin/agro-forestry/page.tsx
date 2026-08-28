@@ -6,7 +6,9 @@ import { Input } from "@/components/ui/input"
 import {
   Trees, Loader2, Search, X, Users, Map as MapIcon, PackageOpen, Sprout, Boxes,
   ChevronLeft, ChevronRight, Phone, Mail, IdCard, UserPlus, FileSignature, ExternalLink,
+  Fingerprint, Download,
 } from "lucide-react"
+import ThumbprintPad from "@/components/admin/ThumbprintPad"
 import FarmerForm from "./farmer-form"
 import SeedlingDisbursementForm, { type FarmerPick } from "./seedling-disbursement-form"
 import ImageUploader from "@/components/admin/ImageUploader"
@@ -72,6 +74,12 @@ interface Contract {
   filename: string
   uploadedAt: string
   uploadedBy: string
+  // Farmer's thumbprint mark, once captured — see components/admin/ThumbprintPad.
+  thumbprintUrl?: string
+  signerName?: string
+  signedAt?: string
+  witnessedBy?: string
+  seal?: string
 }
 
 interface FarmerDetail extends Omit<FarmerRow, "disbursementCount" | "beehivesReceived" | "seedlingsReceived"> {
@@ -142,6 +150,10 @@ export default function AgroForestryBoard() {
   const [drawerTab, setDrawerTab] = useState<"disbursements" | "contracts">("disbursements")
   const [savingContracts, setSavingContracts] = useState(false)
   const [contractError, setContractError] = useState("")
+  // Which capture the pad is open for: "pending" = sign now, attach to the next
+  // upload; a number = add a mark to the contract already at that index.
+  const [printFor, setPrintFor] = useState<"pending" | number | null>(null)
+  const [pendingPrint, setPendingPrint] = useState<{ url: string; signerName: string } | null>(null)
   // Bumped after a registration so the table and the stat tiles both refetch.
   const [refresh, setRefresh] = useState(0)
 
@@ -211,9 +223,25 @@ export default function AgroForestryBoard() {
   const saveContracts = async (urls: string[]) => {
     if (!detail) return
     const existing = detail.contracts ?? []
-    const next: Contract[] = urls.map(
-      (url) => existing.find((c) => c.url === url) ?? { url, filename: url.split("/").pop() ?? "contract", uploadedAt: "", uploadedBy: "" }
-    )
+    const next: Contract[] = urls.map((url) => {
+      const already = existing.find((c) => c.url === url)
+      if (already) return already
+      // A newly uploaded agreement. If a thumbprint was captured just before the
+      // upload — which is the intended order — attach it to this contract.
+      return {
+        url,
+        filename: url.split("/").pop() ?? "contract",
+        uploadedAt: "",
+        uploadedBy: "",
+        ...(pendingPrint ? { thumbprintUrl: pendingPrint.url, signerName: pendingPrint.signerName } : {}),
+      }
+    })
+    await persistContracts(next)
+    setPendingPrint(null)
+  }
+
+  const persistContracts = async (next: Contract[]) => {
+    if (!detail) return
     setSavingContracts(true); setContractError("")
     try {
       const res = await fetch(`/api/agro-forestry/farmers/${detail.id}`, {
@@ -226,6 +254,29 @@ export default function AgroForestryBoard() {
       setDetail({ ...detail, contracts: (data.contracts as Contract[]) ?? next })
     } catch { setContractError("Network error. Try again.") }
     finally { setSavingContracts(false) }
+  }
+
+  // Store the captured mark, then either hold it for the next upload (the
+  // "sign, then upload" flow) or attach it to an existing contract straight away.
+  const captureThumbprint = async (dataUrl: string, signerName: string) => {
+    const res = await fetch("/api/agro-forestry/thumbprint", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dataUrl }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.error ?? "Could not save the thumbprint.")
+
+    const target = printFor
+    setPrintFor(null)
+    if (target === "pending") {
+      setPendingPrint({ url: data.url, signerName })
+    } else if (typeof target === "number" && detail) {
+      const next = (detail.contracts ?? []).map((c, i) =>
+        i === target ? { ...c, thumbprintUrl: data.url as string, signerName } : c
+      )
+      await persistContracts(next)
+    }
   }
 
   const hasFilters = Boolean(q || county || projectType)
@@ -492,21 +543,84 @@ export default function AgroForestryBoard() {
                     )}
                     {(detail.contracts?.length ?? 0) > 0 && (
                       <div style={{ display: "grid", gap: 8, marginBottom: 12 }}>
-                        {detail.contracts!.map((c) => (
-                          <a key={c.url} href={c.url} target="_blank" rel="noopener noreferrer"
-                            style={{ display: "flex", alignItems: "center", gap: 10, border: BORDER, borderRadius: 10, padding: "9px 11px", textDecoration: "none", color: TEXT }}>
-                            <FileSignature size={16} color={GREEN} style={{ flexShrink: 0 }} />
-                            <div style={{ minWidth: 0, flex: 1 }}>
-                              <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.filename}</div>
-                              <div style={{ fontSize: 11, color: MUTED }}>
-                                {c.uploadedAt ? fmtDate(c.uploadedAt) : "—"}{c.uploadedBy ? ` · ${c.uploadedBy}` : ""}
+                        {detail.contracts!.map((c, i) => (
+                          <div key={c.url} style={{ border: BORDER, borderRadius: 10, padding: "9px 11px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              <FileSignature size={16} color={GREEN} style={{ flexShrink: 0 }} />
+                              <div style={{ minWidth: 0, flex: 1 }}>
+                                <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.filename}</div>
+                                <div style={{ fontSize: 11, color: MUTED }}>
+                                  {c.uploadedAt ? fmtDate(c.uploadedAt) : "—"}{c.uploadedBy ? ` · ${c.uploadedBy}` : ""}
+                                </div>
                               </div>
+                              <a href={c.url} target="_blank" rel="noopener noreferrer" title="Open the original"
+                                style={{ color: MUTED, display: "flex" }}>
+                                <ExternalLink size={14} />
+                              </a>
                             </div>
-                            <ExternalLink size={14} color={MUTED} />
-                          </a>
+
+                            {c.thumbprintUrl ? (
+                              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 9, paddingTop: 9, borderTop: BORDER }}>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={c.thumbprintUrl} alt="Farmer's thumbprint"
+                                  style={{ width: 34, height: 34, objectFit: "contain", borderRadius: 6, background: "#FCFCFA", flexShrink: 0 }} />
+                                <div style={{ minWidth: 0, flex: 1, lineHeight: 1.35 }}>
+                                  <div style={{ fontSize: 11.5, fontWeight: 700, color: GREEN }}>
+                                    Thumbprint signed{c.signerName ? ` · ${c.signerName}` : ""}
+                                  </div>
+                                  <div style={{ fontSize: 10.5, color: MUTED }}>
+                                    {c.signedAt ? fmtDate(c.signedAt) : "—"}
+                                    {c.witnessedBy ? ` · witnessed by ${c.witnessedBy}` : ""}
+                                    {c.seal ? ` · ${c.seal}` : ""}
+                                  </div>
+                                </div>
+                                <a
+                                  href={`/api/agro-forestry/farmers/${detail.id}/contract?i=${i}`}
+                                  title="Download with the thumbprint stamped into the footer"
+                                  style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 600, color: GREEN, textDecoration: "none", whiteSpace: "nowrap" }}
+                                >
+                                  <Download size={13} /> Signed copy
+                                </a>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setPrintFor(i)}
+                                style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 8, background: "none", border: "none", padding: 0, cursor: "pointer", color: GREEN, fontSize: 11.5, fontWeight: 600 }}
+                              >
+                                <Fingerprint size={13} /> Add fingerprint signature
+                              </button>
+                            )}
+                          </div>
                         ))}
                       </div>
                     )}
+
+                    {/* Sign first, then upload — the order the field team works in. */}
+                    <div style={{ border: BORDER, borderRadius: 10, padding: "10px 12px", marginBottom: 10, background: "var(--admin-card-2)" }}>
+                      {pendingPrint ? (
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={pendingPrint.url} alt="Captured thumbprint"
+                            style={{ width: 38, height: 38, objectFit: "contain", borderRadius: 6, background: "#FCFCFA", flexShrink: 0 }} />
+                          <div style={{ flex: 1, minWidth: 0, lineHeight: 1.4 }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: GREEN }}>Thumbprint captured</div>
+                            <div style={{ fontSize: 11, color: MUTED }}>It will be attached to the contract you upload next.</div>
+                          </div>
+                          <button onClick={() => setPendingPrint(null)} title="Discard"
+                            style={{ background: "none", border: "none", cursor: "pointer", color: MUTED, display: "flex" }}>
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ) : (
+                        <Button
+                          onClick={() => setPrintFor("pending")}
+                          style={{ background: CARD, color: TEXT, border: BORDER, gap: 6, height: 34, fontSize: 12.5 }}
+                        >
+                          <Fingerprint size={14} color={GREEN} /> Add fingerprint signature
+                        </Button>
+                      )}
+                    </div>
+
                     <ImageUploader
                       allowPdf
                       value={(detail.contracts ?? []).map((c) => c.url)}
@@ -579,6 +693,14 @@ export default function AgroForestryBoard() {
             if (farmerId) openFarmer(farmerId)
             else { setTab("disbursements"); setDPage(1) }
           }}
+        />
+      )}
+
+      {printFor !== null && detail && (
+        <ThumbprintPad
+          farmerName={detail.fullname}
+          onCancel={() => setPrintFor(null)}
+          onCaptured={captureThumbprint}
         />
       )}
     </div>

@@ -29,6 +29,62 @@ model User {
   updatedAt          DateTime  @updatedAt
 }
 
+// ── Attendance (office sign in / sign out) ─────────────────────────────────
+// One row per punch. `type` is "in" or "out". The browser captures the live GPS
+// fix at the moment the button is pressed; the server reverse-geocodes it (via
+// Mapbox) and stores the human-readable address alongside the raw coordinates,
+// so the admin map still works if the geocoder is ever unavailable. No FK to
+// User — same read-only-link convention as Message.
+model Attendance {
+  id         String   @id @default(cuid())
+  userId     String
+  userName   String
+  role       String
+  type       String // in | out
+  at         DateTime @default(now())
+  latitude   Float
+  longitude  Float
+  accuracy   Float? // GPS accuracy radius in metres, as reported by the browser
+  address    String? // reverse-geocoded place name (Mapbox)
+  note       String?
+  device     String? // user agent, trimmed
+  ip         String?
+  // Only set on an "out" punch: minutes since that day's matching "in".
+  workedMins Int?
+
+  @@index([userId, at])
+  @@index([at])
+}
+
+// ── Leave requests ─────────────────────────────────────────────────────────
+// Any staff member applies; ONLY the CEO (role "admin") may approve or reject.
+// The CEO is emailed on every new request, and the applicant is emailed on the
+// decision. Applicants may cancel their own request while it is still pending.
+model LeaveRequest {
+  id           String    @id @default(cuid())
+  reference    String    @unique // LV-0001
+  userId       String
+  userName     String
+  userEmail    String?
+  role         String
+  type         String // annual | sick | maternity | paternity | compassionate | unpaid | study | other
+  startDate    DateTime
+  endDate      DateTime
+  days         Int // inclusive day count
+  reason       String    @db.Text
+  handoverTo   String? // colleague covering the duties
+  contact      String? // reachable phone/email while away
+  status       String    @default("pending") // pending | approved | rejected | cancelled
+  decidedBy    String?
+  decidedAt    DateTime?
+  decisionNote String?   @db.Text
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([status])
+}
+
 // In-app 1:1 chat between staff. Polled (~4s) by the chat UI; no FK to User to
 // stay light, matching the read-only-link convention used elsewhere.
 model Message {

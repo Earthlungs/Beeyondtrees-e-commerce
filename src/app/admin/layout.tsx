@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Package, Truck, LogOut, Menu, X, Users, TrendingUp,
   Settings, Store, ShoppingCart, FileText, ClipboardList, UserCog, Workflow,
   BarChart3, MessageSquare, Banknote, ScrollText, Sprout, Warehouse, Wheat, PawPrint, Trees,
-  PackageCheck,
+  PackageCheck, Clock, CalendarDays,
 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { ROLE_LABELS } from "@/lib/tracing-stages"
@@ -208,6 +208,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       }] : []),
     ]
   }
+
+  // HR self-service is available to EVERY role, however confined — attendance
+  // sign in/out (with live location) and leave applications. proxy.ts whitelists
+  // both paths for all roles to match.
+  groups.push({
+    title: "My Workspace",
+    items: [
+      { href: "/admin/attendance", label: "Attendance", icon: Clock },
+      { href: "/admin/leaves", label: "Leave", icon: CalendarDays },
+    ],
+  })
 
   const linkStyle = (active: boolean): React.CSSProperties => ({
     display: 'flex', alignItems: 'center', gap: '10px',

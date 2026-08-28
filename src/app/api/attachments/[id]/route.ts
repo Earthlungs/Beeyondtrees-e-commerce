@@ -7,7 +7,9 @@ import { prisma } from "@/lib/db"
 // `?download=1` forces a file download instead of inline viewing.
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: rawId } = await params
-  const id = rawId.replace(/\.pdf$/i, "")
+  // PDFs are served as <id>.pdf; captured farmer thumbprints as <id>.png/.jpg.
+  // The extension is cosmetic — the stored `mime` is what is actually sent.
+  const id = rawId.replace(/\.(pdf|png|jpe?g)$/i, "")
 
   const att = await prisma.docAttachment.findUnique({ where: { id } })
   if (!att) return NextResponse.json({ error: "Not found" }, { status: 404 })

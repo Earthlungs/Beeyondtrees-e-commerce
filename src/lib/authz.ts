@@ -22,6 +22,27 @@ export function isAssistantCeo(role: string | undefined | null): boolean {
   return role === "assistant_ceo"
 }
 
+// Identity of the signed-in staff member behind an API call.
+export interface Actor {
+  id: string
+  name: string
+  email: string | null
+  role: string
+}
+
+// Guard for routes any signed-in staff member may use (attendance punches,
+// applying for leave). Returns a 401 NextResponse to bail early, or the actor.
+// Use: `if (a instanceof NextResponse) return a`.
+export async function requireUser(request: NextRequest): Promise<NextResponse | Actor> {
+  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
+  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const t = token as { sub?: string; id?: string; name?: string; email?: string; role?: string }
+  const id = t.sub ?? t.id
+  // A revoked/deactivated account has its role nulled by the jwt callback.
+  if (!id || !t.role) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  return { id, name: t.name ?? "Unknown", email: t.email ?? null, role: t.role }
+}
+
 // Role guard for admin API routes. proxy.ts lets /api/* through, so handlers
 // verify the NextAuth token themselves. Returns a NextResponse to bail early
 // (401/403), or { token } on success. Use: `if (a instanceof NextResponse) return a`.

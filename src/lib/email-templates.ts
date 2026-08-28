@@ -179,6 +179,80 @@ export function newOrderEmail({
   `)
 }
 
+// ─── Leave ──────────────────────────────────────────────────────────────────
+
+function leaveFacts(rows: { label: string; value: string }[]): string {
+  return `<table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:16px;">${rows
+    .map(
+      (r) =>
+        `<tr><td style="padding:5px 0;color:#888;width:150px;">${esc(r.label)}</td>` +
+        `<td style="padding:5px 0;color:#1a1a1a;">${esc(r.value)}</td></tr>`
+    )
+    .join("")}</table>`
+}
+
+// To the CEO: a new application is waiting on their decision.
+export function leaveRequestEmail({
+  reference, applicant, roleName, leaveType, startDate, endDate, days, reason,
+  handoverTo, contact, leaveUrl,
+}: {
+  reference: string; applicant: string; roleName: string; leaveType: string
+  startDate: string; endDate: string; days: number; reason: string
+  handoverTo?: string | null; contact?: string | null; leaveUrl: string
+}) {
+  return layout(`
+    <h2 style="margin:0 0 8px;font-size:18px;color:#1a1a1a;">🗓 Leave Request Awaiting Your Approval</h2>
+    <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 16px;">
+      <strong>${esc(applicant)}</strong> (${esc(roleName)}) has applied for leave and needs your sign-off.
+    </p>
+    ${leaveFacts([
+      { label: "Reference", value: reference },
+      { label: "Leave type", value: leaveType },
+      { label: "From", value: startDate },
+      { label: "To", value: endDate },
+      { label: "Working days", value: String(days) },
+      ...(handoverTo ? [{ label: "Handover to", value: handoverTo }] : []),
+      ...(contact ? [{ label: "Reachable on", value: contact }] : []),
+    ])}
+    <div style="background:#F4F7F1;border-left:4px solid ${GREEN};padding:10px 14px;border-radius:4px;font-size:14px;color:#333;">
+      <strong>Reason:</strong> ${esc(reason)}
+    </div>
+    ${btn("Review & Decide →", leaveUrl)}
+  `)
+}
+
+// To the applicant: the CEO has approved or rejected.
+export function leaveDecisionEmail({
+  reference, applicant, leaveType, startDate, endDate, days, approved,
+  decidedBy, note, leaveUrl,
+}: {
+  reference: string; applicant: string; leaveType: string; startDate: string
+  endDate: string; days: number; approved: boolean; decidedBy: string
+  note?: string | null; leaveUrl: string
+}) {
+  const colour = approved ? GREEN : RED
+  return layout(`
+    <h2 style="margin:0 0 8px;font-size:18px;color:${colour};">
+      ${approved ? "✓ Leave Approved" : "✗ Leave Not Approved"}
+    </h2>
+    <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 16px;">
+      Hi ${esc(applicant)}, your leave request <strong>${esc(reference)}</strong> was
+      <strong style="color:${colour};">${approved ? "approved" : "rejected"}</strong> by ${esc(decidedBy)}.
+    </p>
+    ${leaveFacts([
+      { label: "Leave type", value: leaveType },
+      { label: "From", value: startDate },
+      { label: "To", value: endDate },
+      { label: "Working days", value: String(days) },
+    ])}
+    ${note ? `<div style="background:${approved ? "#F4F7F1" : "#FDEDED"};border-left:4px solid ${colour};padding:10px 14px;border-radius:4px;font-size:14px;color:#333;"><strong>Note from the CEO:</strong> ${esc(note)}</div>` : ""}
+    ${approved
+      ? `<p style="color:#555;font-size:14px;margin:16px 0 0;">Please complete your handover before your first day away.</p>`
+      : `<p style="color:#555;font-size:14px;margin:16px 0 0;">Speak to the CEO if you would like to discuss this or submit revised dates.</p>`}
+    ${btn("View Request", leaveUrl, colour)}
+  `)
+}
+
 // ─── Branded documents (LPO / Invoice / Receipt) ─────────────────────────────
 // Email-safe HTML renderings of the printable BrandedDoc. Tables + inline styles
 // only (no flexbox / <style>) so Gmail/Outlook render them faithfully. Mirrors
