@@ -65,7 +65,7 @@ export default function LpoPage() {
   const today = new Date().toISOString().slice(0, 10)
   const [supplierName, setSupplierName] = useState("")
   const [shippingAddress, setShippingAddress] = useState("")
-  const [purchaseRep, setPurchaseRep] = useState("")
+  const [purchaseRep, setPurchaseRep] = useState(session?.user?.name || "")
   const [orderDate, setOrderDate] = useState(today)
   const [expectedArrival, setExpectedArrival] = useState("")
   const [destinationOfGoods, setDestinationOfGoods] = useState("")
@@ -85,8 +85,14 @@ export default function LpoPage() {
   }
   useEffect(() => { load() }, [])
 
+  // Purchase representative is always the signed-in user raising the LPO —
+  // sync once the session loads instead of leaving it blank/manually typed.
+  useEffect(() => {
+    if (session?.user?.name) setPurchaseRep(session.user.name)
+  }, [session?.user?.name])
+
   const resetForm = () => {
-    setSupplierName(""); setShippingAddress(""); setPurchaseRep(""); setOrderDate(today)
+    setSupplierName(""); setShippingAddress(""); setPurchaseRep(session?.user?.name || ""); setOrderDate(today)
     setExpectedArrival(""); setDestinationOfGoods(""); setEmail(""); setNotes(""); setPaymentDetails(""); setLines([emptyLine()])
     setAttachment([])
   }
@@ -247,7 +253,7 @@ export default function LpoPage() {
           {error && <div style={{ background: "#FBEAEA", color: "#9B2C2C", padding: "8px 12px", borderRadius: 8, fontSize: 13, marginBottom: 12 }}>{error}</div>}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 200px), 1fr))", gap: 12, marginBottom: 16 }}>
             <Field label="Supplier name *"><Input value={supplierName} onChange={(e) => setSupplierName(e.target.value)} /></Field>
-            <Field label="Purchase representative"><Input value={purchaseRep} onChange={(e) => setPurchaseRep(e.target.value)} /></Field>
+            <Field label="Purchase representative · auto"><Input value={purchaseRep} readOnly style={{ background: "var(--admin-card-2)", fontWeight: 600 }} /></Field>
             <Field label="Order date"><Input type="date" value={orderDate} onChange={(e) => setOrderDate(e.target.value)} /></Field>
             <Field label="Expected arrival"><Input type="date" value={expectedArrival} onChange={(e) => setExpectedArrival(e.target.value)} /></Field>
             <Field label="Source of supply"><Input value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} /></Field>
