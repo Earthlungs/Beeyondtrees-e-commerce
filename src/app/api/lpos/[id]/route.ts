@@ -90,11 +90,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (rows[0]) { currentStatus = rows[0].status; createdByUserId = rows[0].createdByUserId; createdByName = rows[0].createdByName; lpoOrigin = rows[0].origin }
   } catch { /* pre-migration — columns not there yet */ }
 
-  // LPOs raised before creator-tracking shipped have neither column set, so the
-  // exact-identity check below can never match. Fall back to role: External
-  // Procurement is a single-purpose role, so anyone in it may resubmit an
-  // external LPO nobody is recorded as having raised.
-  const noRecordedCreator = !createdByUserId && !createdByName
+  // External Procurement is a single-purpose role (just Bamboosa/EBIL orders) —
+  // anyone in it may resubmit any rejected external LPO, not only its original
+  // raiser. Simpler and more robust than matching the exact creator, whose
+  // account may since have been renamed or deleted.
   const isExternalProcurement = role === "external_procurement"
 
   if (action === "resubmit") {
@@ -102,7 +101,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const raisedByMe =
       (!!tokenInfo.sub && createdByUserId === tokenInfo.sub) ||
       (!!tokenInfo.name && createdByName === tokenInfo.name) ||
-      (noRecordedCreator && lpoOrigin === "external" && isExternalProcurement)
+      (lpoOrigin === "external" && isExternalProcurement)
     if (!raisedByMe && !isAdmin) {
       return NextResponse.json({ error: "Only the person who raised this LPO can resubmit it." }, { status: 403 })
     }
