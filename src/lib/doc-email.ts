@@ -84,11 +84,10 @@ export async function sendLpoEmail(lpo: {
 }
 
 // Notifies the LPO's creator that it was rejected, with the reason and a link
-// to edit + resubmit it. `extraTo` is used only by the one-off backfill route
-// (/api/lpos/notify-rejected) to cc a preview copy — ordinary rejections don't use it.
+// to edit + resubmit it.
 export async function sendLpoRejectedToCreatorEmail(lpo: {
   id: string; number: string; supplierName: string; total: number
-}, rejectedBy: string, reason: string, creatorEmail: string, extraTo?: string) {
+}, rejectedBy: string, reason: string, creatorEmail: string) {
   const html = lpoRejectedCreatorEmail({
     lpoNumber: lpo.number,
     supplierName: lpo.supplierName,
@@ -97,8 +96,7 @@ export async function sendLpoRejectedToCreatorEmail(lpo: {
     reason,
     resubmitUrl: `${BASE_URL}/admin/lpo/${lpo.id}/resubmit`,
   })
-  const to = extraTo ? [creatorEmail, extraTo] : creatorEmail
-  await sendMail({ to, subject: `[Beeyond Trees] LPO ${lpo.number} rejected — please edit & resubmit`, html })
+  await sendMail({ to: creatorEmail, subject: `[Beeyond Trees] LPO ${lpo.number} rejected — please edit & resubmit`, html })
 }
 
 export async function sendQuotationEmail(q: {

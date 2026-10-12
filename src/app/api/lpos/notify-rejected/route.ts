@@ -5,11 +5,7 @@ import { sendLpoRejectedToCreatorEmail } from "@/lib/doc-email"
 
 // One-off backfill: emails the creator of every currently-rejected LPO with
 // the "edit & resubmit" notice, now that rejections notify creators going
-// forward (see PATCH /api/lpos/[id]). A copy of each send also goes to a
-// fixed preview address so it's clear what recipients actually receive —
-// this is specific to this backfill action, not part of the ongoing flow.
-const PREVIEW_EMAIL = "nyankieyacalton@gmail.com"
-
+// forward (see PATCH /api/lpos/[id]).
 export async function POST(request: NextRequest) {
   const auth = await requireRole(request, [...ADMINISH_ROLES])
   if (auth instanceof NextResponse) return auth
@@ -37,7 +33,6 @@ export async function POST(request: NextRequest) {
         actor,
         lpo.rejectionReason || "",
         creator.email,
-        PREVIEW_EMAIL,
       )
       notified++
     } catch (e) {

@@ -244,7 +244,7 @@ export default function LpoPage() {
       <ConfirmModal
         open={notifyConfirmOpen}
         title="Notify rejected LPOs?"
-        message="This emails the creator of every LPO currently sitting in Rejected status with the reason and a link to edit & resubmit it. A copy of each email also goes to nyankieyacalton@gmail.com so you can see the format."
+        message="This emails the creator of every LPO currently sitting in Rejected status with the reason and a link to edit & resubmit it."
         confirmLabel={notifyBusy ? "Sending…" : "Send Notifications"}
         onConfirm={notifyRejected}
         onCancel={() => setNotifyConfirmOpen(false)}
