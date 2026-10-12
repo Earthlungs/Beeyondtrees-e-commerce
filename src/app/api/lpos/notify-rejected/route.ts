@@ -14,25 +14,34 @@ export async function POST(request: NextRequest) {
 
   const rejected = await prisma.$queryRaw<{
     id: string; number: string; supplierName: string; total: number
-    rejectionReason: string | null; createdByUserId: string | null
+    rejectionReason: string | null; createdByUserId: string | null; origin: string | null
   }[]>`
-    SELECT id, number, "supplierName", total, "rejectionReason", "createdByUserId"
+    SELECT id, number, "supplierName", total, "rejectionReason", "createdByUserId", "origin"
     FROM "Lpo" WHERE status = 'rejected'
   `
+
+  // External Procurement users, fetched once — the fallback recipient list for
+  // external LPOs that predate creator-tracking and have no createdByUserId.
+  const epUsers = await prisma.user.findMany({ where: { role: "external_procurement" }, select: { email: true } })
+  const epEmails = epUsers.flatMap((u) => u.email ? [u.email] : [])
 
   let notified = 0
   let skipped = 0
   for (const lpo of rejected) {
     try {
-      const creator = lpo.createdByUserId
-        ? await prisma.user.findUnique({ where: { id: lpo.createdByUserId }, select: { email: true } })
-        : null
-      if (!creator?.email) { skipped++; continue }
+      let recipient: string | string[] | null = null
+      if (lpo.createdByUserId) {
+        const creator = await prisma.user.findUnique({ where: { id: lpo.createdByUserId }, select: { email: true } })
+        recipient = creator?.email ?? null
+      } else if (lpo.origin === "external" && epEmails.length > 0) {
+        recipient = epEmails
+      }
+      if (!recipient) { skipped++; continue }
       await sendLpoRejectedToCreatorEmail(
         { id: lpo.id, number: lpo.number, supplierName: lpo.supplierName, total: Number(lpo.total) },
         actor,
         lpo.rejectionReason || "",
-        creator.email,
+        recipient,
       )
       notified++
     } catch (e) {

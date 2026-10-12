@@ -82,18 +82,27 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   let currentStatus: string | null = null
   let createdByUserId: string | null = null
   let createdByName: string | null = null
+  let lpoOrigin: string | null = null
   try {
-    const rows = await prisma.$queryRaw<{ status: string; createdByUserId: string | null; createdByName: string | null }[]>`
-      SELECT status, "createdByUserId", "createdByName" FROM "Lpo" WHERE id = ${id}
+    const rows = await prisma.$queryRaw<{ status: string; createdByUserId: string | null; createdByName: string | null; origin: string | null }[]>`
+      SELECT status, "createdByUserId", "createdByName", "origin" FROM "Lpo" WHERE id = ${id}
     `
-    if (rows[0]) { currentStatus = rows[0].status; createdByUserId = rows[0].createdByUserId; createdByName = rows[0].createdByName }
+    if (rows[0]) { currentStatus = rows[0].status; createdByUserId = rows[0].createdByUserId; createdByName = rows[0].createdByName; lpoOrigin = rows[0].origin }
   } catch { /* pre-migration — columns not there yet */ }
+
+  // LPOs raised before creator-tracking shipped have neither column set, so the
+  // exact-identity check below can never match. Fall back to role: External
+  // Procurement is a single-purpose role, so anyone in it may resubmit an
+  // external LPO nobody is recorded as having raised.
+  const noRecordedCreator = !createdByUserId && !createdByName
+  const isExternalProcurement = role === "external_procurement"
 
   if (action === "resubmit") {
     const tokenInfo = auth.token as { sub?: string; name?: string }
     const raisedByMe =
       (!!tokenInfo.sub && createdByUserId === tokenInfo.sub) ||
-      (!!tokenInfo.name && createdByName === tokenInfo.name)
+      (!!tokenInfo.name && createdByName === tokenInfo.name) ||
+      (noRecordedCreator && lpoOrigin === "external" && isExternalProcurement)
     if (!raisedByMe && !isAdmin) {
       return NextResponse.json({ error: "Only the person who raised this LPO can resubmit it." }, { status: 403 })
     }
@@ -305,6 +314,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           const creator = await prisma.user.findUnique({ where: { id: createdByUserId }, select: { email: true } })
           if (creator?.email) {
             await sendLpoRejectedToCreatorEmail({ id, number: lpoNumber, supplierName, total: lpoTotal }, actor, reason, creator.email)
+          }
+        } else if (lpoOrigin === "external") {
+          // No creator recorded (LPO predates creator-tracking) — fall back to
+          // every External Procurement user rather than notifying no one.
+          const epUsers = await prisma.user.findMany({ where: { role: "external_procurement" }, select: { email: true } })
+          const epTo = epUsers.flatMap((u) => u.email ? [u.email] : [])
+          if (epTo.length > 0) {
+            await sendLpoRejectedToCreatorEmail({ id, number: lpoNumber, supplierName, total: lpoTotal }, actor, reason, epTo)
           }
         }
       } catch (e) { console.error("[mailer] LPO rejected creator notify:", e) }

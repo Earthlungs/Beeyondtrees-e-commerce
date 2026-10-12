@@ -416,7 +416,8 @@ export default function LpoPage() {
                         <span style={{ color: TEAL, fontSize: 12.5 }}>Awaiting CEO approval</span>
                       )}
                       {!isAdmin && !isExec && !isChief && l.status === "rejected" && (
-                        l.createdByName === session?.user?.name ? (
+                        l.createdByName === session?.user?.name ||
+                        (!l.createdByName && l.origin === "external" && role === "external_procurement") ? (
                           <Link href={`/admin/lpo/${l.id}/resubmit`} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: RED, color: "white", fontSize: 13, height: 36, padding: "0 16px", borderRadius: 8, textDecoration: "none", fontWeight: 600 }}>
                             <Pencil size={14} /> Edit & Resubmit
                           </Link>

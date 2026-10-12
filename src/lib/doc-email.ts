@@ -87,7 +87,7 @@ export async function sendLpoEmail(lpo: {
 // to edit + resubmit it.
 export async function sendLpoRejectedToCreatorEmail(lpo: {
   id: string; number: string; supplierName: string; total: number
-}, rejectedBy: string, reason: string, creatorEmail: string) {
+}, rejectedBy: string, reason: string, creatorEmail: string | string[]) {
   const html = lpoRejectedCreatorEmail({
     lpoNumber: lpo.number,
     supplierName: lpo.supplierName,
