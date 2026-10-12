@@ -129,6 +129,29 @@ export function lpoRejectedEmail({
   `)
 }
 
+// To the creator: their LPO was rejected — invites them to fix it per the
+// reason and resubmit (edit page is creator-only, see admin/lpo/[id]/resubmit).
+export function lpoRejectedCreatorEmail({
+  lpoNumber, supplierName, total, rejectedBy, reason, resubmitUrl,
+}: {
+  lpoNumber: string; supplierName: string; total: number; rejectedBy: string; reason: string; resubmitUrl: string
+}) {
+  return layout(`
+    <h2 style="margin:0 0 8px;font-size:18px;color:${RED};">✕ Your LPO Was Rejected</h2>
+    <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 12px;">
+      Your purchase order <strong>${lpoNumber}</strong> (${supplierName}) for <strong>${ksh(total)}</strong>
+      was <strong style="color:${RED};">rejected</strong> by <strong>${rejectedBy}</strong>.
+    </p>
+    <div style="background:#FFF5F5;border:1px solid #FED7D7;border-radius:8px;padding:10px 14px;font-size:13px;color:#9B2C2C;margin-bottom:4px;">
+      <strong>Reason:</strong> ${reason || "No reason given."}
+    </div>
+    <p style="color:#555;font-size:14px;line-height:1.6;margin:16px 0 0;">
+      Please edit the purchase order to address the reason above, then resubmit it for approval.
+    </p>
+    ${btn("Edit & Resubmit →", resubmitUrl, RED)}
+  `)
+}
+
 export function lpoPaidEmail({
   lpoNumber, supplierName, total, paidBy, lpoUrl,
 }: {
@@ -141,6 +164,24 @@ export function lpoPaidEmail({
       has been marked as <strong style="color:${GREEN};">PAID</strong> by ${paidBy} (Finance).
     </p>
     ${btn("View LPO →", lpoUrl)}
+  `)
+}
+
+// "New LPO awaiting your approval" — sent to the first-stage reviewer (Factory
+// Admin or Chief) on a fresh submission, and reused on resubmission after a
+// rejected LPO is edited and sent back into the chain.
+export function lpoNewEmail({
+  lpoNumber, supplierName, total, lpoUrl, recipientRole,
+}: {
+  lpoNumber: string; supplierName: string; total: number; lpoUrl: string; recipientRole: string
+}) {
+  return layout(`
+    <h2 style="margin:0 0 8px;font-size:18px;color:#1a1a1a;">New LPO Awaiting Your Approval</h2>
+    <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 16px;">
+      A new purchase order <strong>${lpoNumber}</strong> from <strong>${supplierName}</strong>
+      for <strong>${ksh(total)}</strong> has been submitted and is waiting for ${recipientRole} approval.
+    </p>
+    ${btn("Review LPO →", lpoUrl)}
   `)
 }
 

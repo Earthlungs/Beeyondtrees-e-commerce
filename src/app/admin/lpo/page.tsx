@@ -61,6 +61,8 @@ export default function LpoPage() {
   const [approveTarget, setApproveTarget] = useState<Lpo | null>(null)
   const [rejectTarget, setRejectTarget] = useState<Lpo | null>(null)
   const [rejectReason, setRejectReason] = useState("")
+  const [notifyConfirmOpen, setNotifyConfirmOpen] = useState(false)
+  const [notifyBusy, setNotifyBusy] = useState(false)
 
   const today = new Date().toISOString().slice(0, 10)
   const [supplierName, setSupplierName] = useState("")
@@ -130,6 +132,19 @@ export default function LpoPage() {
       setLpos((prev) => prev.map((x) => (x.id === lpo.id ? { ...x, status: data.status, amended: data.amended } : x)))
     } catch { setNotice("Network error. Try again.") }
     finally { setBusyId(null) }
+  }
+
+  // One-off backfill: emails the creator of every currently-rejected LPO (plus
+  // a preview copy) so nothing already rejected is left without a notice.
+  const notifyRejected = async () => {
+    setNotifyBusy(true)
+    try {
+      const res = await fetch("/api/lpos/notify-rejected", { method: "POST" })
+      const data = await res.json()
+      if (!res.ok) { setNotice(data.error || "Could not send notifications."); return }
+      setNotice(`Notified ${data.notified} of ${data.total} rejected LPO creator(s)${data.skipped ? ` — ${data.skipped} skipped (no email on file)` : ""}.`)
+    } catch { setNotice("Network error. Try again.") }
+    finally { setNotifyBusy(false); setNotifyConfirmOpen(false) }
   }
 
   const pill = (bg: string, text: string, color = "white") => (
@@ -225,16 +240,33 @@ export default function LpoPage() {
         onCancel={() => { setRejectTarget(null); setRejectReason("") }}
       />
 
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+      {/* One-off: notify every currently-rejected LPO's creator */}
+      <ConfirmModal
+        open={notifyConfirmOpen}
+        title="Notify rejected LPOs?"
+        message="This emails the creator of every LPO currently sitting in Rejected status with the reason and a link to edit & resubmit it. A copy of each email also goes to nyankieyacalton@gmail.com so you can see the format."
+        confirmLabel={notifyBusy ? "Sending…" : "Send Notifications"}
+        onConfirm={notifyRejected}
+        onCancel={() => setNotifyConfirmOpen(false)}
+      />
+
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <ClipboardList size={22} color={GREEN} />
           <h1 style={{ fontSize: 22, fontWeight: "bold", color: TEXT }}>Local Purchase Orders</h1>
         </div>
-        {canCreate && (
-          <Button onClick={() => setShowForm((s) => !s)} style={{ background: GREEN, color: "white", gap: 6 }}>
-            {showForm ? <><X size={16} /> Close</> : <><Plus size={16} /> New LPO</>}
-          </Button>
-        )}
+        <div style={{ display: "flex", gap: 8 }}>
+          {isAdmin && (
+            <Button onClick={() => setNotifyConfirmOpen(true)} variant="outline" style={{ color: RED, borderColor: RED, gap: 6 }}>
+              Notify Rejected LPOs
+            </Button>
+          )}
+          {canCreate && (
+            <Button onClick={() => setShowForm((s) => !s)} style={{ background: GREEN, color: "white", gap: 6 }}>
+              {showForm ? <><X size={16} /> Close</> : <><Plus size={16} /> New LPO</>}
+            </Button>
+          )}
+        </div>
       </div>
 
       {notice && (
@@ -384,7 +416,13 @@ export default function LpoPage() {
                         <span style={{ color: TEAL, fontSize: 12.5 }}>Awaiting CEO approval</span>
                       )}
                       {!isAdmin && !isExec && !isChief && l.status === "rejected" && (
-                        <span style={{ color: RED, fontSize: 12.5 }}>Rejected</span>
+                        l.createdByName === session?.user?.name ? (
+                          <Link href={`/admin/lpo/${l.id}/resubmit`} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: RED, color: "white", fontSize: 13, height: 36, padding: "0 16px", borderRadius: 8, textDecoration: "none", fontWeight: 600 }}>
+                            <Pencil size={14} /> Edit & Resubmit
+                          </Link>
+                        ) : (
+                          <span style={{ color: RED, fontSize: 12.5 }}>Rejected</span>
+                        )
                       )}
                     </div>
                   </td>

@@ -4,8 +4,8 @@ import { prisma } from "@/lib/db"
 import { requireDocRole, normalizeLines, parseDate } from "@/lib/docs"
 import { requireRole, isAdminish, isAssistantCeo } from "@/lib/authz"
 import { sendMail } from "@/lib/mailer"
-import { lpoApprovedEmail, lpoExecApprovedEmail, lpoRejectedEmail } from "@/lib/email-templates"
-import { sendLpoEmail } from "@/lib/doc-email"
+import { lpoApprovedEmail, lpoExecApprovedEmail, lpoNewEmail, lpoRejectedEmail } from "@/lib/email-templates"
+import { sendLpoEmail, sendLpoRejectedToCreatorEmail } from "@/lib/doc-email"
 
 const BASE_URL = process.env.NEXTAUTH_URL || "http://localhost:3000"
 // Shared finance inbox that always gets a CEO-approval alert (overridable by env).
@@ -61,7 +61,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const body = await request.json().catch(() => null)
   const action = body?.action
 
-  const VALID = ["exec_approve", "exec_amend", "chief_approve", "chief_amend", "chief_reject", "approve", "reject", "amend"]
+  const VALID = ["exec_approve", "exec_amend", "chief_approve", "chief_amend", "chief_reject", "approve", "reject", "amend", "resubmit"]
   if (!VALID.includes(action)) {
     return NextResponse.json({ error: "Invalid action." }, { status: 400 })
   }
@@ -77,6 +77,31 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: "Only the CEO can perform the final approval." }, { status: 403 })
   }
 
+  // createdByUserId/createdByName are raw columns — fetched here both to gate
+  // "resubmit" to the original creator and to notify them later if rejected.
+  let currentStatus: string | null = null
+  let createdByUserId: string | null = null
+  let createdByName: string | null = null
+  try {
+    const rows = await prisma.$queryRaw<{ status: string; createdByUserId: string | null; createdByName: string | null }[]>`
+      SELECT status, "createdByUserId", "createdByName" FROM "Lpo" WHERE id = ${id}
+    `
+    if (rows[0]) { currentStatus = rows[0].status; createdByUserId = rows[0].createdByUserId; createdByName = rows[0].createdByName }
+  } catch { /* pre-migration — columns not there yet */ }
+
+  if (action === "resubmit") {
+    const tokenInfo = auth.token as { sub?: string; name?: string }
+    const raisedByMe =
+      (!!tokenInfo.sub && createdByUserId === tokenInfo.sub) ||
+      (!!tokenInfo.name && createdByName === tokenInfo.name)
+    if (!raisedByMe && !isAdmin) {
+      return NextResponse.json({ error: "Only the person who raised this LPO can resubmit it." }, { status: 403 })
+    }
+    if (currentStatus !== "rejected") {
+      return NextResponse.json({ error: "Only a rejected LPO can be resubmitted." }, { status: 400 })
+    }
+  }
+
   const reason = typeof body?.reason === "string" ? body.reason.trim() : ""
   if ((action === "reject" || action === "chief_reject") && !reason) {
     return NextResponse.json({ error: "A reason is required to reject." }, { status: 400 })
@@ -85,17 +110,21 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const actor = (auth.token as { name?: string }).name || "Unknown"
   const destinationOfGoods = typeof body?.destinationOfGoods === "string" ? body.destinationOfGoods.trim() || null : null
 
-  // Determine new status and amended flag
+  // Determine new status and amended flag. A resubmission re-enters the chain
+  // at whichever stage a fresh submission from this role would — same formula
+  // the POST handler uses when the LPO is first created.
+  const isExternal = role === "external_procurement"
   const newStatus =
-    action === "exec_approve" || action === "exec_amend" ? "exec_approved"
+    action === "resubmit" ? (isAdmin ? "approved" : isExternal ? "pending_chief" : isExec ? "exec_approved" : "pending")
+    : action === "exec_approve" || action === "exec_amend" ? "exec_approved"
     : action === "chief_approve" || action === "chief_amend" ? "chief_approved"
     : action === "approve" || action === "amend" ? "approved"
     : "rejected" // reject | chief_reject
-  const amended = action === "exec_amend" || action === "amend" || action === "chief_amend"
+  const amended = action === "exec_amend" || action === "amend" || action === "chief_amend" || action === "resubmit"
   const isChiefApprove = action === "chief_approve" || action === "chief_amend"
 
-  // For amend actions: update editable content first
-  if ((action === "exec_amend" || action === "amend" || action === "chief_amend") && body?.items) {
+  // For amend/resubmit actions: update editable content first
+  if ((action === "exec_amend" || action === "amend" || action === "chief_amend" || action === "resubmit") && body?.items) {
     const { items, subtotal, vat, total } = normalizeLines(body.items)
     if (items.length === 0) {
       return NextResponse.json({ error: "Add at least one line item." }, { status: 400 })
@@ -142,7 +171,24 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   // when an Assistant CEO performed it.
   const now = new Date()
   try {
-    if (isChiefApprove) {
+    if (action === "resubmit") {
+      // A resubmission is a fresh re-entry into the chain, not an approval —
+      // clear every prior approval/rejection trace rather than stamping the
+      // creator as the approver.
+      await prisma.$executeRaw`
+        UPDATE "Lpo"
+        SET status = ${newStatus},
+            "approvedBy" = NULL,
+            "approvedAt" = NULL,
+            "chiefApprovedBy" = NULL,
+            "chiefApprovedAt" = NULL,
+            "rejectionReason" = NULL,
+            "amended" = ${amended},
+            "onBehalf" = false,
+            "destinationOfGoods" = COALESCE(${destinationOfGoods}::text, "destinationOfGoods")
+        WHERE id = ${id}
+      `
+    } else if (isChiefApprove) {
       await prisma.$executeRaw`
         UPDATE "Lpo"
         SET status = ${newStatus},
@@ -252,8 +298,48 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           html: lpoRejectedEmail({ lpoNumber, supplierName, total: lpoTotal, rejectedBy: actor, reason, lpoUrl }),
         })
       }
+
+      // Also tell whoever raised it — they can't fix what they don't know is broken.
+      try {
+        if (createdByUserId) {
+          const creator = await prisma.user.findUnique({ where: { id: createdByUserId }, select: { email: true } })
+          if (creator?.email) {
+            await sendLpoRejectedToCreatorEmail({ id, number: lpoNumber, supplierName, total: lpoTotal }, actor, reason, creator.email)
+          }
+        }
+      } catch (e) { console.error("[mailer] LPO rejected creator notify:", e) }
+    } else if (newStatus === "pending") {
+      // Resubmitted internal LPO — notify Factory Admins to review it again
+      const executives = await prisma.user.findMany({ where: { role: "executive" }, select: { email: true } })
+      const to = executives.flatMap((u) => u.email ? [u.email] : [])
+      if (to.length > 0) {
+        await sendMail({
+          to,
+          subject: `[Beeyond Trees] LPO ${lpoNumber} resubmitted — awaiting your approval`,
+          html: lpoNewEmail({ lpoNumber, supplierName, total: lpoTotal, lpoUrl, recipientRole: "Factory Admin" }),
+        })
+      }
+    } else if (newStatus === "pending_chief") {
+      // Resubmitted external LPO — notify Chiefs to review it again
+      const chiefs = await prisma.user.findMany({ where: { role: "chief" }, select: { email: true } })
+      const to = chiefs.flatMap((u) => u.email ? [u.email] : [])
+      if (to.length > 0) {
+        await sendMail({
+          to,
+          subject: `[Beeyond Trees] EXTERNAL LPO ${lpoNumber} resubmitted — awaiting Chief approval`,
+          html: lpoNewEmail({ lpoNumber, supplierName, total: lpoTotal, lpoUrl, recipientRole: "Chief" }),
+        })
+      }
     }
   } catch (e) { console.error("[mailer] LPO approval notify:", e) }
 
-  return NextResponse.json({ ...updated, status: newStatus, approvedBy: actor, approvedAt: new Date(), rejectionReason: action === "reject" ? reason : null, amended, destinationOfGoods })
+  return NextResponse.json({
+    ...updated,
+    status: newStatus,
+    approvedBy: action === "resubmit" ? null : actor,
+    approvedAt: action === "resubmit" ? null : new Date(),
+    rejectionReason: action === "reject" || action === "chief_reject" ? reason : null,
+    amended,
+    destinationOfGoods,
+  })
 }

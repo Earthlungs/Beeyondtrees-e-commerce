@@ -4,36 +4,10 @@ import { prisma } from "@/lib/db"
 import { requireDocRole, normalizeLines, createNumbered, parseDate } from "@/lib/docs"
 import { requireRole, isAdminish } from "@/lib/authz"
 import { sendMail } from "@/lib/mailer"
-import { lpoExecApprovedEmail } from "@/lib/email-templates"
+import { lpoExecApprovedEmail, lpoNewEmail } from "@/lib/email-templates"
 import { sendLpoEmail, isValidEmail } from "@/lib/doc-email"
 
 const BASE_URL = process.env.NEXTAUTH_URL || "https://www.beeyondtrees.org"
-
-// Shared email template for "new LPO awaiting your review"
-function lpoNewEmail({ lpoNumber, supplierName, total, lpoUrl, recipientRole }: {
-  lpoNumber: string; supplierName: string; total: number; lpoUrl: string; recipientRole: string
-}) {
-  const ksh = (n: number) => `KSh ${n.toLocaleString()}`
-  const GREEN = "#6B7D5C"
-  const LOGO_URL = `${BASE_URL}/icons/icon-192.png`
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;background:#F5F1EC;font-family:system-ui,sans-serif;">
-<div style="max-width:560px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-  <div style="background:${GREEN};padding:16px 28px;display:flex;align-items:center;gap:12px;">
-    <img src="${LOGO_URL}" width="44" height="44" style="width:44px;height:44px;object-fit:contain;border-radius:10px;background:#fff;padding:4px;flex-shrink:0;" />
-    <span style="color:#fff;font-size:20px;font-weight:700;">Beeyond Trees</span>
-  </div>
-  <div style="padding:28px;">
-    <h2 style="margin:0 0 8px;font-size:18px;color:#1a1a1a;">New LPO Awaiting Your Approval</h2>
-    <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 16px;">
-      A new purchase order <strong>${lpoNumber}</strong> from <strong>${supplierName}</strong>
-      for <strong>${ksh(total)}</strong> has been submitted and is waiting for ${recipientRole} approval.
-    </p>
-    <a href="${lpoUrl}" style="display:inline-block;padding:10px 22px;background:${GREEN};color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">Review LPO →</a>
-  </div>
-  <div style="padding:16px 28px;background:#F5F1EC;font-size:11px;color:#999;text-align:center;">This is an automated notification from the Beeyond Trees operations system.</div>
-</div></body></html>`
-}
 
 // Extra columns (status, approvedBy, approvedAt, rejectionReason,
 // destinationOfGoods) are NOT in the Prisma schema — they're raw DB columns
