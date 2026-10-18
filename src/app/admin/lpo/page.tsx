@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
@@ -146,6 +146,54 @@ export default function LpoPage() {
     } catch { setNotice("Network error. Try again.") }
     finally { setNotifyBusy(false); setNotifyConfirmOpen(false) }
   }
+
+  // Whether THIS viewer can act on the LPO right now (vs. just viewing it).
+  // The CEO/COO list in particular can run long with already-decided history,
+  // burying the handful waiting on a decision — so actionable ones float to
+  // the top instead of making the approver scroll to find them.
+  const isActionable = (l: Lpo) =>
+    (isAdmin && (l.status === "exec_approved" || l.status === "chief_approved")) ||
+    (isExec && l.status === "pending") ||
+    (isChief && l.status === "pending_chief")
+  const isUnpaid = (l: Lpo) => l.status === "approved" && !l.paid
+  const isPaid = (l: Lpo) => l.status === "approved" && !!l.paid
+
+  // Tier 0 (needs your decision) then tier 1 (approved but unpaid — money owed)
+  // outrank the rest, which stays in its normal newest-first order.
+  const sortedLpos = useMemo(() => {
+    const tier = (l: Lpo) => (isActionable(l) ? 0 : isUnpaid(l) ? 1 : 2)
+    return [...lpos].sort((a, b) => tier(a) - tier(b))
+  }, [lpos, isAdmin, isExec, isChief])
+
+  type FilterTab = "all" | "action" | "unpaid" | "paid" | "rejected"
+  const [filter, setFilter] = useState<FilterTab>("all")
+  const actionCount = sortedLpos.filter(isActionable).length
+  const unpaidCount = sortedLpos.filter(isUnpaid).length
+  const paidCount = sortedLpos.filter(isPaid).length
+  const rejectedCount = sortedLpos.filter((l) => l.status === "rejected").length
+  const tabs: { key: FilterTab; label: string; count: number }[] = [
+    { key: "all", label: "All", count: sortedLpos.length },
+    ...(isAdmin || isExec || isChief ? [{ key: "action" as FilterTab, label: "Awaiting your decision", count: actionCount }] : []),
+    { key: "unpaid", label: "Awaiting payment", count: unpaidCount },
+    { key: "paid", label: "Paid", count: paidCount },
+    { key: "rejected", label: "Rejected", count: rejectedCount },
+  ]
+  const filteredLpos = useMemo(() => {
+    switch (filter) {
+      case "action": return sortedLpos.filter(isActionable)
+      case "unpaid": return sortedLpos.filter(isUnpaid)
+      case "paid": return sortedLpos.filter(isPaid)
+      case "rejected": return sortedLpos.filter((l) => l.status === "rejected")
+      default: return sortedLpos
+    }
+  }, [sortedLpos, filter])
+
+  const PAGE_SIZE = 10
+  const [page, setPage] = useState(1)
+  const totalPages = Math.max(1, Math.ceil(filteredLpos.length / PAGE_SIZE))
+  const safePage = Math.min(page, totalPages)
+  const visibleLpos = filteredLpos.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+  const changeTab = (t: FilterTab) => { setFilter(t); setPage(1) }
 
   const pill = (bg: string, text: string, color = "white") => (
     <span style={{ background: bg, color, fontSize: 11, fontWeight: 600, padding: "2px 9px", borderRadius: 999 }}>{text}</span>
@@ -310,11 +358,31 @@ export default function LpoPage() {
         </div>
       )}
 
+      {lpos.length > 0 && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
+          {tabs.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => changeTab(t.key)}
+              style={{
+                padding: "6px 14px", borderRadius: 999, fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+                border: `1px solid ${filter === t.key ? GREEN : "var(--admin-border)"}`,
+                background: filter === t.key ? GREEN : "var(--admin-card)",
+                color: filter === t.key ? "white" : TEXT,
+              }}>
+              {t.label} ({t.count})
+            </button>
+          ))}
+        </div>
+      )}
+
       <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, overflow: "hidden" }}>
         {loading ? (
           <p style={{ padding: 24, color: MUTED }}>Loading…</p>
         ) : lpos.length === 0 ? (
           <p style={{ padding: 24, color: MUTED, textAlign: "center" }}>No purchase orders yet. Create your first one.</p>
+        ) : filteredLpos.length === 0 ? (
+          <p style={{ padding: 24, color: MUTED, textAlign: "center" }}>No purchase orders in this view.</p>
         ) : (
           <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
@@ -325,7 +393,7 @@ export default function LpoPage() {
               </tr>
             </thead>
             <tbody>
-              {lpos.map((l) => (
+              {visibleLpos.map((l) => (
                 <tr key={l.id} style={{ borderTop: "1px solid var(--admin-border)" }}>
                   <td style={{ ...td, fontWeight: 600 }}>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
@@ -434,6 +502,26 @@ export default function LpoPage() {
           </div>
         )}
       </div>
+
+      {filteredLpos.length > PAGE_SIZE && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
+          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}
+            style={{ padding: "6px 14px", borderRadius: 7, border: "1px solid var(--admin-border)", background: "var(--admin-card)", color: safePage === 1 ? MUTED : TEXT, cursor: safePage === 1 ? "default" : "pointer", fontSize: 13 }}>
+            ← Prev
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+            <button key={n} onClick={() => setPage(n)}
+              style={{ width: 34, height: 34, borderRadius: 7, border: "1px solid var(--admin-border)", background: n === safePage ? GREEN : "var(--admin-card)", color: n === safePage ? "white" : TEXT, cursor: "pointer", fontSize: 13, fontWeight: n === safePage ? 700 : 400 }}>
+              {n}
+            </button>
+          ))}
+          <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}
+            style={{ padding: "6px 14px", borderRadius: 7, border: "1px solid var(--admin-border)", background: "var(--admin-card)", color: safePage === totalPages ? MUTED : TEXT, cursor: safePage === totalPages ? "default" : "pointer", fontSize: 13 }}>
+            Next →
+          </button>
+          <span style={{ fontSize: 12, color: MUTED, marginLeft: 4 }}>{filteredLpos.length} purchase orders</span>
+        </div>
+      )}
     </div>
   )
 }

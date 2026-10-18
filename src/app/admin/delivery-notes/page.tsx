@@ -46,6 +46,11 @@ interface DeliveryLineRow {
 
 const emptyLine = (): DeliveryLineRow => ({ description: "", unit: "", qtyOrdered: "", qtyDelivered: "", remarks: "" })
 
+// Sentinel for "not against an LPO" — lets a delivery note be logged for
+// goods that never had a purchase order (e.g. a donation, an internal
+// transfer) instead of forcing every note through the approved-LPO picker.
+const OTHER = "__other__"
+
 export default function DeliveryNotesPage() {
   const router = useRouter()
   const [notes, setNotes] = useState<DeliveryNote[]>([])
@@ -58,6 +63,7 @@ export default function DeliveryNotesPage() {
 
   const today = new Date().toISOString().slice(0, 10)
   const [lpoId, setLpoId] = useState("")
+  const [supplierName, setSupplierName] = useState("")
   const [deliveredTo, setDeliveredTo] = useState("")
   const [deliveryDate, setDeliveryDate] = useState(today)
   const [vehicleReg, setVehicleReg] = useState("")
@@ -87,9 +93,14 @@ export default function DeliveryNotesPage() {
 
   // Picking an LPO pre-fills the consignment from what was ordered: destination
   // and one line per LPO item, defaulting to a full delivery. Everything stays
-  // editable — short deliveries are the normal case.
+  // editable — short deliveries are the normal case. Picking "Other" instead
+  // clears the LPO-sourced fields so the supplier can be typed by hand.
   const pickLpo = (id: string) => {
     setLpoId(id)
+    if (id === OTHER) {
+      setSupplierName(""); setDeliveredTo(""); setLines([emptyLine()])
+      return
+    }
     const lpo = lpos.find((l) => l.id === id)
     if (!lpo) return
     setDeliveredTo(lpo.destinationOfGoods || "")
@@ -106,7 +117,7 @@ export default function DeliveryNotesPage() {
   }
 
   const resetForm = () => {
-    setLpoId(""); setDeliveredTo(""); setDeliveryDate(today); setVehicleReg("")
+    setLpoId(""); setSupplierName(""); setDeliveredTo(""); setDeliveryDate(today); setVehicleReg("")
     setDriverName(""); setDriverPhone(""); setReceivedBy(""); setEmail(""); setNotesText("")
     setLines([emptyLine()]); setAttachment([])
   }
@@ -117,7 +128,8 @@ export default function DeliveryNotesPage() {
 
   const save = async () => {
     setError("")
-    if (!lpoId) { setError("Choose the approved LPO this delivery is against."); return }
+    if (!lpoId) { setError("Choose the approved LPO this delivery is against, or pick Other."); return }
+    if (lpoId === OTHER && !supplierName.trim()) { setError("Enter the supplier name."); return }
     if (!lines.some((l) => l.description.trim())) { setError("Add at least one line item."); return }
     setSaving(true)
     try {
@@ -125,7 +137,9 @@ export default function DeliveryNotesPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          lpoId, deliveredTo, deliveryDate, vehicleReg, driverName, driverPhone,
+          lpoId: lpoId === OTHER ? null : lpoId,
+          supplierName: lpoId === OTHER ? supplierName : undefined,
+          deliveredTo, deliveryDate, vehicleReg, driverName, driverPhone,
           receivedBy, email: email || null, notes: notesText,
           items: lines, attachmentUrl: attachment[0] || null,
         }),
@@ -163,7 +177,7 @@ export default function DeliveryNotesPage() {
       </div>
 
       <p style={{ fontSize: 12.5, color: MUTED, marginBottom: 16 }}>
-        Raised against an approved LPO and printable straight away — no approval step, so the note can travel with the goods.
+        Raised against an approved LPO — or logged on its own via “Other” — and printable straight away. No approval step, so the note can travel with the goods.
       </p>
 
       {showForm && (
@@ -179,13 +193,21 @@ export default function DeliveryNotesPage() {
               {lpos.map((l) => (
                 <option key={l.id} value={l.id}>{l.number} — {l.supplierName}</option>
               ))}
+              <option value={OTHER}>Other — not against an LPO</option>
             </select>
           </Field>
           {lpos.length === 0 && !loading && (
-            <p style={{ fontSize: 12.5, color: AMBER, marginTop: 6 }}>No approved LPOs yet — a purchase order must clear final approval before goods can be delivered against it.</p>
+            <p style={{ fontSize: 12.5, color: AMBER, marginTop: 6 }}>No approved LPOs yet — a purchase order must clear final approval before goods can be delivered against it. Pick “Other” below to log a delivery that isn&apos;t tied to one.</p>
           )}
           {selectedLpo && (
             <p style={{ fontSize: 12.5, color: MUTED, marginTop: 6 }}>Supplier: <strong style={{ color: TEXT }}>{selectedLpo.supplierName}</strong> — carried onto the note from {selectedLpo.number}.</p>
+          )}
+          {lpoId === OTHER && (
+            <div style={{ marginTop: 10 }}>
+              <Field label="Supplier name *">
+                <Input value={supplierName} onChange={(e) => setSupplierName(e.target.value)} placeholder="Who supplied these goods" />
+              </Field>
+            </div>
           )}
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 200px), 1fr))", gap: 12, margin: "16px 0" }}>

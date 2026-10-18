@@ -46,28 +46,38 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Add at least one line item." }, { status: 400 })
   }
 
-  // A delivery note always delivers against an approved LPO. Re-read that LPO
-  // server-side rather than trusting the posted supplier/destination, and refuse
-  // anything not fully approved — goods should never move on an unapproved order.
+  const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null)
+
+  // A delivery note is normally raised against an approved LPO — re-read that
+  // LPO server-side rather than trusting the posted supplier/destination, and
+  // refuse anything not fully approved, since goods should never move on an
+  // unapproved order. "Other" (no lpoId) skips all of that and takes the
+  // supplier name straight from the form — for goods that never had an LPO.
   const lpoId = typeof body.lpoId === "string" && body.lpoId.trim() ? body.lpoId.trim() : null
-  if (!lpoId) return NextResponse.json({ error: "Choose the approved LPO this delivery is against." }, { status: 400 })
-
-  const lpo = await prisma.lpo.findUnique({ where: { id: lpoId } })
-  if (!lpo) return NextResponse.json({ error: "That LPO could not be found." }, { status: 404 })
-
-  // status/destinationOfGoods are raw Lpo columns, not Prisma fields (see
-  // /api/lpos). Pre-migration the columns are absent — treat as approved.
-  let lpoStatus: string | null = "approved"
+  let lpo: { id: string; number: string; supplierName: string } | null = null
   let lpoDestination: string | null = null
-  try {
-    const rows = await prisma.$queryRaw<{ status: string; destinationOfGoods: string | null }[]>`
-      SELECT status, "destinationOfGoods" FROM "Lpo" WHERE id = ${lpoId}
-    `
-    if (rows[0]) { lpoStatus = rows[0].status; lpoDestination = rows[0].destinationOfGoods }
-  } catch { /* pre-migration — treat as approved */ }
 
-  if (lpoStatus && lpoStatus !== "approved") {
-    return NextResponse.json({ error: `${lpo.number} is not approved yet, so goods can't be delivered against it.` }, { status: 400 })
+  if (lpoId) {
+    const found = await prisma.lpo.findUnique({ where: { id: lpoId } })
+    if (!found) return NextResponse.json({ error: "That LPO could not be found." }, { status: 404 })
+
+    // status/destinationOfGoods are raw Lpo columns, not Prisma fields (see
+    // /api/lpos). Pre-migration the columns are absent — treat as approved.
+    let lpoStatus: string | null = "approved"
+    try {
+      const rows = await prisma.$queryRaw<{ status: string; destinationOfGoods: string | null }[]>`
+        SELECT status, "destinationOfGoods" FROM "Lpo" WHERE id = ${lpoId}
+      `
+      if (rows[0]) { lpoStatus = rows[0].status; lpoDestination = rows[0].destinationOfGoods }
+    } catch { /* pre-migration — treat as approved */ }
+
+    if (lpoStatus && lpoStatus !== "approved") {
+      return NextResponse.json({ error: `${found.number} is not approved yet, so goods can't be delivered against it.` }, { status: 400 })
+    }
+    lpo = found
+  } else {
+    const supplierName = str(body.supplierName)
+    if (!supplierName) return NextResponse.json({ error: "Enter the supplier name, or choose the LPO this delivery is against." }, { status: 400 })
   }
 
   const creatorId = (auth.token as { sub?: string }).sub || null
@@ -75,7 +85,6 @@ export async function POST(request: NextRequest) {
   const recipientEmail = typeof body.email === "string" && isValidEmail(body.email.trim()) ? body.email.trim() : null
   const attachmentUrl = typeof body.attachmentUrl === "string" && /^https?:\/\//.test(body.attachmentUrl.trim())
     ? body.attachmentUrl.trim() : null
-  const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null)
 
   try {
     const note = await createNumbered(
@@ -85,9 +94,9 @@ export async function POST(request: NextRequest) {
         prisma.deliveryNote.create({
           data: {
             number,
-            lpoId: lpo.id,
-            lpoNumber: lpo.number,
-            supplierName: lpo.supplierName,
+            lpoId: lpo?.id ?? null,
+            lpoNumber: lpo?.number ?? null,
+            supplierName: lpo?.supplierName ?? str(body.supplierName)!,
             deliveredTo: str(body.deliveredTo) ?? lpoDestination,
             deliveryDate: parseDate(body.deliveryDate) ?? new Date(),
             vehicleReg: str(body.vehicleReg),

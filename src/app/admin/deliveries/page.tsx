@@ -65,6 +65,8 @@ function DeliveriesContent() {
   const [error, setError] = useState(false)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [actionError, setActionError] = useState("")
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 10
 
   const loadOrders = () => {
     setLoading(true)
@@ -84,7 +86,11 @@ function DeliveriesContent() {
     return c
   }, [orders])
 
-  const visible = filter === "all" ? orders : orders.filter((o) => o.status === filter)
+  const filtered = filter === "all" ? orders : orders.filter((o) => o.status === filter)
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const safePage = Math.min(page, totalPages)
+  const visible = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+  const changeFilter = (tab: StatusTab) => { setFilter(tab); setPage(1) }
 
   const updateStatus = async (id: string, status: string) => {
     try {
@@ -119,7 +125,7 @@ function DeliveriesContent() {
         {STATUS_TABS.map((tab) => {
           const active = filter === tab
           return (
-            <button key={tab} onClick={() => setFilter(tab)} style={{
+            <button key={tab} onClick={() => changeFilter(tab)} style={{
               padding: "7px 14px", borderRadius: 999, border: `1px solid ${active ? SAGE : "#E2DAC9"}`,
               backgroundColor: active ? SAGE : "white", color: active ? "white" : DARK,
               fontSize: 13, fontWeight: 500, cursor: "pointer", textTransform: "capitalize",
@@ -158,6 +164,26 @@ function DeliveriesContent() {
               onDispatched={(d) => setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, status: "dispatched", dispatch: d } : o)))}
             />
           ))}
+        </div>
+      )}
+
+      {filtered.length > PAGE_SIZE && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 20, flexWrap: "wrap" }}>
+          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}
+            style={{ padding: "6px 14px", borderRadius: 7, border: "1px solid #E2DAC9", background: "white", color: safePage === 1 ? MUTED : DARK, cursor: safePage === 1 ? "default" : "pointer", fontSize: 13 }}>
+            ← Prev
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+            <button key={n} onClick={() => setPage(n)}
+              style={{ width: 34, height: 34, borderRadius: 7, border: "1px solid #E2DAC9", background: n === safePage ? SAGE : "white", color: n === safePage ? "white" : DARK, cursor: "pointer", fontSize: 13, fontWeight: n === safePage ? 700 : 400 }}>
+              {n}
+            </button>
+          ))}
+          <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}
+            style={{ padding: "6px 14px", borderRadius: 7, border: "1px solid #E2DAC9", background: "white", color: safePage === totalPages ? MUTED : DARK, cursor: safePage === totalPages ? "default" : "pointer", fontSize: 13 }}>
+            Next →
+          </button>
+          <span style={{ fontSize: 12, color: MUTED, marginLeft: 4 }}>{filtered.length} orders</span>
         </div>
       )}
     </div>

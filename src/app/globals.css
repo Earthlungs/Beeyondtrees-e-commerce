@@ -222,6 +222,15 @@ body {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
+  /* Most of these tables are inline-styled `width: 100%` with no min-width.
+     Once `display: block` drops the table-layout sizing algorithm, that
+     width:100% wins and squeezes every column down to the viewport — on a
+     phone that crushes a product/customer name to one letter per line
+     instead of letting the table overflow and scroll. Floor it so there's
+     always enough room; tables that already set their own minWidth keep it. */
+  .admin-content table:not([style*="min-width"]) {
+    min-width: 560px;
+  }
   .admin-content h1 { font-size: 19px !important; }
   .admin-content h2 { font-size: 15.5px !important; }
 }
