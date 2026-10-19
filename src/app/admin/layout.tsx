@@ -262,7 +262,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 const active = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href))
                 const isChat = item.href === "/admin/chat"
                 return (
-                  <Link key={item.href} href={item.href} onClick={() => { if (isMobile) setSidebarOpen(false) }} style={{ ...linkStyle(active), display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Link key={item.href} href={item.href} prefetch={false} onClick={() => { if (isMobile) setSidebarOpen(false) }} style={{ ...linkStyle(active), display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <Icon size={18} /> <span style={{ flex: 1 }}>{item.label}</span>
                     {isChat && unreadChat > 0 && (
                       <span style={{ background: '#C0392B', color: 'white', fontSize: 11, fontWeight: 700, borderRadius: 999, minWidth: 20, height: 20, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 6px' }}>
@@ -277,7 +277,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </nav>
 
         <div style={{ padding: '16px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-          <Link href="/admin/account" onClick={() => { if (isMobile) setSidebarOpen(false) }} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px', padding: '10px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '10px', textDecoration: 'none', color: 'white' }}>
+          <Link href="/admin/account" prefetch={false} onClick={() => { if (isMobile) setSidebarOpen(false) }} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px', padding: '10px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '10px', textDecoration: 'none', color: 'white' }}>
             {avatar ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={avatar} alt="" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
