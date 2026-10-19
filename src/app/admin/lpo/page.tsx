@@ -50,6 +50,7 @@ export default function LpoPage() {
   const canCreate = role === "procurement_officer" || role === "external_procurement" || isExec || isAdmin
   const [lpos, setLpos] = useState<Lpo[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -80,10 +81,13 @@ export default function LpoPage() {
   const [attachment, setAttachment] = useState<string[]>([])
 
   const load = async () => {
+    setLoadError(false)
     try {
       const res = await fetch("/api/lpos")
       if (res.ok) setLpos(await res.json())
-    } finally { setLoading(false) }
+      else setLoadError(true)
+    } catch { setLoadError(true) }
+    finally { setLoading(false) }
   }
   useEffect(() => { load() }, [])
 
@@ -379,6 +383,11 @@ export default function LpoPage() {
       <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, overflow: "hidden" }}>
         {loading ? (
           <p style={{ padding: 24, color: MUTED }}>Loading…</p>
+        ) : loadError ? (
+          <div style={{ padding: 24, textAlign: "center" }}>
+            <p style={{ color: RED, marginBottom: 10 }}>Couldn&apos;t load purchase orders — the connection to the database timed out. This doesn&apos;t mean they&apos;re gone.</p>
+            <Button onClick={() => { setLoading(true); load() }} variant="outline" style={{ gap: 6 }}>Retry</Button>
+          </div>
         ) : lpos.length === 0 ? (
           <p style={{ padding: 24, color: MUTED, textAlign: "center" }}>No purchase orders yet. Create your first one.</p>
         ) : filteredLpos.length === 0 ? (

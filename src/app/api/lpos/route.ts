@@ -60,10 +60,17 @@ const LPO_VIEW_ROLES = [
 export async function GET(request: NextRequest) {
   const auth = await requireRole(request, LPO_VIEW_ROLES)
   if (auth instanceof NextResponse) return auth
-  const lpos = await prisma.lpo.findMany({ orderBy: { createdAt: "desc" } })
-  const extras = await fetchExtras(lpos.map((l) => l.id))
-  const result = lpos.map((l) => ({ ...l, ...(extras.get(l.id) ?? EXTRA_DEFAULTS) }))
-  return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } })
+  // The DB connection pool (nano compute) occasionally times out under
+  // concurrent admin-page load — surface that as a clean 503 instead of an
+  // unhandled 500, so the client can tell "DB is busy" apart from "no data".
+  try {
+    const lpos = await prisma.lpo.findMany({ orderBy: { createdAt: "desc" } })
+    const extras = await fetchExtras(lpos.map((l) => l.id))
+    const result = lpos.map((l) => ({ ...l, ...(extras.get(l.id) ?? EXTRA_DEFAULTS) }))
+    return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } })
+  } catch {
+    return NextResponse.json({ error: "Database is temporarily unavailable. Try again shortly." }, { status: 503 })
+  }
 }
 
 export async function POST(request: NextRequest) {
