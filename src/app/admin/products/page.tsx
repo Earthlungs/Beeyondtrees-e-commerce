@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Plus, Trash2, Edit, X, Upload, AlertTriangle, CheckCircle2, Package, Image, Search } from "lucide-react"
 import { useProductStore, Product, fuzzyMatch } from "@/store/product-store"
 import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary"
+import { ConfirmModal } from "@/components/admin/ConfirmModal"
 
 export default function AdminProductsPage() {
   const { products, addProduct, updateProduct, deleteProduct, loadProducts } = useProductStore()
@@ -16,6 +17,7 @@ export default function AdminProductsPage() {
   const [imageUrls, setImageUrls] = useState<string[]>([])
   const [newImageUrl, setNewImageUrl] = useState("")
   const [productSearch, setProductSearch] = useState("")
+  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null)
   const handleSearch = (v: string) => { setProductSearch(v); setPage(1) }
   const [uploading, setUploading] = useState(false)
   const [notice, setNotice] = useState<{ text: string; tone: "error" | "success" } | null>(null)
@@ -133,6 +135,16 @@ export default function AdminProductsPage() {
 
   return (
     <div>
+      <ConfirmModal
+        open={!!deleteTarget}
+        title={`Delete ${deleteTarget?.name}?`}
+        message="This permanently removes the product and its images. This cannot be undone."
+        confirmLabel="Delete permanently"
+        danger
+        onConfirm={() => { if (deleteTarget) { deleteProduct(deleteTarget.id); setDeleteTarget(null) } }}
+        onCancel={() => setDeleteTarget(null)}
+      />
+
       {/* Custom toast (replaces browser alert) */}
       {notice && (
         <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 1000, maxWidth: '360px', display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px 14px', backgroundColor: notice.tone === 'success' ? 'var(--admin-success-bg)' : 'var(--admin-error-bg)', border: `1px solid ${notice.tone === 'success' ? '#6B7D5C' : 'var(--admin-error-fg)'}`, borderRadius: '8px', boxShadow: '0 4px 14px rgba(0,0,0,0.12)' }}>
@@ -296,7 +308,7 @@ export default function AdminProductsPage() {
                   <td style={{ padding: '10px 14px', textAlign: 'center', color: "var(--admin-muted)", fontSize: '12px' }}>{p.images?.length || 0}</td>
                   <td style={{ padding: '10px 14px', textAlign: 'right' }}>
                     <Button size="sm" variant="outline" onClick={() => handleEdit(p)} style={{ borderColor: '#6B7D5C', color: '#6B7D5C', marginRight: '4px' }}><Edit size={13} /></Button>
-                    <Button size="sm" variant="outline" onClick={() => deleteProduct(p.id)} style={{ borderColor: '#8C6A4A', color: '#8C6A4A' }}><Trash2 size={13} /></Button>
+                    <Button size="sm" variant="outline" onClick={() => setDeleteTarget(p)} style={{ borderColor: '#8C6A4A', color: '#8C6A4A' }}><Trash2 size={13} /></Button>
                   </td>
                 </tr>
               ))}
