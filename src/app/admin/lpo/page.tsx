@@ -11,6 +11,7 @@ import DocLineItems, { EditLine, emptyLine } from "@/components/admin/DocLineIte
 import ImageUploader from "@/components/admin/ImageUploader"
 import { ConfirmModal, PromptModal, SuccessModal } from "@/components/admin/ConfirmModal"
 import { isAdminishRole } from "@/lib/tracing-stages"
+import { TableSkeleton, TabsSkeleton } from "@/components/admin/Skeleton"
 
 const TEXT = "var(--admin-text)"
 const MUTED = "var(--admin-muted)"
@@ -161,6 +162,13 @@ export default function LpoPage() {
     (isChief && l.status === "pending_chief")
   const isUnpaid = (l: Lpo) => l.status === "approved" && !l.paid
   const isPaid = (l: Lpo) => l.status === "approved" && !!l.paid
+  // Raised but not finally approved yet — whether it is sitting with the Factory
+  // Admin, the Chief, or the CEO. The Factory Admin needs this as a standing view
+  // (not just "awaiting MY decision") to see everything still in the pipeline,
+  // including LPOs raised with no decision on them at all.
+  const isUndecided = (l: Lpo) =>
+    !l.status || l.status === "pending" || l.status === "pending_chief" ||
+    l.status === "exec_approved" || l.status === "chief_approved"
 
   // Tier 0 (needs your decision) then tier 1 (approved but unpaid — money owed)
   // outrank the rest, which stays in its normal newest-first order.
@@ -169,15 +177,17 @@ export default function LpoPage() {
     return [...lpos].sort((a, b) => tier(a) - tier(b))
   }, [lpos, isAdmin, isExec, isChief])
 
-  type FilterTab = "all" | "action" | "unpaid" | "paid" | "rejected"
+  type FilterTab = "all" | "action" | "undecided" | "unpaid" | "paid" | "rejected"
   const [filter, setFilter] = useState<FilterTab>("all")
   const actionCount = sortedLpos.filter(isActionable).length
+  const undecidedCount = sortedLpos.filter(isUndecided).length
   const unpaidCount = sortedLpos.filter(isUnpaid).length
   const paidCount = sortedLpos.filter(isPaid).length
   const rejectedCount = sortedLpos.filter((l) => l.status === "rejected").length
   const tabs: { key: FilterTab; label: string; count: number }[] = [
     { key: "all", label: "All", count: sortedLpos.length },
     ...(isAdmin || isExec || isChief ? [{ key: "action" as FilterTab, label: "Awaiting your decision", count: actionCount }] : []),
+    { key: "undecided", label: "Not yet approved", count: undecidedCount },
     { key: "unpaid", label: "Awaiting payment", count: unpaidCount },
     { key: "paid", label: "Paid", count: paidCount },
     { key: "rejected", label: "Rejected", count: rejectedCount },
@@ -185,6 +195,7 @@ export default function LpoPage() {
   const filteredLpos = useMemo(() => {
     switch (filter) {
       case "action": return sortedLpos.filter(isActionable)
+      case "undecided": return sortedLpos.filter(isUndecided)
       case "unpaid": return sortedLpos.filter(isUnpaid)
       case "paid": return sortedLpos.filter(isPaid)
       case "rejected": return sortedLpos.filter((l) => l.status === "rejected")
@@ -362,7 +373,9 @@ export default function LpoPage() {
         </div>
       )}
 
-      {lpos.length > 0 && (
+      {loading && <TabsSkeleton count={isAdmin || isExec || isChief ? 6 : 5} />}
+
+      {!loading && lpos.length > 0 && (
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
           {tabs.map((t) => (
             <button
@@ -382,7 +395,7 @@ export default function LpoPage() {
 
       <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, overflow: "hidden" }}>
         {loading ? (
-          <p style={{ padding: 24, color: MUTED }}>Loading…</p>
+          <TableSkeleton headers={["Number", "Supplier", "Order Date", "Total", "Status", ""]} align={[3, 5]} />
         ) : loadError ? (
           <div style={{ padding: 24, textAlign: "center" }}>
             <p style={{ color: RED, marginBottom: 10 }}>Couldn&apos;t load purchase orders — the connection to the database timed out. This doesn&apos;t mean they&apos;re gone.</p>

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Users, Plus, X, Loader2, Ban, CheckCircle2, ShieldAlert, Trash2, UserCheck, UserX, Search, KeyRound } from "lucide-react"
 import { ROLE_LABELS } from "@/lib/tracing-stages"
 import { ConfirmModal, PromptModal } from "@/components/admin/ConfirmModal"
+import { TableSkeleton } from "@/components/admin/Skeleton"
 
 const TEXT = "var(--admin-text)"
 const MUTED = "var(--admin-muted)"
@@ -283,7 +284,7 @@ export default function UsersPage() {
 
       <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, overflow: "hidden" }}>
         {loading ? (
-          <p style={{ padding: 24, color: MUTED }}>Loading…</p>
+          <TableSkeleton headers={["User", "Role", "Country", "Status", "Actions"]} align={[4]} />
         ) : displayed.length === 0 ? (
           <p style={{ padding: 24, color: MUTED }}>No users match “{search}”.</p>
         ) : (

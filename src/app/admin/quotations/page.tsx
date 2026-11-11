@@ -11,6 +11,7 @@ import DocLineItems, { EditLine, emptyLine } from "@/components/admin/DocLineIte
 import ImageUploader from "@/components/admin/ImageUploader"
 import { ConfirmModal, PromptModal, SuccessModal } from "@/components/admin/ConfirmModal"
 import { isAdminishRole } from "@/lib/tracing-stages"
+import { TableSkeleton } from "@/components/admin/Skeleton"
 
 const TEXT = "var(--admin-text)"
 const MUTED = "var(--admin-muted)"
@@ -249,7 +250,7 @@ export default function QuotationsPage() {
 
       <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, overflow: "hidden" }}>
         {loading ? (
-          <p style={{ padding: 24, color: MUTED }}>Loading…</p>
+          <TableSkeleton headers={["Number", "Supplier Rep", "Date", "Total", "Status", ""]} align={[3, 5]} />
         ) : quotations.length === 0 ? (
           <p style={{ padding: 24, color: MUTED, textAlign: "center" }}>No quotations yet. Create your first one.</p>
         ) : (

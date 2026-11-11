@@ -164,6 +164,35 @@ body {
   100% { transform: translateX(100%); }
 }
 
+/* Loading placeholders for the admin app (see components/admin/Skeleton.tsx).
+   Theme-aware: both stops are admin surface vars, so it works in dark mode. */
+@keyframes byt-skel-sweep {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@keyframes byt-skel-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.byt-skel {
+  display: block;
+  background-image: linear-gradient(
+    90deg,
+    var(--admin-card-2) 0%,
+    var(--admin-border) 45%,
+    var(--admin-card-2) 90%
+  );
+  background-size: 200% 100%;
+  animation: byt-skel-sweep 1.5s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .byt-skel {
+    background-image: none;
+    background-color: var(--admin-border);
+    animation: byt-skel-pulse 2.4s ease-in-out infinite;
+  }
+}
+
 /* Blinking offer tag on the storefront. */
 @keyframes byt-blink {
   0%, 100% { opacity: 1; transform: scale(1); }
@@ -257,6 +286,12 @@ body {
    too, so it gives up its space first on a phone. */
 @media screen and (max-width: 560px) {
   .admin-user-label { display: none; }
+}
+
+/* The real sidebar is collapsed on phones, so its loading placeholder is too —
+   otherwise the skeleton would squeeze the content it is standing in for. */
+@media screen and (max-width: 767px) {
+  .admin-shell-skeleton-aside { display: none; }
 }
 
 /* The branded A4 documents (invoice, LPO, quotation, delivery note) are also

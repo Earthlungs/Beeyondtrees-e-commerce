@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { ROLE_LABELS } from "@/lib/tracing-stages"
+import { AdminShellSkeleton } from "@/components/admin/Skeleton"
 import { applyTheme, getStoredTheme, type Theme } from "@/lib/theme"
 
 const TRACING_ROLES = [
@@ -29,12 +30,13 @@ interface NavItem { href: string; label: string; icon: React.ComponentType<{ siz
 interface NavGroup { title?: string; items: NavItem[] }
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { data: session, status } = useSession()
+  const { data: session, status, update } = useSession()
   const pathname = usePathname()
   const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [unreadChat, setUnreadChat] = useState(0)
+  const [roleRetries, setRoleRetries] = useState(0)
 
   // Poll the total unread chat count for the sidebar "Chat" badge.
   useEffect(() => {
@@ -84,15 +86,46 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return () => mq.removeEventListener("change", on)
   }, [])
 
+  // Every admin page derives what the user may DO from this role, so it is the
+  // one thing the shell refuses to guess. A signed-in session can briefly come
+  // back without it (the JWT refresh re-reads the role from the DB and a pool
+  // timeout there used to blank it), and when that happened the whole panel fell
+  // through to the default "merchant" view: an LPO approver saw View-only rows
+  // with no Approve/Amend and no "Awaiting your decision" tab, and it corrected
+  // itself only when some later refresh happened to succeed. Re-ask for the
+  // session instead of rendering a stripped-down page.
+  const sessionRole = (session?.user as { role?: string } | undefined)?.role || null
+  const roleUnresolved = status === "authenticated" && !sessionRole
+  useEffect(() => {
+    if (!roleUnresolved || roleRetries >= 4) return
+    const t = setTimeout(() => {
+      update()
+      setRoleRetries((n) => n + 1)
+    }, 300 * 2 ** roleRetries)
+    return () => clearTimeout(t)
+  }, [roleUnresolved, roleRetries, update])
+
   if (pathname.includes("/login")) return <>{children}</>
-  if (status === "loading") {
-    return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: '#A89F91', fontSize: '18px' }}>Loading...</div>
-  }
+  if (status === "loading") return <AdminShellSkeleton />
   if (!session) {
     return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: '#A89F91', fontSize: '18px' }}>Access Denied. Please <Link href="/admin/login" style={{ color: '#6B7D5C' }}>sign in</Link>.</div>
   }
+  if (!sessionRole) {
+    // Still retrying — keep showing the shell placeholder rather than a wrong UI.
+    if (roleRetries < 4) return <AdminShellSkeleton />
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, height: '100vh', padding: 24, textAlign: 'center' }}>
+        <p style={{ color: 'var(--admin-text)', fontSize: 15, maxWidth: 420 }}>
+          We couldn&apos;t confirm your permissions just now. Your account is fine — please sign in again.
+        </p>
+        <Button onClick={() => signOut({ callbackUrl: "/admin/login" })} style={{ background: '#6B7D5C', color: 'white', gap: 8 }}>
+          <LogOut size={15} /> Sign in again
+        </Button>
+      </div>
+    )
+  }
 
-  const role = (session.user as { role?: string })?.role || "merchant"
+  const role = sessionRole
   const roleLabel = ROLE_LABELS[role] ?? role
   const avatar = (session.user as { image?: string | null })?.image || null
   const isAdmin = role === "admin" || role === "it_specialist" || role === "assistant_ceo" // full control (Assistant CEO = all CEO rights)

@@ -8,6 +8,7 @@ import { Clock, LogIn, LogOut, Loader2, MapPin, AlertTriangle, Users } from "luc
 import { LocationCell } from "@/components/admin/LocationMap"
 import { formatDuration, nairobiDateKey } from "@/lib/attendance"
 import { ROLE_LABELS, isAdminishRole } from "@/lib/tracing-stages"
+import { TableSkeleton } from "@/components/admin/Skeleton"
 
 const TEXT = "var(--admin-text)"
 const MUTED = "var(--admin-muted)"
@@ -237,7 +238,10 @@ function PunchTable({
   return (
     <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, overflow: "hidden" }}>
       {loading ? (
-        <p style={{ padding: 24, color: MUTED }}>Loading…</p>
+        <TableSkeleton
+          rows={5}
+          headers={[...(showStaff ? ["Staff"] : []), "Action", ...(showDate ? ["Date"] : []), "Time", "Location", "Hours"]}
+        />
       ) : rows.length === 0 ? (
         <p style={{ padding: 24, color: MUTED, textAlign: "center" }}>{empty}</p>
       ) : (

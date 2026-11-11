@@ -10,6 +10,7 @@ import {
   Truck, Phone, MapPin, Package, ChevronDown, ChevronUp,
   Bike, CheckCircle, XCircle, Clock, RefreshCw, Mail, User, X, Lock,
 } from "lucide-react"
+import { StatCardsSkeleton } from "@/components/admin/Skeleton"
 
 const SAGE = "#6B7D5C"
 const DARK = "#4A3F2F"
@@ -375,7 +376,7 @@ function DispatchPanel({ order, onDispatched, isPaid }: { order: Order; onDispat
 
 export default function DeliveriesPage() {
   return (
-    <Suspense fallback={<p style={{ color: MUTED, textAlign: "center", padding: "48px 16px" }}>Loading…</p>}>
+    <Suspense fallback={<StatCardsSkeleton count={3} />}>
       <DeliveriesContent />
     </Suspense>
   )

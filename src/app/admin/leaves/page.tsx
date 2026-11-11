@@ -8,6 +8,7 @@ import { CalendarDays, Plus, X, Loader2, Check, Ban, Users, AlertTriangle } from
 import { ConfirmModal, PromptModal, SuccessModal } from "@/components/admin/ConfirmModal"
 import { LEAVE_TYPES, LEAVE_STATUS_LABELS, leaveTypeLabel, countLeaveDays, parseDayInput } from "@/lib/attendance"
 import { ROLE_LABELS, isAdminishRole } from "@/lib/tracing-stages"
+import { TableSkeleton } from "@/components/admin/Skeleton"
 
 const TEXT = "var(--admin-text)"
 const MUTED = "var(--admin-muted)"
@@ -280,7 +281,10 @@ function LeaveTable({
   return (
     <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, overflow: "hidden" }}>
       {loading ? (
-        <p style={{ padding: 24, color: MUTED }}>Loading…</p>
+        <TableSkeleton
+          rows={5}
+          headers={["Ref", ...(showStaff ? ["Staff"] : []), "Type", "Dates", "Days", "Status", ""]}
+        />
       ) : rows.length === 0 ? (
         <p style={{ padding: 24, color: MUTED, textAlign: "center" }}>{empty}</p>
       ) : (

@@ -10,6 +10,7 @@ import { Loader2, Pencil, ArrowLeft, Check } from "lucide-react"
 import DocLineItems, { EditLine, emptyLine, lineTotals } from "@/components/admin/DocLineItems"
 import ImageUploader from "@/components/admin/ImageUploader"
 import type { DocLine } from "@/lib/docs"
+import { FormSkeleton } from "@/components/admin/Skeleton"
 
 const TEXT = "var(--admin-text)"
 const MUTED = "var(--admin-muted)"
@@ -106,7 +107,7 @@ export default function AmendQuotationPage() {
 
   const { total } = lineTotals(lines)
 
-  if (fetching) return <p style={{ padding: 40, color: MUTED }}>Loading…</p>
+  if (fetching) return <FormSkeleton fields={6} />
   if (fetchError) return (
     <div style={{ padding: 40, textAlign: "center", color: MUTED }}>
       {fetchError} <Link href="/admin/quotations" style={{ color: GREEN }}>Back</Link>

@@ -9,6 +9,7 @@ import {
   Paperclip, Search, Eye, CalendarDays, Loader2, Wallet,
 } from "lucide-react"
 import { ConfirmModal } from "@/components/admin/ConfirmModal"
+import { TableSkeleton, StatCardsSkeleton } from "@/components/admin/Skeleton"
 
 const TEXT = "var(--admin-text)"
 const MUTED = "var(--admin-muted)"
@@ -220,7 +221,16 @@ export default function FinanceDashboard() {
       />
 
       {loading ? (
-        <p style={{ padding: 24, color: MUTED }}>Loading…</p>
+        <>
+          <StatCardsSkeleton count={4} minWidth={170} />
+          <div style={{ marginTop: 22, background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, overflow: "hidden" }}>
+            <TableSkeleton
+              rows={6}
+              headers={["Number", "Supplier", "Raised by", "Date", "Amount", "Status", "1st approval", "Final (CEO)", "Turnaround", "Payment", ""]}
+              align={[4, 10]}
+            />
+          </div>
+        </>
       ) : (
         <>
           {/* Stat tiles */}

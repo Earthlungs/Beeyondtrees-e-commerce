@@ -10,6 +10,7 @@ import { FileText, Plus, X, Loader2, Printer, BadgeCheck, Wallet } from "lucide-
 import DocLineItems, { EditLine, emptyLine } from "@/components/admin/DocLineItems"
 import { SuccessModal } from "@/components/admin/ConfirmModal"
 import { isAdminishRole } from "@/lib/tracing-stages"
+import { TableSkeleton } from "@/components/admin/Skeleton"
 
 const TEXT = "var(--admin-text)"
 const MUTED = "var(--admin-muted)"
@@ -243,7 +244,7 @@ export default function InvoicingPage() {
 
       <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, overflow: "hidden" }}>
         {loading ? (
-          <p style={{ padding: 24, color: MUTED }}>Loading…</p>
+          <TableSkeleton headers={["Number", "Customer", "Date", "Total", "Payment", ""]} align={[3, 5]} />
         ) : invoices.length === 0 ? (
           <p style={{ padding: 24, color: MUTED, textAlign: "center" }}>No invoices yet. Create your first one.</p>
         ) : (

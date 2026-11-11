@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { PackageCheck, Plus, X, Loader2, Printer, Eye, Paperclip, Trash2 } from "lucide-react"
 import ImageUploader from "@/components/admin/ImageUploader"
 import { SuccessModal } from "@/components/admin/ConfirmModal"
+import { TableSkeleton } from "@/components/admin/Skeleton"
 
 const TEXT = "var(--admin-text)"
 const MUTED = "var(--admin-muted)"
@@ -277,7 +278,7 @@ export default function DeliveryNotesPage() {
 
       <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, overflow: "hidden" }}>
         {loading ? (
-          <p style={{ padding: 24, color: MUTED }}>Loading…</p>
+          <TableSkeleton headers={["Number", "Against LPO", "Supplier", "Delivered To", "Date", ""]} align={[5]} />
         ) : notes.length === 0 ? (
           <p style={{ padding: 24, color: MUTED, textAlign: "center" }}>No delivery notes yet. Create one against an approved LPO.</p>
         ) : (

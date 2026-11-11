@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback } from "react"
 import {
   TrendingUp, TrendingDown, Wallet, Boxes, Globe, Store,
-  MapPin, Package, Clock, Loader2, Banknote, Smartphone, CreditCard, Receipt, Award, Tag,
+  MapPin, Package, Clock, Banknote, Smartphone, CreditCard, Receipt, Award, Tag,
 } from "lucide-react"
+import { Skeleton, StatCardsSkeleton } from "@/components/admin/Skeleton"
 
 const TEXT = "var(--admin-text)", MUTED = "#A89F91", GREEN = "#6B7D5C", BROWN = "#8C6A4A", DARK = "#3D3226", CREAM = "var(--admin-card-2)"
 const ksh = (n: number) => `KSh ${Math.round(n).toLocaleString()}`
@@ -86,7 +87,12 @@ export default function AnalyticsPage() {
       </div>
 
       {err && <div style={{ background: "#FBEAEA", color: "#9B2C2C", padding: "12px 16px", borderRadius: 10, marginBottom: 16, fontSize: 14 }}>{err}</div>}
-      {loading && <div style={{ display: "flex", alignItems: "center", gap: 8, color: MUTED, padding: 20 }}><Loader2 size={16} className="animate-spin" /> Loading…</div>}
+      {loading && (
+        <>
+          <Skeleton height={62} radius={14} style={{ marginBottom: 18 }} />
+          <StatCardsSkeleton count={6} minWidth={170} />
+        </>
+      )}
 
       {data && !loading && (
         <>
