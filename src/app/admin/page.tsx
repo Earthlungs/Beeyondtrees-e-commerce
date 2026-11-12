@@ -8,12 +8,15 @@ import { Button } from "@/components/ui/button"
 import {
   Package, ShoppingCart, Truck, DollarSign,
   Users, AlertTriangle, CheckCircle, Clock, ArrowRight,
-  ChevronDown, ChevronUp, UserCheck, UserX, Sprout, Warehouse, Wheat, PawPrint, BarChart3,
+  ChevronDown, ChevronUp, ChevronRight, UserCheck, UserX, Sprout, Warehouse, Wheat, PawPrint, BarChart3,
   Banknote, FileText, HandCoins, Hourglass
 } from "lucide-react"
 import Link from "next/link"
 import { useProductStore } from "@/store/product-store"
 import { isAdminishRole } from "@/lib/tracing-stages"
+
+// A dashboard card is a summary, not a register — the rest live on the board.
+const DASH_PRODUCTION_LIMIT = 8
 
 const PREVIEW = 3
 
@@ -37,7 +40,13 @@ export default function AdminDashboard() {
   const [stockExpanded, setStockExpanded] = useState(false)
   const [fungicultureExpanded, setFungicultureExpanded] = useState(false)
   const [livestockExpanded, setLivestockExpanded] = useState(false)
-  const [production, setProduction] = useState<{ id: string; code: string; productName: string | null; productionPercent: number | null }[]>([])
+  // Same shape the tracing board renders, so the dashboard card can present
+  // these batches identically instead of as a bare name + percent.
+  const [production, setProduction] = useState<{
+    id: string; code: string; productName: string | null; materialName: string | null
+    requestedBy: string | null; origin: string | null; createdAt: string
+    productionPercent: number | null
+  }[]>([])
   const [money, setMoney] = useState<FinanceSummary | null>(null)
   const lowStock = products.filter((p) => p.stock <= 5)
 
@@ -214,22 +223,52 @@ export default function AdminDashboard() {
       {isAdmin && production.length > 0 && (
         <Card style={{ borderColor: '#A89F91', marginBottom: '24px' }}>
           <CardHeader style={{ paddingBottom: '8px' }}>
-            <CardTitle style={{ fontSize: '16px', color: "var(--admin-text)" }}>Production in progress</CardTitle>
+            <CardTitle style={{ fontSize: '16px', color: "var(--admin-text)", display: 'flex', alignItems: 'center', gap: 8 }}>
+              Production in progress
+              <span style={{ fontSize: 12, color: "var(--admin-muted)", fontWeight: 400 }}>({production.length})</span>
+            </CardTitle>
           </CardHeader>
-          <CardContent style={{ display: 'grid', gap: '12px' }}>
-            {production.map((b) => (
+          <CardContent style={{ display: 'grid', gap: '10px' }}>
+            {production.slice(0, DASH_PRODUCTION_LIMIT).map((b) => (
               <Link key={b.id} href={`/admin/tracing/${b.id}`} style={{ textDecoration: 'none' }}>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
-                    <span style={{ color: "var(--admin-text)", fontWeight: 600 }}>{b.productName || b.code}</span>
-                    <span style={{ color: (b.productionPercent ?? 0) >= 100 ? '#6B7D5C' : '#B8860B', fontWeight: 700 }}>{b.productionPercent ?? 0}%</span>
+                {/* Same row markup as the tracing board, so a batch reads the
+                    same way in both places (and stacks on a phone the same way). */}
+                <div className="tracing-row">
+                  <div className="tracing-row-id">
+                    <div style={{ fontWeight: 700, color: "var(--admin-text)", fontSize: 14 }}>{b.code}</div>
+                    <div style={{ fontSize: 11, color: "var(--admin-muted)" }}>{new Date(b.createdAt).toLocaleDateString()}</div>
                   </div>
-                  <div style={{ height: '8px', background: 'var(--admin-border)', borderRadius: '999px', overflow: 'hidden' }}>
-                    <div style={{ width: `${b.productionPercent ?? 0}%`, height: '100%', background: '#6B7D5C' }} />
+                  <div className="tracing-row-main">
+                    <div style={{ fontWeight: 600, color: "var(--admin-text)", fontSize: 14, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ overflowWrap: 'anywhere' }}>{b.productName || b.materialName || b.code}</span>
+                      {b.origin === "external" ? (
+                        <span style={{ background: '#8C6A4A', color: 'white', fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: 0.4 }}>External</span>
+                      ) : b.origin === "internal" ? (
+                        <span style={{ background: '#6B7D5C', color: 'white', fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: 0.4 }}>Internal</span>
+                      ) : null}
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--admin-muted)" }}>by {b.requestedBy || "—"}</div>
                   </div>
+                  <div className="tracing-row-state">
+                    <div style={{ fontSize: 12, color: "var(--admin-muted)", marginBottom: 4 }}>
+                      Production: <b style={{ color: (b.productionPercent ?? 0) >= 100 ? '#6B7D5C' : "var(--admin-text)" }}>{b.productionPercent ?? 0}%</b>
+                    </div>
+                    <div style={{ height: 6, background: 'var(--admin-border)', borderRadius: 999, overflow: 'hidden' }}>
+                      <div style={{ width: `${b.productionPercent ?? 0}%`, height: '100%', background: '#6B7D5C', transition: 'width .3s' }} />
+                    </div>
+                  </div>
+                  <span className="tracing-row-badge">
+                    <span style={{ background: '#FEF3C7', color: '#92400E', fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 999 }}>in progress</span>
+                  </span>
+                  <ChevronRight className="tracing-row-chevron" size={18} color="var(--admin-muted)" />
                 </div>
               </Link>
             ))}
+            {production.length > DASH_PRODUCTION_LIMIT && (
+              <Link href="/admin/tracing" style={{ fontSize: 13, color: '#6B7D5C', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center', paddingTop: 4 }}>
+                View the other {production.length - DASH_PRODUCTION_LIMIT} on the Tracing Board <ArrowRight size={14} />
+              </Link>
+            )}
           </CardContent>
         </Card>
       )}
