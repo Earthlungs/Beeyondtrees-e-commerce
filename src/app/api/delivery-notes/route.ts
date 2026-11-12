@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db"
 import { requireDocRole, normalizeDeliveryLines, createNumbered, parseDate } from "@/lib/docs"
 import { requireRole } from "@/lib/authz"
 import { sendDeliveryNoteEmail, isValidEmail } from "@/lib/doc-email"
+import { withRetry, pgErrorCode } from "@/lib/db-retry"
 
 // Delivery notes carry no money and no approval chain — see the DeliveryNote
 // model in schema.prisma. They are raised against an already-approved LPO by
@@ -63,13 +64,22 @@ export async function POST(request: NextRequest) {
 
     // status/destinationOfGoods are raw Lpo columns, not Prisma fields (see
     // /api/lpos). Pre-migration the columns are absent — treat as approved.
-    let lpoStatus: string | null = "approved"
+    // Fails CLOSED: goods moving against an unapproved LPO is exactly what this
+    // check exists to prevent, and defaulting to "approved" when the read fails
+    // defeated it.
+    let lpoStatus: string | null = null
     try {
-      const rows = await prisma.$queryRaw<{ status: string; destinationOfGoods: string | null }[]>`
+      const rows = await withRetry(() => prisma.$queryRaw<{ status: string; destinationOfGoods: string | null }[]>`
         SELECT status, "destinationOfGoods" FROM "Lpo" WHERE id = ${lpoId}
-      `
+      `, "delivery-note.lpo-status")
       if (rows[0]) { lpoStatus = rows[0].status; lpoDestination = rows[0].destinationOfGoods }
-    } catch { /* pre-migration — treat as approved */ }
+    } catch (e) {
+      console.error("[api/delivery-notes] could not read LPO approval status:", pgErrorCode(e) ?? "", e)
+      return NextResponse.json({ error: "Couldn't confirm that LPO's approval status just now. Try again shortly." }, { status: 503 })
+    }
+    if (!lpoStatus) {
+      return NextResponse.json({ error: "Couldn't confirm that LPO's approval status." }, { status: 503 })
+    }
 
     if (lpoStatus && lpoStatus !== "approved") {
       return NextResponse.json({ error: `${found.number} is not approved yet, so goods can't be delivered against it.` }, { status: 400 })

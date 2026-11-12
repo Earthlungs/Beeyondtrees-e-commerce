@@ -3,6 +3,7 @@ import { randomUUID } from "crypto"
 import { prisma } from "@/lib/db"
 import { requireRole } from "@/lib/authz"
 import { TRACING_ROLES, STAGE_ROLES } from "@/lib/tracing"
+import { withRetry, pgErrorCode } from "@/lib/db-retry"
 
 // Read access: anyone who can see the board. Write access: the production stage
 // owner (production_officer) or CEO-level.
@@ -20,13 +21,19 @@ interface StepRow {
   createdAt: Date
 }
 
+// Throws rather than returning [] — an empty list reads on screen as "no
+// production logged yet / 0%", which is a statement of fact this function has
+// no business making when the query failed.
 async function fetchSteps(batchId: string): Promise<StepRow[]> {
   try {
-    return await prisma.$queryRaw<StepRow[]>`
+    return await withRetry(() => prisma.$queryRaw<StepRow[]>`
       SELECT id, "batchId", label, note, percent, images, "createdBy", "createdAt"
       FROM "ProductionStep" WHERE "batchId" = ${batchId} ORDER BY "createdAt" ASC
-    `
-  } catch { return [] }
+    `, "tracing.production-steps")
+  } catch (e) {
+    console.error("[api/tracing/.../production-steps] read failed:", pgErrorCode(e) ?? "", e)
+    throw e
+  }
 }
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireRole, isAdminish } from "@/lib/authz"
 import { TRACING_ROLES, COST_FIELDS } from "@/lib/tracing"
+import { withRetry, pgErrorCode } from "@/lib/db-retry"
 
 const VIEW_ROLES = [...TRACING_ROLES, "admin", "it_specialist", "assistant_ceo"]
 
@@ -55,7 +56,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       WHERE b.id = ${id}
     `
     if (rows[0]) extra = rows[0]
-  } catch { /* columns not present yet */ }
+  } catch (e) {
+    console.error("[api/tracing/batches/:id] origin/LPO read failed:", pgErrorCode(e) ?? "", e)
+    return NextResponse.json({ error: "Database is temporarily unavailable. Try again shortly." }, { status: 503 })
+  }
 
   return NextResponse.json({ ...batch, ...extra }, { headers: { "Cache-Control": "no-store" } })
 }

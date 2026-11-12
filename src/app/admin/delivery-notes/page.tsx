@@ -82,7 +82,7 @@ export default function DeliveryNotesPage() {
   const load = async () => {
     setLpoLoadFailed(false)
     try {
-      const [dnRes, lpoRes] = await Promise.all([fetch("/api/delivery-notes"), fetch("/api/lpos")])
+      const [dnRes, lpoRes] = await Promise.all([fetch("/api/delivery-notes"), fetch("/api/lpos?items=1")])
       if (dnRes.ok) setNotes(await dnRes.json())
       if (lpoRes.ok) {
         const all: ApprovedLpo[] = await lpoRes.json()

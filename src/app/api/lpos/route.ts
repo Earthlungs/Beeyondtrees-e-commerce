@@ -3,18 +3,33 @@ import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import { requireDocRole, normalizeLines, createNumbered, parseDate } from "@/lib/docs"
 import { requireRole, isAdminish } from "@/lib/authz"
-import { withRetry, isMissingSchema } from "@/lib/db-retry"
+import { withRetry, isMissingSchema, pgErrorCode } from "@/lib/db-retry"
 import { sendMail } from "@/lib/mailer"
 import { lpoExecApprovedEmail, lpoNewEmail } from "@/lib/email-templates"
 import { sendLpoEmail, isValidEmail } from "@/lib/doc-email"
 
 const BASE_URL = process.env.NEXTAUTH_URL || "https://www.beeyondtrees.org"
 
-// Extra columns (status, approvedBy, approvedAt, rejectionReason,
-// destinationOfGoods) are NOT in the Prisma schema — they're raw DB columns
-// applied by migration. Raw SQL reads/writes them; if the columns don't exist
-// yet (pre-migration) the try/catch falls back gracefully.
-type ExtraFields = {
+// status / paid / origin and the rest of the approval trail are raw DB columns
+// (not in the Prisma schema), so the whole row is read with one raw SELECT.
+// This used to be two queries — a Prisma findMany for the base columns plus a
+// second raw query for these — which was both twice the latency and the source
+// of a nasty failure mode: the first could succeed while the second failed, and
+// the handler filled the gap with placeholder defaults. One query can only
+// succeed or fail as a whole.
+interface LpoRow {
+  id: string
+  number: string
+  orderDate: Date
+  expectedArrival: Date | null
+  supplierName: string
+  shippingAddress: string | null
+  purchaseRep: string | null
+  subtotal: number
+  vat: number
+  total: number
+  notes: string | null
+  createdAt: Date
   status: string
   approvedBy: string | null
   approvedAt: Date | null
@@ -29,37 +44,9 @@ type ExtraFields = {
   paidBy: string | null
   paidAt: Date | null
   paymentDetails: string | null
+  items?: unknown
 }
 
-const EXTRA_DEFAULTS: ExtraFields = {
-  status: "approved", approvedBy: null, approvedAt: null, rejectionReason: null,
-  destinationOfGoods: null, amended: false, origin: "internal", createdByName: null, onBehalf: false,
-  attachmentUrl: null, paid: false, paidBy: null, paidAt: null, paymentDetails: null,
-}
-
-// Returns null when the columns could not be READ (as opposed to not existing).
-// That distinction is the whole point: this used to answer a timeout with
-// `status: null` for every LPO, and the API returned it as a 200. The list then
-// rendered 155 rows with a blank Status column, no Approve/Amend buttons and
-// every filter tab counting 0 — indistinguishable, from the client's side, from
-// a genuine "none of these have a status". Only a schema that really lacks the
-// columns (pre-migration) gets the defaults; a transient read failure is
-// reported so the page can show its "couldn't load — Retry" state.
-async function fetchExtras(ids: string[]): Promise<Map<string, ExtraFields> | null> {
-  if (ids.length === 0) return new Map()
-  try {
-    const rows = await withRetry(() => prisma.$queryRaw<(ExtraFields & { id: string })[]>`
-      SELECT id, status, "approvedBy", "approvedAt", "rejectionReason", "destinationOfGoods", "amended", "origin", "createdByName", "onBehalf", "attachmentUrl", paid, "paidBy", "paidAt", "paymentDetails"
-      FROM "Lpo"
-      WHERE id = ANY(${ids}::text[])
-    `, "lpos.extras")
-    return new Map(rows.map((r) => [r.id, r]))
-  } catch (e) {
-    if (isMissingSchema(e)) return new Map(ids.map((id) => [id, { ...EXTRA_DEFAULTS }]))
-    console.error("[api/lpos] could not read status columns:", e)
-    return null
-  }
-}
 
 // Roles allowed to view the LPO list: originators, both approval chains, finance
 // (notified on CEO approval), CEO-level, and factory_manager (picks an approved LPO).
@@ -71,21 +58,29 @@ const LPO_VIEW_ROLES = [
 export async function GET(request: NextRequest) {
   const auth = await requireRole(request, LPO_VIEW_ROLES)
   if (auth instanceof NextResponse) return auth
-  // The DB connection pool (nano compute) occasionally times out under
-  // concurrent admin-page load — surface that as a clean 503 instead of an
-  // unhandled 500, so the client can tell "DB is busy" apart from "no data".
+
+  // Line items are a JSON blob per LPO and only the delivery-note form needs
+  // them (to prefill a consignment from what was ordered). The list screens
+  // render five columns, so by default the payload leaves the blob out instead
+  // of shipping 155 of them to render a table that never looks at one.
+  const withItems = new URL(request.url).searchParams.get("items") === "1"
+
   try {
-    const lpos = await withRetry(() => prisma.lpo.findMany({ orderBy: { createdAt: "desc" } }), "lpos.list")
-    const extras = await fetchExtras(lpos.map((l) => l.id))
-    // Better to admit the read failed than to serve a list whose every status,
-    // approval state and payment flag is a placeholder.
-    if (!extras) {
-      return NextResponse.json({ error: "Database is temporarily unavailable. Try again shortly." }, { status: 503 })
-    }
-    const result = lpos.map((l) => ({ ...l, ...(extras.get(l.id) ?? EXTRA_DEFAULTS) }))
-    return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } })
+    const rows = await withRetry(() => prisma.$queryRaw<LpoRow[]>`
+      SELECT id, number, "orderDate", "expectedArrival", "supplierName",
+             "shippingAddress", "purchaseRep", subtotal, vat, total, notes,
+             "createdAt", status, "approvedBy", "approvedAt", "rejectionReason",
+             "destinationOfGoods", amended, origin, "createdByName", "onBehalf",
+             "attachmentUrl", paid, "paidBy", "paidAt", "paymentDetails"
+             ${withItems ? Prisma.sql`, items` : Prisma.empty}
+      FROM "Lpo"
+      ORDER BY "createdAt" DESC
+    `, "lpos.list")
+    return NextResponse.json(rows, { headers: { "Cache-Control": "no-store" } })
   } catch (e) {
-    console.error("[api/lpos] list failed:", e)
+    // No partial answer is served: a list whose statuses and payment flags are
+    // placeholders is worse than an error the page can retry.
+    console.error("[api/lpos] list failed:", isMissingSchema(e) ? `pg=${pgErrorCode(e)} (schema/search_path/role)` : "", e)
     return NextResponse.json({ error: "Database is temporarily unavailable. Try again shortly." }, { status: 503 })
   }
 }

@@ -5,6 +5,7 @@ import { createNumbered, parseDate } from "@/lib/docs"
 import { TRACING_ROLES, computeReconciliation } from "@/lib/tracing"
 import { sendMail } from "@/lib/mailer"
 import { stageAdvanceEmail } from "@/lib/email-templates"
+import { withRetry, pgErrorCode } from "@/lib/db-retry"
 
 const BASE_URL = process.env.NEXTAUTH_URL || "http://localhost:3000"
 
@@ -13,31 +14,46 @@ const VIEW_ROLES = [...TRACING_ROLES, "admin", "it_specialist", "assistant_ceo"]
 
 // Raw columns on Batch (origin / LPO creator) not modelled in Prisma, plus the
 // linked LPO's image attachment so it follows the batch across the board.
-async function fetchBatchOrigins(ids: string[]): Promise<Map<string, { origin: string | null; lpoCreatedByName: string | null; lpoCreatedByUserId: string | null; lpoAttachmentUrl: string | null }>> {
+async function fetchBatchOrigins(ids: string[]): Promise<Map<string, { origin: string | null; lpoCreatedByName: string | null; lpoCreatedByUserId: string | null; lpoAttachmentUrl: string | null }> | null> {
   if (ids.length === 0) return new Map()
   try {
-    const rows = await prisma.$queryRaw<{ id: string; origin: string | null; lpoCreatedByName: string | null; lpoCreatedByUserId: string | null; lpoAttachmentUrl: string | null }[]>`
+    const rows = await withRetry(() => prisma.$queryRaw<{ id: string; origin: string | null; lpoCreatedByName: string | null; lpoCreatedByUserId: string | null; lpoAttachmentUrl: string | null }[]>`
       SELECT b.id, b."origin", b."lpoCreatedByName", b."lpoCreatedByUserId", l."attachmentUrl" AS "lpoAttachmentUrl"
       FROM "Batch" b LEFT JOIN "Lpo" l ON l.id = b."lpoId"
       WHERE b.id = ANY(${ids}::text[])
-    `
-    return new Map(rows.map((r) => [r.id, r]))
-  } catch {
-    return new Map()
+    `, "tracing.origins")
+    const map = new Map(rows.map((r) => [r.id, r]))
+    // Every id came from "Batch" in this same request, so a gap here means the
+    // read was unusable, not that the batch has no origin. Returning an empty
+    // map on failure silently stripped the Internal/External chip off every
+    // batch on the board.
+    if (map.size < ids.length) {
+      console.error(`[api/tracing/batches] origin read covered only ${map.size}/${ids.length} rows — treating as a failed read`)
+      return null
+    }
+    return map
+  } catch (e) {
+    console.error("[api/tracing/batches] origin read failed:", pgErrorCode(e) ?? "", e)
+    return null
   }
 }
 
 // Highest logged production-completion percent per batch (for the board's progress bar).
-async function fetchProductionPercents(ids: string[]): Promise<Map<string, number>> {
+async function fetchProductionPercents(ids: string[]): Promise<Map<string, number> | null> {
   if (ids.length === 0) return new Map()
   try {
-    const rows = await prisma.$queryRaw<{ batchId: string; pct: number }[]>`
+    const rows = await withRetry(() => prisma.$queryRaw<{ batchId: string; pct: number }[]>`
       SELECT "batchId", LEAST(SUM(percent), 100)::int AS pct FROM "ProductionStep"
       WHERE "batchId" = ANY(${ids}::text[]) GROUP BY "batchId"
-    `
+    `, "tracing.production-percents")
+    // Coverage is deliberately NOT checked here: a batch with no production
+    // steps logged yet genuinely has no row, and 0% is the truth for it. But a
+    // FAILED read must not become "every batch is at 0%", which is what the
+    // empty map used to produce — a board full of stalled-looking batches.
     return new Map(rows.map((r) => [r.batchId, r.pct]))
-  } catch {
-    return new Map()
+  } catch (e) {
+    console.error("[api/tracing/batches] production percent read failed:", pgErrorCode(e) ?? "", e)
+    return null
   }
 }
 
@@ -59,8 +75,15 @@ export async function GET(request: NextRequest) {
       receiving: true,
     },
   })
-  const origins = await fetchBatchOrigins(batches.map((b) => b.id))
-  const prodPercents = await fetchProductionPercents(batches.map((b) => b.id))
+  // Read in parallel — they are independent, and the board was waiting on them
+  // one after the other.
+  const [origins, prodPercents] = await Promise.all([
+    fetchBatchOrigins(batches.map((b) => b.id)),
+    fetchProductionPercents(batches.map((b) => b.id)),
+  ])
+  if (!origins || !prodPercents) {
+    return NextResponse.json({ error: "Database is temporarily unavailable. Try again shortly." }, { status: 503 })
+  }
 
   // Attach a profit/loss summary for completed batches so the board can flag it.
   const rows = await Promise.all(

@@ -43,7 +43,10 @@ async function lpoTotals(): Promise<Bucket> {
       unpaidCount: unpaid?.count ?? 0,
       unpaidTotal: unpaid?.total ?? 0,
     }
-  } catch {
+  } catch (e) {
+    // Zeroes are a plausible-looking lie on a money tile, so at least record
+    // why they are zero instead of letting the failure disappear.
+    console.error("[api/finance/summary] LPO totals read failed — reporting zeroes:", e)
     return EMPTY
   }
 }

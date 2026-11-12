@@ -236,12 +236,14 @@ export default function LpoPage() {
         {s === "approved" && (
           l.paid
             ? <span title={l.paidBy ? `Paid — marked by ${l.paidBy}` : "Paid"} style={{ background: "#DCFCE7", color: "#166534", fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 999 }}>✓ Paid</span>
-            : <span style={{ background: "#FEF3C7", color: "#92400E", fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 999 }}>Awaiting payment</span>
+            : <span title="Finance marks an approved LPO as paid, from the Finance Dashboard" style={{ background: "#FEF3C7", color: "#92400E", fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 999 }}>Awaiting payment · Finance</span>
         )}
         {s === "approved" && l.onBehalf && pill("#ede9fe", "Approved on behalf", "#6d28d9")}
         {l.amended && <span style={{ background: "#ccfbf1", color: TEAL, fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 999 }}>Amended</span>}
-        {s === "exec_approved" && pill(TEAL, "Factory Admin Approved")}
-        {s === "chief_approved" && pill(TEAL, "Chief Approved")}
+        {/* Every in-flight stage names who is being waited on, so no row leaves
+            you guessing whose desk it is sitting on. */}
+        {s === "exec_approved" && <>{pill(TEAL, "Factory Admin Approved")}{pill(AMBER, "Awaiting CEO")}</>}
+        {s === "chief_approved" && <>{pill(TEAL, "Chief Approved")}{pill(AMBER, "Awaiting CEO")}</>}
         {s === "pending_chief" && pill(AMBER, "Awaiting Chief")}
         {s === "rejected" && pill(RED, "Rejected")}
         {(s === "pending" || !s) && pill(AMBER, "Awaiting Factory Admin")}

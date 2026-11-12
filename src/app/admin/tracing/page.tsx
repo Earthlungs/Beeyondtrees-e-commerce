@@ -97,6 +97,10 @@ export default function TracingBoard() {
   const limitedStages = LIMITED_BOARD_STAGES[role] ?? null
 
   const [rows, setRows] = useState<BatchRow[]>([])
+  const [search, setSearch] = useState("")
+  const [statusFilter, setStatusFilter] = useState<"all" | "in_progress" | "completed" | "rejected">("all")
+  const [stageFilter, setStageFilter] = useState("all")
+  const [page, setPage] = useState(1)
   // Limited-board roles only see batches sitting at their allowed stages.
   const visibleRows = limitedStages ? rows.filter((b) => limitedStages.includes(b.stage)) : rows
   // "Unfinished work awaiting YOU": in-progress batches sitting at a stage this
@@ -109,6 +113,27 @@ export default function TracingBoard() {
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+
+  // The board carries every batch ever raised, so it is searched, filtered by
+  // state/stage and paged rather than rendered as one long scroll.
+  const bq = search.trim().toLowerCase()
+  const filteredRows = visibleRows.filter((b) => {
+    if (statusFilter !== "all" && b.status !== statusFilter) return false
+    if (stageFilter !== "all" && b.stage !== stageFilter) return false
+    if (!bq) return true
+    return (
+      b.code.toLowerCase().includes(bq) ||
+      (b.productName ?? "").toLowerCase().includes(bq) ||
+      (b.materialName ?? "").toLowerCase().includes(bq) ||
+      (b.requestedBy ?? "").toLowerCase().includes(bq)
+    )
+  })
+  const BOARD_PAGE_SIZE = 20
+  const boardPages = Math.max(1, Math.ceil(filteredRows.length / BOARD_PAGE_SIZE))
+  const boardPage = Math.min(page, boardPages)
+  const pagedRows = filteredRows.slice((boardPage - 1) * BOARD_PAGE_SIZE, boardPage * BOARD_PAGE_SIZE)
+  const stagesPresent = Array.from(new Set(visibleRows.map((b) => b.stage)))
+
 
   const [availableLpos, setAvailableLpos] = useState<AvailableLpo[]>([])
   const [lpoSearch, setLpoSearch] = useState("")
@@ -438,13 +463,46 @@ export default function TracingBoard() {
         </div>
       )}
 
+      {!loading && visibleRows.length > 0 && (
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 14 }}>
+          <div style={{ position: "relative", flex: "1 1 240px", minWidth: 200 }}>
+            <Search size={15} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: MUTED }} />
+            <input
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+              placeholder="Search batch, product, or person…"
+              style={{ ...field, paddingLeft: 34 }}
+            />
+          </div>
+          <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value as typeof statusFilter); setPage(1) }}
+            style={{ ...field, width: "auto", minWidth: 150 }}>
+            <option value="all">All states</option>
+            <option value="in_progress">In progress</option>
+            <option value="completed">Completed</option>
+            <option value="rejected">Rejected</option>
+          </select>
+          <select value={stageFilter} onChange={(e) => { setStageFilter(e.target.value); setPage(1) }}
+            style={{ ...field, width: "auto", minWidth: 170 }}>
+            <option value="all">All stages</option>
+            {stagesPresent.map((st) => (
+              <option key={st} value={st}>{STAGE_LABELS[st] ?? st}</option>
+            ))}
+          </select>
+          <span style={{ fontSize: 12.5, color: MUTED }}>
+            {filteredRows.length} of {visibleRows.length}
+          </span>
+        </div>
+      )}
+
       {loading ? (
         <div style={{ display: "flex", justifyContent: "center", padding: 60, color: MUTED }}><Loader2 className="animate-spin" /></div>
       ) : visibleRows.length === 0 ? (
         <div style={{ textAlign: "center", padding: 60, color: MUTED }}>{limitedStages ? "No batches awaiting you yet." : "No batches yet."}</div>
+      ) : pagedRows.length === 0 ? (
+        <div style={{ textAlign: "center", padding: 60, color: MUTED }}>No batches match this search.</div>
       ) : (
         <div style={{ display: "grid", gap: 10 }}>
-          {visibleRows.map((b) => {
+          {pagedRows.map((b) => {
             const rowProduct = b.matchedProductId ? catalogProducts.find((p) => p.id === b.matchedProductId) : null
             // Prefer the matched catalog product image; fall back to the image
             // attached to the originating LPO so it follows the batch. PDF
@@ -499,6 +557,26 @@ export default function TracingBoard() {
             </Link>
           )
           })}
+        </div>
+      )}
+
+      {!loading && filteredRows.length > BOARD_PAGE_SIZE && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 18, flexWrap: "wrap" }}>
+          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={boardPage === 1}
+            style={{ padding: "6px 14px", borderRadius: 7, border: "1px solid var(--admin-border)", background: "var(--admin-card)", color: boardPage === 1 ? MUTED : TEXT, cursor: boardPage === 1 ? "default" : "pointer", fontSize: 13 }}>
+            &larr; Prev
+          </button>
+          {Array.from({ length: boardPages }, (_, i) => i + 1).map((n) => (
+            <button key={n} onClick={() => setPage(n)}
+              style={{ width: 34, height: 34, borderRadius: 7, border: "1px solid var(--admin-border)", background: n === boardPage ? GREEN : "var(--admin-card)", color: n === boardPage ? "white" : TEXT, cursor: "pointer", fontSize: 13, fontWeight: n === boardPage ? 700 : 400 }}>
+              {n}
+            </button>
+          ))}
+          <button onClick={() => setPage((p) => Math.min(boardPages, p + 1))} disabled={boardPage === boardPages}
+            style={{ padding: "6px 14px", borderRadius: 7, border: "1px solid var(--admin-border)", background: "var(--admin-card)", color: boardPage === boardPages ? MUTED : TEXT, cursor: boardPage === boardPages ? "default" : "pointer", fontSize: 13 }}>
+            Next &rarr;
+          </button>
+          <span style={{ fontSize: 12, color: MUTED, marginLeft: 4 }}>page {boardPage} of {boardPages}</span>
         </div>
       )}
     </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -82,6 +82,7 @@ export default function FinanceDashboard() {
   const [payTarget, setPayTarget] = useState<FinLpo | null>(null)
   const [payingId, setPayingId] = useState<string | null>(null)
   const [notice, setNotice] = useState("")
+  const [page, setPage] = useState(1)
 
   const markPaid = async (l: FinLpo) => {
     setPayingId(l.id)
@@ -102,16 +103,29 @@ export default function FinanceDashboard() {
     finally { setPayingId(null) }
   }
 
-  useEffect(() => {
-    fetch("/api/finance/lpos")
-      .then((r) => {
-        if (!r.ok) throw new Error()
-        return r.json()
-      })
-      .then(setLpos)
-      .catch(() => setError("Could not load the finance data (finance/admin only)."))
-      .finally(() => setLoading(false))
+  // Retries once before giving up: the payment columns are read raw and that
+  // read can fail transiently, and this screen must never guess — it used to
+  // fall back to base columns, which showed every LPO as unpaid with "Mark
+  // paid" offered on all of them.
+  const load = useCallback(async () => {
+    setError("")
+    try {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const res = await fetch("/api/finance/lpos")
+        if (res.ok) { setLpos(await res.json()); return }
+        if (res.status === 401 || res.status === 403) {
+          setError("This dashboard is for finance and admin accounts only.")
+          return
+        }
+        if (attempt === 0) await new Promise((r) => setTimeout(r, 600))
+      }
+      setError("Couldn't load the finance data — the database didn't respond. Nothing has changed; try again.")
+    } catch {
+      setError("Network error — couldn't reach the server. Try again.")
+    } finally { setLoading(false) }
   }, [])
+
+  useEffect(() => { load() }, [load])
 
   const stats = useMemo(() => {
     const status = (l: FinLpo) => l.status || "approved" // pre-migration rows count as approved
@@ -169,6 +183,13 @@ export default function FinanceDashboard() {
     return true
   })
 
+  // Paginated like the LPO list — this table carries eleven columns per row, so
+  // 155 of them in one page is unreadable and buries the unpaid ones.
+  const PAGE_SIZE = 15
+  const totalPages = Math.max(1, Math.ceil(displayed.length / PAGE_SIZE))
+  const safePage = Math.min(page, totalPages)
+  const visible = displayed.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+
   const statusPill = (l: FinLpo) => {
     const s = l.status || "approved"
     const meta = STATUS_META.find((m) => m.match(s)) ?? STATUS_META[0]
@@ -206,7 +227,12 @@ export default function FinanceDashboard() {
         </div>
       </div>
 
-      {error && <div style={{ background: "#FBEAEA", color: "#9B2C2C", padding: "10px 14px", borderRadius: 8, fontSize: 13, marginBottom: 16 }}>{error}</div>}
+      {error && (
+        <div style={{ background: "#FBEAEA", color: "#9B2C2C", padding: "10px 14px", borderRadius: 8, fontSize: 13, marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <span>{error}</span>
+          <Button onClick={() => { setLoading(true); load() }} variant="outline" style={{ borderColor: "#9B2C2C", color: "#9B2C2C", height: 32, fontSize: 12.5 }}>Retry</Button>
+        </div>
+      )}
       {notice && (
         <div style={{ background: "#EAF3EA", color: "#2F5D2F", padding: "10px 14px", borderRadius: 8, fontSize: 13, marginBottom: 16 }}>{notice}</div>
       )}
@@ -298,16 +324,16 @@ export default function FinanceDashboard() {
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
             <div style={{ position: "relative", flex: 1, minWidth: 200, maxWidth: 340 }}>
               <Search size={15} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: MUTED }} />
-              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search number, supplier, or person…" style={{ paddingLeft: 34, height: 40 }} />
+              <Input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} placeholder="Search number, supplier, or person…" style={{ paddingLeft: 34, height: 40 }} />
             </div>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
+            <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1) }}
               style={{ height: 40, borderRadius: 8, border: "1px solid var(--admin-border)", padding: "0 10px", color: TEXT, background: "var(--admin-card)", fontSize: 13 }}>
               <option value="all">All statuses</option>
               <option value="approved">Approved</option>
               <option value="pending">In approval</option>
               <option value="rejected">Rejected</option>
             </select>
-            <select value={originFilter} onChange={(e) => setOriginFilter(e.target.value)}
+            <select value={originFilter} onChange={(e) => { setOriginFilter(e.target.value); setPage(1) }}
               style={{ height: 40, borderRadius: 8, border: "1px solid var(--admin-border)", padding: "0 10px", color: TEXT, background: "var(--admin-card)", fontSize: 13 }}>
               <option value="all">All origins</option>
               <option value="internal">Internal (Beeyond Trees)</option>
@@ -338,7 +364,7 @@ export default function FinanceDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {displayed.map((l) => {
+                    {visible.map((l) => {
                       const s = l.status || "approved"
                       const finalTurnaround = s === "approved" ? turnaround(l.createdAt, l.approvedAt) : null
                       return (
@@ -424,6 +450,28 @@ export default function FinanceDashboard() {
               </div>
             )}
           </div>
+
+          {displayed.length > PAGE_SIZE && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
+              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}
+                style={{ padding: "6px 14px", borderRadius: 7, border: "1px solid var(--admin-border)", background: "var(--admin-card)", color: safePage === 1 ? MUTED : TEXT, cursor: safePage === 1 ? "default" : "pointer", fontSize: 13 }}>
+                &larr; Prev
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+                <button key={n} onClick={() => setPage(n)}
+                  style={{ width: 34, height: 34, borderRadius: 7, border: "1px solid var(--admin-border)", background: n === safePage ? GREEN : "var(--admin-card)", color: n === safePage ? "white" : TEXT, cursor: "pointer", fontSize: 13, fontWeight: n === safePage ? 700 : 400 }}>
+                  {n}
+                </button>
+              ))}
+              <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}
+                style={{ padding: "6px 14px", borderRadius: 7, border: "1px solid var(--admin-border)", background: "var(--admin-card)", color: safePage === totalPages ? MUTED : TEXT, cursor: safePage === totalPages ? "default" : "pointer", fontSize: 13 }}>
+                Next &rarr;
+              </button>
+              <span style={{ fontSize: 12, color: MUTED, marginLeft: 4 }}>
+                {displayed.length} LPOs &middot; page {safePage} of {totalPages}
+              </span>
+            </div>
+          )}
           <p style={{ marginTop: 12, fontSize: 12, color: MUTED }}>
             Turnaround = time from submission to final CEO approval. “1st approval” is the Factory Admin (internal LPOs) or the Chief (external LPOs).
           </p>

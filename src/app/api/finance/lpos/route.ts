@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireRole, ADMINISH_ROLES } from "@/lib/authz"
 import { sendMail } from "@/lib/mailer"
 import { lpoPaidEmail } from "@/lib/email-templates"
+import { withRetry, pgErrorCode } from "@/lib/db-retry"
 
 const BASE_URL = process.env.NEXTAUTH_URL || "https://www.beeyondtrees.org"
 
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
   if (auth instanceof NextResponse) return auth
 
   try {
-    const rows = await prisma.$queryRaw<Record<string, unknown>[]>`
+    const rows = await withRetry(() => prisma.$queryRaw<Record<string, unknown>[]>`
       SELECT id, number, "supplierName", "orderDate", "expectedArrival",
              subtotal, vat, total, "createdAt",
              status, "approvedBy", "approvedAt", "rejectionReason",
@@ -27,12 +28,16 @@ export async function GET(request: NextRequest) {
              paid, "paidBy", "paidAt"
       FROM "Lpo"
       ORDER BY "createdAt" DESC
-    `
+    `, "finance.lpos")
     return NextResponse.json(rows, { headers: { "Cache-Control": "no-store" } })
-  } catch {
-    // Pre-migration fallback: base Prisma columns only.
-    const lpos = await prisma.lpo.findMany({ orderBy: { createdAt: "desc" } })
-    return NextResponse.json(lpos, { headers: { "Cache-Control": "no-store" } })
+  } catch (e) {
+    // There used to be a "pre-migration" fallback here that returned the base
+    // Prisma columns only. On a failed read that handed Finance a dashboard
+    // where every LPO looked Approved and unpaid, with "Mark paid" offered on
+    // all of them — including ones already paid. Refusing is the only safe
+    // answer for a payment screen.
+    console.error("[api/finance/lpos] could not read LPO payment columns:", pgErrorCode(e) ?? "", e)
+    return NextResponse.json({ error: "Database is temporarily unavailable. Try again shortly." }, { status: 503 })
   }
 }
 

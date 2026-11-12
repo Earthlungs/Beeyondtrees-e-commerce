@@ -6,7 +6,7 @@ import { requireRole, isAdminish, isAssistantCeo } from "@/lib/authz"
 import { sendMail } from "@/lib/mailer"
 import { lpoApprovedEmail, lpoExecApprovedEmail, lpoNewEmail, lpoRejectedEmail } from "@/lib/email-templates"
 import { sendLpoEmail, sendLpoRejectedToCreatorEmail } from "@/lib/doc-email"
-import { withRetry, isMissingSchema } from "@/lib/db-retry"
+import { withRetry, isMissingSchema, pgErrorCode } from "@/lib/db-retry"
 
 const BASE_URL = process.env.NEXTAUTH_URL || "http://localhost:3000"
 // Shared finance inbox that always gets a CEO-approval alert (overridable by env).
@@ -25,7 +25,10 @@ async function fetchExtras(id: string) {
     `, "lpo.extras")
     return rows[0] ?? null
   } catch (e) {
-    if (isMissingSchema(e)) return null
+    // Loud on purpose: these columns exist in production, so this branch means
+    // the connection couldn't see them (search_path or role), and silently
+    // serving an LPO with no approval state is how that stayed invisible.
+    console.error("[api/lpos/:id] could not read status columns:", pgErrorCode(e) ?? "", e)
     throw e
   }
 }
