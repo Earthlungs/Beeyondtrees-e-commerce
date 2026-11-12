@@ -6,20 +6,27 @@ import { requireRole, isAdminish, isAssistantCeo } from "@/lib/authz"
 import { sendMail } from "@/lib/mailer"
 import { lpoApprovedEmail, lpoExecApprovedEmail, lpoNewEmail, lpoRejectedEmail } from "@/lib/email-templates"
 import { sendLpoEmail, sendLpoRejectedToCreatorEmail } from "@/lib/doc-email"
+import { withRetry, isMissingSchema } from "@/lib/db-retry"
 
 const BASE_URL = process.env.NEXTAUTH_URL || "http://localhost:3000"
 // Shared finance inbox that always gets a CEO-approval alert (overridable by env).
 const FINANCE_INBOX = process.env.FINANCE_INBOX || "finance@earthlungs.org"
 
+// `null` = the columns aren't in this schema (pre-migration), so the caller
+// serves the LPO without them. A transient read failure throws instead — the
+// approval state is the whole point of the document, and serving it without one
+// renders a view with no status and no approve/reject controls that looks like
+// settled data. See the matching note in ../route.ts.
 async function fetchExtras(id: string) {
   try {
-    const rows = await prisma.$queryRaw<{ status: string; approvedBy: string | null; approvedAt: Date | null; rejectionReason: string | null; destinationOfGoods: string | null; amended: boolean; origin: string | null; createdByName: string | null; createdByUserId: string | null; onBehalf: boolean; chiefApprovedBy: string | null; attachmentUrl: string | null; paid: boolean; paidBy: string | null; paidAt: Date | null; paymentDetails: string | null }[]>`
+    const rows = await withRetry(() => prisma.$queryRaw<{ status: string; approvedBy: string | null; approvedAt: Date | null; rejectionReason: string | null; destinationOfGoods: string | null; amended: boolean; origin: string | null; createdByName: string | null; createdByUserId: string | null; onBehalf: boolean; chiefApprovedBy: string | null; attachmentUrl: string | null; paid: boolean; paidBy: string | null; paidAt: Date | null; paymentDetails: string | null }[]>`
       SELECT status, "approvedBy", "approvedAt", "rejectionReason", "destinationOfGoods", "amended", "origin", "createdByName", "createdByUserId", "onBehalf", "chiefApprovedBy", "attachmentUrl", paid, "paidBy", "paidAt", "paymentDetails"
       FROM "Lpo" WHERE id = ${id}
-    `
+    `, "lpo.extras")
     return rows[0] ?? null
-  } catch {
-    return null
+  } catch (e) {
+    if (isMissingSchema(e)) return null
+    throw e
   }
 }
 
@@ -33,10 +40,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const auth = await requireRole(request, LPO_VIEW_ROLES)
   if (auth instanceof NextResponse) return auth
   const { id } = await params
-  const lpo = await prisma.lpo.findUnique({ where: { id } })
-  if (!lpo) return NextResponse.json({ error: "Not found" }, { status: 404 })
-  const extras = await fetchExtras(id)
-  return NextResponse.json({ ...lpo, ...(extras ?? {}) }, { headers: { "Cache-Control": "no-store" } })
+  try {
+    const lpo = await withRetry(() => prisma.lpo.findUnique({ where: { id } }), "lpo.get")
+    if (!lpo) return NextResponse.json({ error: "Not found" }, { status: 404 })
+    const extras = await fetchExtras(id)
+    return NextResponse.json({ ...lpo, ...(extras ?? {}) }, { headers: { "Cache-Control": "no-store" } })
+  } catch (e) {
+    console.error("[api/lpos/:id] read failed:", e)
+    return NextResponse.json({ error: "Database is temporarily unavailable. Try again shortly." }, { status: 503 })
+  }
 }
 
 // LPO approval — two parallel chains depending on origin:
@@ -84,11 +96,20 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   let createdByName: string | null = null
   let lpoOrigin: string | null = null
   try {
-    const rows = await prisma.$queryRaw<{ status: string; createdByUserId: string | null; createdByName: string | null; origin: string | null }[]>`
+    const rows = await withRetry(() => prisma.$queryRaw<{ status: string; createdByUserId: string | null; createdByName: string | null; origin: string | null }[]>`
       SELECT status, "createdByUserId", "createdByName", "origin" FROM "Lpo" WHERE id = ${id}
-    `
+    `, "lpo.decision-state")
     if (rows[0]) { currentStatus = rows[0].status; createdByUserId = rows[0].createdByUserId; createdByName = rows[0].createdByName; lpoOrigin = rows[0].origin }
-  } catch { /* pre-migration — columns not there yet */ }
+  } catch (e) {
+    // Pre-migration (columns absent) is fine to continue on: newStatus is derived
+    // from the action and the actor's role, not from the current status. A read
+    // failure, though, makes the resubmit guard below reject a legitimate
+    // resubmission — so fail the request rather than blame the user.
+    if (!isMissingSchema(e)) {
+      console.error("[api/lpos/:id] could not read decision state:", e)
+      return NextResponse.json({ error: "Database is temporarily unavailable. Try again shortly." }, { status: 503 })
+    }
+  }
 
   // External Procurement is a single-purpose role (just Bamboosa/EBIL orders) —
   // anyone in it may resubmit any rejected external LPO, not only its original

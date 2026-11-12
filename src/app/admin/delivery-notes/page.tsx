@@ -57,6 +57,7 @@ export default function DeliveryNotesPage() {
   const [notes, setNotes] = useState<DeliveryNote[]>([])
   const [lpos, setLpos] = useState<ApprovedLpo[]>([])
   const [loading, setLoading] = useState(true)
+  const [lpoLoadFailed, setLpoLoadFailed] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
@@ -79,6 +80,7 @@ export default function DeliveryNotesPage() {
   const selectedLpo = useMemo(() => lpos.find((l) => l.id === lpoId) ?? null, [lpos, lpoId])
 
   const load = async () => {
+    setLpoLoadFailed(false)
     try {
       const [dnRes, lpoRes] = await Promise.all([fetch("/api/delivery-notes"), fetch("/api/lpos")])
       if (dnRes.ok) setNotes(await dnRes.json())
@@ -87,6 +89,10 @@ export default function DeliveryNotesPage() {
         // Goods only move against a fully approved LPO — the API enforces this
         // too, this just keeps unapprovable orders out of the picker.
         setLpos(all.filter((l) => l.status === "approved"))
+      } else {
+        // Without this the picker just renders empty, which reads as "there are
+        // no approved LPOs" rather than "we couldn't fetch them".
+        setLpoLoadFailed(true)
       }
     } finally { setLoading(false) }
   }
@@ -197,7 +203,12 @@ export default function DeliveryNotesPage() {
               <option value={OTHER}>Other — not against an LPO</option>
             </select>
           </Field>
-          {lpos.length === 0 && !loading && (
+          {lpoLoadFailed ? (
+            <p style={{ fontSize: 12.5, color: "#9B2C2C", marginTop: 6 }}>
+              Couldn&apos;t load the approved LPOs just now — this list is empty because the request failed, not because there are none.{" "}
+              <button onClick={load} style={{ background: "none", border: "none", padding: 0, color: GREEN, fontWeight: 600, textDecoration: "underline", cursor: "pointer", fontSize: 12.5 }}>Retry</button>
+            </p>
+          ) : lpos.length === 0 && !loading && (
             <p style={{ fontSize: 12.5, color: AMBER, marginTop: 6 }}>No approved LPOs yet — a purchase order must clear final approval before goods can be delivered against it. Pick “Other” below to log a delivery that isn&apos;t tied to one.</p>
           )}
           {selectedLpo && (

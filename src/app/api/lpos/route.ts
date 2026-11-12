@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import { requireDocRole, normalizeLines, createNumbered, parseDate } from "@/lib/docs"
 import { requireRole, isAdminish } from "@/lib/authz"
+import { withRetry, isMissingSchema } from "@/lib/db-retry"
 import { sendMail } from "@/lib/mailer"
 import { lpoExecApprovedEmail, lpoNewEmail } from "@/lib/email-templates"
 import { sendLpoEmail, isValidEmail } from "@/lib/doc-email"
@@ -36,17 +37,27 @@ const EXTRA_DEFAULTS: ExtraFields = {
   attachmentUrl: null, paid: false, paidBy: null, paidAt: null, paymentDetails: null,
 }
 
-async function fetchExtras(ids: string[]): Promise<Map<string, ExtraFields>> {
+// Returns null when the columns could not be READ (as opposed to not existing).
+// That distinction is the whole point: this used to answer a timeout with
+// `status: null` for every LPO, and the API returned it as a 200. The list then
+// rendered 155 rows with a blank Status column, no Approve/Amend buttons and
+// every filter tab counting 0 — indistinguishable, from the client's side, from
+// a genuine "none of these have a status". Only a schema that really lacks the
+// columns (pre-migration) gets the defaults; a transient read failure is
+// reported so the page can show its "couldn't load — Retry" state.
+async function fetchExtras(ids: string[]): Promise<Map<string, ExtraFields> | null> {
   if (ids.length === 0) return new Map()
   try {
-    const rows = await prisma.$queryRaw<(ExtraFields & { id: string })[]>`
+    const rows = await withRetry(() => prisma.$queryRaw<(ExtraFields & { id: string })[]>`
       SELECT id, status, "approvedBy", "approvedAt", "rejectionReason", "destinationOfGoods", "amended", "origin", "createdByName", "onBehalf", "attachmentUrl", paid, "paidBy", "paidAt", "paymentDetails"
       FROM "Lpo"
       WHERE id = ANY(${ids}::text[])
-    `
+    `, "lpos.extras")
     return new Map(rows.map((r) => [r.id, r]))
-  } catch {
-    return new Map(ids.map((id) => [id, { ...EXTRA_DEFAULTS, status: null as unknown as string }]))
+  } catch (e) {
+    if (isMissingSchema(e)) return new Map(ids.map((id) => [id, { ...EXTRA_DEFAULTS }]))
+    console.error("[api/lpos] could not read status columns:", e)
+    return null
   }
 }
 
@@ -64,11 +75,17 @@ export async function GET(request: NextRequest) {
   // concurrent admin-page load — surface that as a clean 503 instead of an
   // unhandled 500, so the client can tell "DB is busy" apart from "no data".
   try {
-    const lpos = await prisma.lpo.findMany({ orderBy: { createdAt: "desc" } })
+    const lpos = await withRetry(() => prisma.lpo.findMany({ orderBy: { createdAt: "desc" } }), "lpos.list")
     const extras = await fetchExtras(lpos.map((l) => l.id))
+    // Better to admit the read failed than to serve a list whose every status,
+    // approval state and payment flag is a placeholder.
+    if (!extras) {
+      return NextResponse.json({ error: "Database is temporarily unavailable. Try again shortly." }, { status: 503 })
+    }
     const result = lpos.map((l) => ({ ...l, ...(extras.get(l.id) ?? EXTRA_DEFAULTS) }))
     return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } })
-  } catch {
+  } catch (e) {
+    console.error("[api/lpos] list failed:", e)
     return NextResponse.json({ error: "Database is temporarily unavailable. Try again shortly." }, { status: 503 })
   }
 }

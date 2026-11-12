@@ -81,12 +81,18 @@ export default function LpoPage() {
   // through approval and into the tracing pipeline.
   const [attachment, setAttachment] = useState<string[]>([])
 
+  // The server already retries a timed-out read once; this retries the whole
+  // request once more before showing the error, so a single blip on this
+  // instance's connection pool never reaches the user as a dead list.
   const load = async () => {
     setLoadError(false)
     try {
-      const res = await fetch("/api/lpos")
-      if (res.ok) setLpos(await res.json())
-      else setLoadError(true)
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const res = await fetch("/api/lpos")
+        if (res.ok) { setLpos(await res.json()); return }
+        if (attempt === 0) await new Promise((r) => setTimeout(r, 600))
+      }
+      setLoadError(true)
     } catch { setLoadError(true) }
     finally { setLoading(false) }
   }
