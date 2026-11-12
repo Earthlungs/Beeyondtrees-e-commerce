@@ -10,7 +10,7 @@ import { ClipboardList, Plus, X, Loader2, Printer, Check, Ban, Eye, Pencil, Pape
 import DocLineItems, { EditLine, emptyLine } from "@/components/admin/DocLineItems"
 import ImageUploader from "@/components/admin/ImageUploader"
 import { ConfirmModal, PromptModal, SuccessModal } from "@/components/admin/ConfirmModal"
-import { isAdminishRole } from "@/lib/tracing-stages"
+import { isAdminishRole, ROLE_LABELS } from "@/lib/tracing-stages"
 import { TableSkeleton, TabsSkeleton } from "@/components/admin/Skeleton"
 
 const TEXT = "var(--admin-text)"
@@ -349,6 +349,18 @@ export default function LpoPage() {
 
       {canCreate && !isAdmin && (
         <p style={{ fontSize: 12.5, color: MUTED, marginBottom: 16 }}>New purchase orders are sent to an admin for approval before they can be generated or printed.</p>
+      )}
+
+      {/* Without this, an account that holds no approval rights just sees the
+          "Awaiting your decision" tab and the Approve/Amend buttons missing,
+          with nothing to say whether that is correct or something is broken.
+          Name the signed-in role and who each decision actually belongs to. */}
+      {!isAdmin && !isExec && !isChief && (
+        <p style={{ fontSize: 12.5, color: MUTED, marginBottom: 16, lineHeight: 1.6 }}>
+          Signed in as <b style={{ color: TEXT }}>{ROLE_LABELS[role] ?? role}</b>, which doesn&apos;t approve purchase orders — so there is no
+          “Awaiting your decision” tab here. Internal LPOs are approved by the <b style={{ color: TEXT }}>Factory Admin</b> then the <b style={{ color: TEXT }}>CEO</b>;
+          external ones by the <b style={{ color: TEXT }}>Chief</b> then the CEO. Payment is marked by <b style={{ color: TEXT }}>Finance</b> on the Finance Dashboard.
+        </p>
       )}
 
       {canCreate && showForm && (
