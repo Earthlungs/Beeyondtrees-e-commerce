@@ -464,7 +464,7 @@ export default function TracingBoard() {
       )}
 
       {!loading && visibleRows.length > 0 && (
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 14 }}>
+        <div className="tracing-filters" style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 14 }}>
           <div style={{ position: "relative", flex: "1 1 240px", minWidth: 200 }}>
             <Search size={15} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: MUTED }} />
             <input
@@ -475,14 +475,14 @@ export default function TracingBoard() {
             />
           </div>
           <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value as typeof statusFilter); setPage(1) }}
-            style={{ ...field, width: "auto", minWidth: 150 }}>
+            className="tracing-filter-select" style={{ ...field, width: "auto", minWidth: 150 }}>
             <option value="all">All states</option>
             <option value="in_progress">In progress</option>
             <option value="completed">Completed</option>
             <option value="rejected">Rejected</option>
           </select>
           <select value={stageFilter} onChange={(e) => { setStageFilter(e.target.value); setPage(1) }}
-            style={{ ...field, width: "auto", minWidth: 170 }}>
+            className="tracing-filter-select" style={{ ...field, width: "auto", minWidth: 170 }}>
             <option value="all">All stages</option>
             {stagesPresent.map((st) => (
               <option key={st} value={st}>{STAGE_LABELS[st] ?? st}</option>
@@ -510,30 +510,26 @@ export default function TracingBoard() {
             const rowThumb = rowProduct?.images?.[0] || (isPdfUrl(b.lpoAttachmentUrl) ? null : b.lpoAttachmentUrl) || null
             return (
             <Link key={b.id} href={`/admin/tracing/${b.id}`} style={{ textDecoration: "none" }}>
-              <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, padding: 16, display: "flex", alignItems: "center", gap: 16 }}>
-                {rowThumb ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={rowThumb} alt="" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8, border: "1px solid var(--admin-border)", flexShrink: 0 }} />
-                ) : (
-                  <div style={{ minWidth: 90 }}>
-                    <div style={{ fontWeight: 700, color: TEXT, fontSize: 14 }}>{b.code}</div>
-                    <div style={{ fontSize: 11, color: MUTED }}>{new Date(b.createdAt).toLocaleDateString()}</div>
-                  </div>
-                )}
+              {/* One line on desktop; stacks into a card on phones (see
+                  .tracing-row in globals.css — inline styles can't carry a
+                  media query, so the layout lives there). */}
+              <div className="tracing-row">
                 {rowThumb && (
-                  <div style={{ minWidth: 70 }}>
-                    <div style={{ fontWeight: 700, color: TEXT, fontSize: 14 }}>{b.code}</div>
-                    <div style={{ fontSize: 11, color: MUTED }}>{new Date(b.createdAt).toLocaleDateString()}</div>
-                  </div>
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img className="tracing-row-thumb" src={rowThumb} alt="" />
                 )}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, color: TEXT, fontSize: 14, display: "flex", alignItems: "center", gap: 8 }}>
-                    {b.productName || b.materialName || "—"}
+                <div className="tracing-row-id">
+                  <div style={{ fontWeight: 700, color: TEXT, fontSize: 14 }}>{b.code}</div>
+                  <div style={{ fontSize: 11, color: MUTED }}>{new Date(b.createdAt).toLocaleDateString()}</div>
+                </div>
+                <div className="tracing-row-main">
+                  <div style={{ fontWeight: 600, color: TEXT, fontSize: 14, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ overflowWrap: "anywhere" }}>{b.productName || b.materialName || "—"}</span>
                     {originBadge(b.origin)}
                   </div>
                   <div style={{ fontSize: 12, color: MUTED }}>by {b.requestedBy || "—"}</div>
                 </div>
-                <div style={{ textAlign: "right" }}>
+                <div className="tracing-row-state">
                   {b.status === "completed" && b.summary ? (
                     <div style={{ fontSize: 12, fontWeight: 600, color: b.summary.verdict === "loss" ? RED : GREEN }}>
                       {b.summary.verdict === "loss" ? "⚠ Loss risk" : "Profitable"} · {ksh(b.summary.costPerUnit)}/unit
@@ -541,18 +537,18 @@ export default function TracingBoard() {
                   ) : b.status === "completed" ? (
                     <div style={{ fontSize: 12, fontWeight: 600, color: GREEN }}>Completed</div>
                   ) : b.stage === "production" ? (
-                    <div style={{ minWidth: 150 }}>
+                    <>
                       <div style={{ fontSize: 12, color: MUTED, marginBottom: 4 }}>Production: <b style={{ color: TEXT }}>{b.productionPercent ?? 0}%</b></div>
                       <div style={{ height: 6, background: "var(--admin-border)", borderRadius: 999, overflow: "hidden" }}>
                         <div style={{ width: `${b.productionPercent ?? 0}%`, height: "100%", background: GREEN, transition: "width .3s" }} />
                       </div>
-                    </div>
+                    </>
                   ) : (
                     <div style={{ fontSize: 12, color: MUTED }}>Stage: <b style={{ color: TEXT }}>{STAGE_LABELS[b.stage] ?? b.stage}</b></div>
                   )}
                 </div>
-                {statusBadge(b.status)}
-                <ChevronRight size={18} color={MUTED} />
+                <span className="tracing-row-badge">{statusBadge(b.status)}</span>
+                <ChevronRight className="tracing-row-chevron" size={18} color={MUTED} />
               </div>
             </Link>
           )

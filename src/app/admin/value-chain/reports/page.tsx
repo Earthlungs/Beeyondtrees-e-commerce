@@ -100,6 +100,7 @@ export default function ValueChainReports() {
           <Stat label="Approval rejection rate" value={`${r.cycle.approvalRejectionRate}%`} tone={r.cycle.approvalRejectionRate ? RED : GREEN} />
           <Stat label="Avg inspection reject" value={`${r.cycle.avgInspectionRejectPct}%`} />
         </div>
+        <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead><tr><th style={th}>Stage</th><th style={th}>Avg time to complete</th></tr></thead>
           <tbody>
@@ -111,6 +112,7 @@ export default function ValueChainReports() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Per-batch P/L */}

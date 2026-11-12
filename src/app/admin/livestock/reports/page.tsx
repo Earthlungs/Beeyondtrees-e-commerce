@@ -66,6 +66,7 @@ export default function LivestockReportsPage() {
           </div>
 
           <div style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", borderRadius: 12, overflow: "hidden" }}>
+            <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr style={{ background: "var(--admin-card-2)", textAlign: "left" }}>
@@ -86,6 +87,7 @@ export default function LivestockReportsPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         </>
       )}

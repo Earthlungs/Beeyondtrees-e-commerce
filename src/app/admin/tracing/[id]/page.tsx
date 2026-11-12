@@ -534,6 +534,7 @@ export default function BatchDetail() {
             </select>
           </div>
           {recon.tiers.length > 0 ? (
+            <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr style={{ color: MUTED, textAlign: "left" }}>
@@ -555,6 +556,7 @@ export default function BatchDetail() {
                 ))}
               </tbody>
             </table>
+            </div>
           ) : (
             <div style={{ fontSize: 13, color: MUTED }}>Link a website product to compute profit/loss.</div>
           )}
@@ -867,6 +869,7 @@ function ReceivingDisplay({ record }: { record: Record<string, unknown> }) {
           ))}
       </div>
       {bd ? (
+        <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginTop: 6 }}>
           <thead>
             <tr style={{ color: MUTED, textAlign: "left", borderBottom: "1px solid var(--admin-border)" }}>
@@ -885,6 +888,7 @@ function ReceivingDisplay({ record }: { record: Record<string, unknown> }) {
             ))}
           </tbody>
         </table>
+        </div>
       ) : (
         record.condition ? <div style={{ fontSize: 13 }}><span style={{ color: MUTED }}>Condition: </span><span style={{ color: TEXT }}>{record.condition as string}</span></div> : null
       )}

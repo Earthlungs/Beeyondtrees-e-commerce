@@ -294,6 +294,55 @@ body {
   .admin-shell-skeleton-aside { display: none; }
 }
 
+/* Tracing board rows. One line on desktop; on a phone the six columns add up to
+   more than the screen is wide, so the batch name and its progress bar used to
+   be crushed to nothing. Below 640px the row becomes a stacked card:
+     line 1  [thumb] [code · date] ............ [state badge]
+     line 2  product name + origin chip, "by <person>"
+     line 3  stage, or the production progress bar
+   The whole card is already a link, so the chevron is dropped. */
+.tracing-row {
+  background: var(--admin-card);
+  border: 1px solid var(--admin-border);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.tracing-row-thumb {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--admin-border);
+  flex-shrink: 0;
+}
+.tracing-row-id { min-width: 90px; }
+.tracing-row-main { flex: 1; min-width: 0; }
+.tracing-row-state { text-align: right; min-width: 150px; }
+.tracing-row-badge { flex-shrink: 0; }
+
+@media screen and (max-width: 640px) {
+  .tracing-row { flex-wrap: wrap; align-items: flex-start; gap: 10px; padding: 14px; }
+  .tracing-row-id { min-width: 0; }
+  .tracing-row-main { flex: 1 1 100%; order: 3; }
+  .tracing-row-state { flex: 1 1 100%; order: 4; text-align: left; min-width: 0; }
+  .tracing-row-badge { order: 2; margin-left: auto; }
+  .tracing-row-chevron { display: none; }
+  /* Search and the two filters share the row instead of overflowing it. */
+  .tracing-filters > div:first-child { flex: 1 1 100%; }
+  .tracing-filter-select { flex: 1 1 calc(50% - 5px); min-width: 0 !important; }
+}
+
+/* Admin data tables are wider than a phone by nature (they carry 5–11 columns),
+   so each one sits in its own horizontal scroller. This is the backstop: the
+   page body itself must never scroll sideways, whatever a long supplier name or
+   email address does. */
+@media screen and (max-width: 767px) {
+  .admin-content { overflow-x: hidden; }
+}
+
 /* The branded A4 documents (invoice, LPO, quotation, delivery note) are also
    read on phones — including by customers, through the public /doc links that
    sit outside the admin shell. On screen only: let their line-item table

@@ -288,6 +288,7 @@ export default function UsersPage() {
         ) : displayed.length === 0 ? (
           <p style={{ padding: 24, color: MUTED }}>No users match “{search}”.</p>
         ) : (
+          <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "var(--admin-card-2)", fontSize: 12, color: MUTED, textAlign: "left" }}>
@@ -342,6 +343,7 @@ export default function UsersPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
       <p style={{ marginTop: 12, fontSize: 12, color: MUTED }}>Cashiers can only use the POS till. Merchants get products, deliveries, LPO & invoicing. Admins get everything including analytics & user management. You can&apos;t block or demote your own account.</p>
